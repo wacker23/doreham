@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
+import { UserMenu } from '@/components/UserMenu';
 
 type Lang = 'en' | 'ko';
 type Status = { kind: 'idle' } | { kind: 'ok' } | { kind: 'err'; msg: string };
@@ -13,7 +14,6 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
 
-  // language + scroll reveal effects
   useEffect(() => {
     document.body.setAttribute('data-lang', lang);
     document.documentElement.lang = lang;
@@ -96,11 +96,7 @@ export default function HomePage() {
               <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
               <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
             </div>
-            <a href="#join" className="btn btn-primary nav-cta">
-              <span className="en cta-full">Get early access</span>
-              <span className="en cta-mini">Join</span>
-              <span className="ko lang-ko">사전 신청</span>
-            </a>
+            <UserMenu lang={lang} />
           </div>
         </div>
       </header>

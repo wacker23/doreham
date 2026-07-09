@@ -18,6 +18,12 @@ export default function SignInPage() {
       provider,
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        // Kakao: request only nickname and image (email requires Business App approval).
+        // Google: use default scopes (email + profile).
+        scopes:
+          provider === 'kakao'
+            ? 'profile_nickname profile_image'
+            : undefined,
       },
     });
 
@@ -29,7 +35,7 @@ export default function SignInPage() {
           : 'Sign-in failed. Please try again.'
       );
     }
-    // On success, browser is redirected to provider. No further code runs here.
+    // On success, browser is redirected to the provider. No further code runs here.
   }
 
   return (
@@ -65,9 +71,7 @@ export default function SignInPage() {
             <span className="ko lang-ko">도레함에 오신 것을 환영합니다</span>
           </h1>
           <p className="signin-sub">
-            <span className="en">
-              Sign in to start finding your people.
-            </span>
+            <span className="en">Sign in to start finding your people.</span>
             <span className="ko lang-ko">
               로그인하고 당신의 사람들을 찾아보세요.
             </span>
@@ -75,37 +79,33 @@ export default function SignInPage() {
 
           <div className="signin-buttons">
             <button
-              className="btn-kakao"
-              onClick={() => handleSignIn('kakao')}
-              disabled={busy !== null}
-            >
-              <KakaoLogo />
-              {busy === 'kakao' ? (
-                <span>
-                  {lang === 'ko' ? '이동 중…' : 'Redirecting…'}
-                </span>
-              ) : (
-                <>
-                  <span className="en">Continue with Kakao</span>
-                  <span className="ko lang-ko">카카오로 시작하기</span>
-                </>
-              )}
-            </button>
-
-            <button
               className="btn-google"
               onClick={() => handleSignIn('google')}
               disabled={busy !== null}
             >
               <GoogleLogo />
               {busy === 'google' ? (
-                <span>
-                  {lang === 'ko' ? '이동 중…' : 'Redirecting…'}
-                </span>
+                <span>{lang === 'ko' ? '이동 중…' : 'Redirecting…'}</span>
               ) : (
                 <>
                   <span className="en">Continue with Google</span>
                   <span className="ko lang-ko">구글로 시작하기</span>
+                </>
+              )}
+            </button>
+
+            <button
+              className="btn-kakao"
+              onClick={() => handleSignIn('kakao')}
+              disabled={busy !== null}
+            >
+              <KakaoLogo />
+              {busy === 'kakao' ? (
+                <span>{lang === 'ko' ? '이동 중…' : 'Redirecting…'}</span>
+              ) : (
+                <>
+                  <span className="en">Continue with Kakao</span>
+                  <span className="ko lang-ko">카카오로 시작하기</span>
                 </>
               )}
             </button>
@@ -123,8 +123,8 @@ export default function SignInPage() {
               privacy policy.
             </span>
             <span className="ko lang-ko">
-              계속 진행하시면 도레함의 서비스 약관과 개인정보 처리방침에 동의하는
-              것으로 간주됩니다.
+              계속 진행하시면 도레함의 서비스 약관과 개인정보 처리방침에
+              동의하는 것으로 간주됩니다.
             </span>
           </p>
         </div>
@@ -176,9 +176,9 @@ export default function SignInPage() {
           transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s;
         }
         .btn-kakao {
-          background: #FEE500;
+          background: #fee500;
           color: #191600;
-          border-color: #FEE500;
+          border-color: #fee500;
         }
         .btn-google {
           background: #ffffff;
