@@ -29,13 +29,27 @@ export type SpokenLanguage =
   | 'mn' | 'ne' | 'my' | 'km' | 'ur' | 'hi' | 'bn' | 'fa' | 'ar' | 'tr'
   | 'es' | 'pt' | 'fr' | 'de' | 'it' | 'pl' | 'uk' | 'kk' | 'ky' | 'other';
 
-// Form data matches ACTUAL profiles table columns in Supabase
+// The 16 MBTI types
+export type MbtiType =
+  | 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP'
+  | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP'
+  | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ'
+  | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP';
+
+// The 17 zodiac signs, including Ophiuchus 
+export type ZodiacSign =
+  | 'aries' | 'taurus' | 'gemini' | 'cancer'
+  | 'leo' | 'virgo' | 'libra' | 'scorpio'
+  | 'sagittarius' | 'capricorn' | 'aquarius' | 'pisces';
+
 export type OnboardingFormData = {
   display_name?: string;
   date_of_birth?: string;
   gender?: Gender;
   primary_language?: SpokenLanguage;
   spoken_languages?: SpokenLanguage[];
+  mbti_type?: MbtiType | null;
+  zodiac_sign?: ZodiacSign | null;
   home_district?: string;
   activity_preferences?: ActivityCategory[];
   social_energy?: SocialEnergyPref;
@@ -86,4 +100,34 @@ export const SPOKEN_LANGUAGES: {
   { code: 'kk', en: 'Kazakh', ko: '카자흐어', native: 'Қазақ' },
   { code: 'ky', en: 'Kyrgyz', ko: '키르기스어', native: 'Кыргыз' },
   { code: 'other', en: 'Other', ko: '기타', native: '—' },
+];
+
+// The 16 MBTI types with 16personalities-style descriptive labels.
+// Order follows the 4 role groups (Analysts → Diplomats → Sentinels → Explorers)
+// which is the standard way Korean MBTI content presents them.
+export const MBTI_OPTIONS: {
+  code: MbtiType;
+  en: string;
+  ko: string;
+}[] = [
+  // Analysts (NT)
+  { code: 'INTJ', en: 'INTJ · The Architect', ko: 'INTJ · 전략가' },
+  { code: 'INTP', en: 'INTP · The Logician', ko: 'INTP · 논리술사' },
+  { code: 'ENTJ', en: 'ENTJ · The Commander', ko: 'ENTJ · 통솔자' },
+  { code: 'ENTP', en: 'ENTP · The Debater', ko: 'ENTP · 변론가' },
+  // Diplomats (NF)
+  { code: 'INFJ', en: 'INFJ · The Advocate', ko: 'INFJ · 옹호자' },
+  { code: 'INFP', en: 'INFP · The Mediator', ko: 'INFP · 중재자' },
+  { code: 'ENFJ', en: 'ENFJ · The Protagonist', ko: 'ENFJ · 선도자' },
+  { code: 'ENFP', en: 'ENFP · The Campaigner', ko: 'ENFP · 활동가' },
+  // Sentinels (SJ)
+  { code: 'ISTJ', en: 'ISTJ · The Logistician', ko: 'ISTJ · 현실주의자' },
+  { code: 'ISFJ', en: 'ISFJ · The Defender', ko: 'ISFJ · 수호자' },
+  { code: 'ESTJ', en: 'ESTJ · The Executive', ko: 'ESTJ · 경영자' },
+  { code: 'ESFJ', en: 'ESFJ · The Consul', ko: 'ESFJ · 집정관' },
+  // Explorers (SP)
+  { code: 'ISTP', en: 'ISTP · The Virtuoso', ko: 'ISTP · 장인' },
+  { code: 'ISFP', en: 'ISFP · The Adventurer', ko: 'ISFP · 모험가' },
+  { code: 'ESTP', en: 'ESTP · The Entrepreneur', ko: 'ESTP · 사업가' },
+  { code: 'ESFP', en: 'ESFP · The Entertainer', ko: 'ESFP · 연예인' },
 ];

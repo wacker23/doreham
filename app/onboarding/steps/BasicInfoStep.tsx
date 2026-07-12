@@ -3,11 +3,15 @@
 import { useState } from 'react';
 import type {
   Gender,
+  MbtiType,
   OnboardingFormData,
   SpokenLanguage,
   UiLanguage,
+  ZodiacSign,
 } from '../lib/types';
-import { SPOKEN_LANGUAGES } from '../lib/types';
+import { SPOKEN_LANGUAGES, MBTI_OPTIONS } from '../lib/types';
+import { computeZodiacSign } from '../lib/zodiac';
+
 
 type Props = {
   lang: UiLanguage;
@@ -18,6 +22,8 @@ type Props = {
     gender: Gender;
     primary_language: SpokenLanguage;
     spoken_languages: SpokenLanguage[];
+    mbti_type: MbtiType | null;
+    zodiac_sign: ZodiacSign | null;
   }) => void;
   saving: boolean;
 };
@@ -33,6 +39,7 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
   const [primaryLang, setPrimaryLang] = useState<SpokenLanguage>(
     initialData.primary_language ?? lang
   );
+  const [mbti, setMbti] = useState<MbtiType | ''>(initialData.mbti_type ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function validate(): boolean {
@@ -75,7 +82,9 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
       date_of_birth: dateOfBirth,
       gender: gender as Gender,
       primary_language: primaryLang,
-      spoken_languages: [primaryLang],  // start with just primary; users can add more later
+      spoken_languages: [primaryLang],
+      mbti_type: mbti === '' ? null : mbti,
+      zodiac_sign: computeZodiacSign(dateOfBirth),
     });
   }
 
@@ -90,7 +99,6 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
           : "Let's start with a few basics."}
       </p>
 
-      {/* Display name */}
       <div className="field">
         <label htmlFor="display_name">
           {lang === 'ko' ? '이름 또는 닉네임' : 'Name or nickname'}
@@ -113,7 +121,6 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
         </span>
       </div>
 
-      {/* Date of birth */}
       <div className="field">
         <label htmlFor="dob">
           {lang === 'ko' ? '생년월일' : 'Date of birth'}
@@ -130,11 +137,8 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
         {errors.date_of_birth && <span className="err">{errors.date_of_birth}</span>}
       </div>
 
-      {/* Gender */}
       <div className="field">
-        <label>
-          {lang === 'ko' ? '성별' : 'Gender'}
-        </label>
+        <label>{lang === 'ko' ? '성별' : 'Gender'}</label>
         <div className="radio-group">
           {(
             [
@@ -160,7 +164,6 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
         {errors.gender && <span className="err">{errors.gender}</span>}
       </div>
 
-      {/* Primary language */}
       <div className="field">
         <label htmlFor="primary_lang">
           {lang === 'ko' ? '주 사용 언어' : 'Primary language'}
@@ -173,16 +176,10 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
           disabled={saving}
         >
           {SPOKEN_LANGUAGES.map((l) => {
-            // Show "English name (native)" for non-latin scripts so users can find their language easily.
-            // For English and Korean, we show the language name once (in the UI language) plus native if different.
             const displayLabel =
               l.code === 'en' || l.code === 'ko'
-                ? lang === 'ko'
-                  ? l.ko
-                  : l.en
-                : lang === 'ko'
-                  ? `${l.ko} (${l.native})`
-                  : `${l.en} (${l.native})`;
+                ? lang === 'ko' ? l.ko : l.en
+                : lang === 'ko' ? `${l.ko} (${l.native})` : `${l.en} (${l.native})`;
             return (
               <option key={l.code} value={l.code}>
                 {displayLabel}
@@ -197,133 +194,66 @@ export function BasicInfoStep({ lang, initialData, onNext, saving }: Props) {
         </span>
       </div>
 
+      <div className="field">
+        <label htmlFor="mbti">
+          {lang === 'ko' ? 'MBTI ' : 'MBTI '}
+          <span className="optional-tag">
+            {lang === 'ko' ? '(선택)' : '(optional)'}
+          </span>
+        </label>
+        <select
+          id="mbti"
+          value={mbti}
+          onChange={(e) => setMbti(e.target.value as MbtiType | '')}
+          className="input"
+          disabled={saving}
+        >
+          <option value="">
+            {lang === 'ko' ? '선택하지 않음' : "I'd rather not say"}
+          </option>
+          {MBTI_OPTIONS.map((opt) => (
+            <option key={opt.code} value={opt.code}>
+              {lang === 'ko' ? opt.ko : opt.en}
+            </option>
+          ))}
+        </select>
+        <span className="hint">
+          {lang === 'ko'
+            ? 'MBTI를 아신다면 알려주세요. 프로필에 표시됩니다.'
+            : 'If you know your MBTI, share it. It shows on your profile.'}
+        </span>
+      </div>
+
       <div className="actions">
         <button type="submit" className="btn-next" disabled={saving}>
           {saving
             ? (lang === 'ko' ? '저장 중…' : 'Saving…')
-            : (lang === 'ko' ? '다음 →' : 'Next →')
-          }
+            : (lang === 'ko' ? '다음 →' : 'Next →')}
         </button>
       </div>
 
       <style jsx>{`
-        .step-title {
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: 28px;
-          letter-spacing: -0.02em;
-          margin: 0 0 8px;
-          color: var(--ink);
-        }
-        .step-sub {
-          font-size: 16px;
-          color: var(--ink-60);
-          margin: 0 0 32px;
-        }
-        .field {
-          margin-bottom: 24px;
-        }
-        .field label {
-          display: block;
-          font-weight: 600;
-          font-size: 14px;
-          color: var(--ink);
-          margin-bottom: 8px;
-        }
-        .input {
-          width: 100%;
-          padding: 12px 16px;
-          border: 1px solid var(--ink-12);
-          border-radius: 12px;
-          background: #fff;
-          font-family: var(--body);
-          font-size: 15px;
-          color: var(--ink);
-          outline: none;
-          transition: border-color 0.15s;
-        }
-        .input:focus {
-          border-color: var(--persimmon);
-        }
-        .input.error {
-          border-color: var(--persimmon);
-          background: rgba(255, 106, 61, 0.03);
-        }
-        .input:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-        .hint {
-          display: block;
-          margin-top: 6px;
-          font-size: 13px;
-          color: var(--ink-60);
-        }
-        .err {
-          display: block;
-          margin-top: 6px;
-          font-size: 13px;
-          color: var(--persimmon);
-          font-weight: 500;
-        }
-        .radio-group {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-        }
-        .radio-option {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 16px;
-          border: 1px solid var(--ink-12);
-          border-radius: 12px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: border-color 0.15s, background 0.15s;
-          user-select: none;
-        }
-        .radio-option:hover {
-          border-color: var(--ink-60);
-        }
-        .radio-option.selected {
-          border-color: var(--persimmon);
-          background: rgba(255, 106, 61, 0.05);
-        }
-        .radio-option input {
-          margin: 0;
-          accent-color: var(--persimmon);
-        }
-        .actions {
-          margin-top: 40px;
-          display: flex;
-          justify-content: flex-end;
-        }
-        .btn-next {
-          background: var(--persimmon);
-          color: #fff;
-          border: 0;
-          padding: 14px 28px;
-          border-radius: 999px;
-          font-family: var(--body);
-          font-weight: 700;
-          font-size: 15px;
-          cursor: pointer;
-          transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s;
-        }
-        .btn-next:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32);
-        }
-        .btn-next:disabled {
-          opacity: 0.55;
-          cursor: not-allowed;
-        }
-        @media (max-width: 480px) {
-          .radio-group {
-            grid-template-columns: 1fr;
-          }
-        }
+        .step-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--ink); }
+        .step-sub { font-size: 16px; color: var(--ink-60); margin: 0 0 32px; }
+        .field { margin-bottom: 24px; }
+        .field label { display: block; font-weight: 600; font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+        .optional-tag { font-weight: 500; color: var(--ink-60); font-size: 13px; }
+        .input { width: 100%; padding: 12px 16px; border: 1px solid var(--ink-12); border-radius: 12px; background: #fff; font-family: var(--body); font-size: 15px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+        .input:focus { border-color: var(--persimmon); }
+        .input.error { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.03); }
+        .input:disabled { opacity: 0.6; cursor: not-allowed; }
+        .hint { display: block; margin-top: 6px; font-size: 13px; color: var(--ink-60); }
+        .err { display: block; margin-top: 6px; font-size: 13px; color: var(--persimmon); font-weight: 500; }
+        .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .radio-option { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: 1px solid var(--ink-12); border-radius: 12px; cursor: pointer; font-size: 14px; transition: border-color 0.15s, background 0.15s; user-select: none; }
+        .radio-option:hover { border-color: var(--ink-60); }
+        .radio-option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
+        .radio-option input { margin: 0; accent-color: var(--persimmon); }
+        .actions { margin-top: 40px; display: flex; justify-content: flex-end; }
+        .btn-next { background: var(--persimmon); color: #fff; border: 0; padding: 14px 28px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 15px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s; }
+        .btn-next:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
+        .btn-next:disabled { opacity: 0.55; cursor: not-allowed; }
+        @media (max-width: 480px) { .radio-group { grid-template-columns: 1fr; } }
       `}</style>
     </form>
   );
