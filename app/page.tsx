@@ -154,6 +154,34 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Venue owner CTA section */}
+        <section className="venue-cta">
+          <div className="wrap venue-cta-in">
+            <div className="cta-content">
+              <div className="cta-emoji">🏪</div>
+              <h2><span className="en">Own a business?</span><span className="ko lang-ko">사업자이신가요?</span></h2>
+              <p>
+                <span className="en">Join Doreham as a venue partner and welcome friendly groups of internationals to your space.</span>
+                <span className="ko lang-ko">도레함 파트너 가게가 되어 국제 친구 그룹을 환영해주세요.</span>
+              </p>
+              <a href="/venues" className="cta-btn">
+                <span className="en">Register your venue →</span>
+                <span className="ko lang-ko">가게 등록하기 →</span>
+              </a>
+            </div>
+          </div>
+
+          <style jsx>{`
+            .venue-cta { background: linear-gradient(135deg, rgba(255, 106, 61, 0.06), rgba(15, 157, 119, 0.04)); padding: 80px 0; border-top: 1px solid var(--ink-12); border-bottom: 1px solid var(--ink-12); }
+            .venue-cta-in { text-align: center; max-width: 640px; margin: 0 auto; padding: 0 24px; }
+            .cta-emoji { font-size: 56px; margin-bottom: 16px; }
+            .venue-cta h2 { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--ink); }
+            .venue-cta p { color: var(--ink-60); font-size: 16px; line-height: 1.6; margin: 0 0 32px; }
+            .cta-btn { display: inline-block; background: var(--persimmon); color: #fff; padding: 16px 36px; border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px; transition: transform 0.12s, box-shadow 0.12s; }
+            .cta-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
+          `}</style>
+        </section>
+
         {/* SECOND REASON */}
         <section className="band" id="reason">
           <div className="wrap reveal">

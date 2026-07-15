@@ -48,11 +48,16 @@ export type VenueFormData = {
   contact_phone?: string;
   contact_name?: string;
 
-  // Step 2: Location
+   // Step 2: Location
   address?: string;
   city?: string;
   district?: string;
-
+  zipcode?: string;              // ← new
+  road_address?: string;         // ← new
+  jibun_address?: string;        // ← new
+  building_name?: string;        // ← new
+  address_detail?: string;       // ← new (for "3층 302호" type detail)
+  
   // Step 3: Hours
   hours?: WeekHours;
 

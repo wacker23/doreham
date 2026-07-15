@@ -65,6 +65,11 @@ export async function submitVenue(
       business_registration_number: formData.business_registration_number,
       category: formData.category,
       address: formData.address,
+      zipcode: formData.zipcode || null,
+      road_address: formData.road_address || null,
+      jibun_address: formData.jibun_address || null,
+      building_name: formData.building_name || null,
+      address_detail: formData.address_detail || null,
       city: formData.city,
       district: formData.district,
       business_opened_at: formData.business_opened_at || null,
@@ -109,6 +114,20 @@ export async function submitVenue(
     if (menuError) {
       console.error('Menu items insert error:', menuError);
     }
+  }
+
+  // Trigger submission confirmation email (fire and forget — don't block on it)
+  if (formData.contact_email && formData.business_name_display) {
+    fetch('/api/emails/venue-submitted', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: formData.contact_email,
+        venueName: formData.business_name_display,
+      }),
+    }).catch((e) => {
+      console.error('Email trigger failed (non-fatal):', e);
+    });
   }
 
   return { ok: true, venueId: venue.id };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useUser } from '@/lib/hooks/useUser';
 
@@ -8,23 +8,35 @@ type Props = {
   lang: 'en' | 'ko';
 };
 
+const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
+
 /**
  * Renders in the nav.
  * - When NOT signed in: shows "Sign in / 로그인" link
- * - When signed in: shows the user's display name + dropdown with sign-out
+ * - When signed in: shows the user's display name + dropdown menu
  */
 export function UserMenu({ lang }: Props) {
   const { user, profile, loading } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [venueCount, setVenueCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('venues')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user.id)
+      .then(({ count }) => {
+        setVenueCount(count ?? 0);
+      });
+  }, [user]);
 
   async function handleSignOut() {
     setSigningOut(true);
     await supabase.auth.signOut();
     setMenuOpen(false);
     setSigningOut(false);
-    // onAuthStateChange in useUser will pick up the change automatically.
-    // Redirect to homepage to feel clean.
     window.location.href = '/';
   }
 
@@ -65,6 +77,8 @@ export function UserMenu({ lang }: Props) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  const isAdmin = user.id === ADMIN_USER_ID;
 
   return (
     <div className="user-menu-wrap">
@@ -121,6 +135,94 @@ export function UserMenu({ lang }: Props) {
               <span className="ko lang-ko">프로필 완성하기 →</span>
             </a>
           )}
+
+          <a
+            href="/matches"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">🌸</span>
+            <span>
+              <span className="en">My groups</span>
+              <span className="ko lang-ko">내 그룹</span>
+            </span>
+          </a>
+
+          <div className="user-menu-divider" />
+
+          <div className="user-menu-section-label">
+            <span className="en">Venues</span>
+            <span className="ko lang-ko">가게</span>
+          </div>
+
+          {venueCount > 0 && (
+            <a
+              href="/venues/my"
+              className="user-menu-item"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+            >
+              <span className="menu-icon">🏪</span>
+              <span>
+                <span className="en">My venues ({venueCount})</span>
+                <span className="ko lang-ko">내 가게 ({venueCount})</span>
+              </span>
+            </a>
+          )}
+
+          <a
+            href="/venues"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">+</span>
+            <span>
+              <span className="en">Register a venue</span>
+              <span className="ko lang-ko">가게 등록</span>
+            </span>
+          </a>
+
+          <a
+            href="/matches"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">🤝</span>
+            <span>
+              <span className="en">My matches</span>
+              <span className="ko lang-ko">내 매치</span>
+            </span>
+          </a>
+
+          {isAdmin && (
+            <>
+              <div className="user-menu-divider" />
+              <a
+                href="/admin/venues"
+                className="user-menu-item user-menu-item-admin"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="menu-icon">⚡</span>
+                <span>Admin · Approvals</span>
+              </a>
+              <a
+                href="/admin/matches"
+                className="user-menu-item user-menu-item-admin"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="menu-icon">✨</span>
+                <span>Admin · Matches</span>
+              </a>
+            </>
+          )}
+
+          <div className="user-menu-divider" />
+
           <button
             className="user-menu-item"
             onClick={handleSignOut}
@@ -189,7 +291,7 @@ export function UserMenu({ lang }: Props) {
           position: absolute;
           top: calc(100% + 8px);
           right: 0;
-          min-width: 220px;
+          min-width: 240px;
           background: #fff;
           border: 1px solid var(--ink-12);
           border-radius: 14px;
@@ -197,8 +299,18 @@ export function UserMenu({ lang }: Props) {
           overflow: hidden;
           z-index: 60;
         }
+        .user-menu-section-label {
+          padding: 10px 16px 4px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--ink-60);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+        }
         .user-menu-item {
-          display: block;
+          display: flex;
+          align-items: center;
+          gap: 10px;
           width: 100%;
           text-align: left;
           padding: 12px 16px;
@@ -219,10 +331,26 @@ export function UserMenu({ lang }: Props) {
           opacity: 0.55;
           cursor: not-allowed;
         }
+        .menu-icon {
+          font-size: 16px;
+          width: 20px;
+          display: inline-flex;
+          justify-content: center;
+          flex-shrink: 0;
+        }
         .user-menu-item-highlight {
           color: var(--persimmon);
           font-weight: 700;
           border-bottom: 1px solid var(--ink-12);
+        }
+        .user-menu-item-admin {
+          color: var(--jade);
+          font-weight: 700;
+        }
+        .user-menu-divider {
+          height: 1px;
+          background: var(--ink-12);
+          margin: 4px 0;
         }
         .user-menu-placeholder {
           width: 60px;
