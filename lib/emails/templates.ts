@@ -81,7 +81,7 @@ function wrapEmail({
         <strong>Doreham 도레함</strong> · Making friendship easier in Korea
       </p>
       <p style="margin:0 0 4px;">
-        문의 · Questions: <a href="mailto:sophia@doreham.co.kr" style="color:${BRAND_COLOR};">sophia@doreham.co.kr</a>
+        문의 · Questions: <a href="mailto:info@doreham.co.kr" style="color:${BRAND_COLOR};">info@doreham.co.kr</a>
       </p>
       <p style="margin:0;">
         <a href="https://doreham.co.kr" style="color:${INK_60};">doreham.co.kr</a>
@@ -130,12 +130,12 @@ export function venueApprovedEmail(venueName: string, venueId: string) {
       bodyKo: `
         <p><strong>${venueName}</strong>이(가) 도레함에 정식으로 등록되었습니다!</p>
         <p>이제 도레함 매칭에서 여러분의 가게가 방문지로 추천될 수 있습니다.</p>
-        <p>도레함 그룹이 방문하면 소중한 첫 손님이 되어주세요. 궁금한 점이나 도움이 필요하시면 언제든 sophia@doreham.co.kr로 연락 주세요!</p>
+        <p>도레함 그룹이 방문하면 소중한 첫 손님이 되어주세요. 궁금한 점이나 도움이 필요하시면 언제든 info@doreham.co.kr로 연락 주세요!</p>
       `,
       bodyEn: `
         <p><strong>${venueName}</strong> is now officially listed on Doreham!</p>
         <p>Your venue can now be recommended as a visit destination for Doreham groups.</p>
-        <p>When Doreham groups visit, they become your valued early customers. Any questions or need help? Reach out to sophia@doreham.co.kr anytime!</p>
+        <p>When Doreham groups visit, they become your valued early customers. Any questions or need help? Reach out to info@doreham.co.kr anytime!</p>
       `,
       ctaText: { ko: '내 가게 보기', en: 'View my venue' },
       ctaUrl: `https://doreham.co.kr/venues/${venueId}`,
@@ -156,14 +156,85 @@ export function venueRejectedEmail(venueName: string, reason: string) {
         <p>안녕하세요,</p>
         <p><strong>${venueName}</strong> 등록 요청을 검토했지만, 현재로서는 승인이 어려운 상황입니다.</p>
         <p><strong>사유:</strong><br>${reason}</p>
-        <p>추가 문의 사항이나 재신청 관련해서는 sophia@doreham.co.kr로 연락 주세요. 언제든 도와드리겠습니다.</p>
+        <p>추가 문의 사항이나 재신청 관련해서는 info@doreham.co.kr로 연락 주세요. 언제든 도와드리겠습니다.</p>
       `,
       bodyEn: `
         <p>Hello,</p>
         <p>We reviewed your registration for <strong>${venueName}</strong>, but we're unable to approve it at this time.</p>
         <p><strong>Reason:</strong><br>${reason}</p>
-        <p>For questions or to resubmit, please reach out to sophia@doreham.co.kr. We're happy to help.</p>
+        <p>For questions or to resubmit, please reach out to info@doreham.co.kr. We're happy to help.</p>
       `,
+    }),
+  };
+}
+
+/**
+ * "You've been matched!" — sent to each user when admin creates a match.
+ */
+export function matchCreatedEmail({
+  recipientName,
+  otherMemberNames,
+  venueName,
+  questTitle,
+  questTitleEn,
+  questDescription,
+  questDescriptionEn,
+  daysToComplete,
+}: {
+  recipientName: string;
+  otherMemberNames: string[];       // Names of the OTHER 2 members
+  venueName: string;
+  questTitle: string;
+  questTitleEn: string;
+  questDescription: string;
+  questDescriptionEn: string;
+  daysToComplete: number;
+}) {
+  const otherNamesJoined = otherMemberNames.join(' & ');
+
+  return {
+    subject: `[Doreham] 🌸 새 그룹 매칭! · You've been matched!`,
+    html: wrapEmail({
+      headerKo: `${recipientName}님, 새 그룹에 매칭되셨어요! 🌸`,
+      headerEn: `${recipientName}, you've been matched! 🌸`,
+      bodyKo: `
+        <p><strong>${otherNamesJoined}</strong>님과 함께 새 그룹에 매칭되셨습니다.</p>
+        <div style="background:#F5F2EB;border-radius:12px;padding:16px;margin:20px 0;">
+          <p style="margin:0 0 8px;font-weight:700;font-size:16px;color:#1E2230;">
+            ${questTitle}
+          </p>
+          <p style="margin:0 0 12px;color:#575D71;font-size:14px;line-height:1.5;">
+            ${questDescription}
+          </p>
+          <p style="margin:0;font-size:13px;color:#FF6A3D;font-weight:600;">
+            📍 ${venueName}
+          </p>
+        </div>
+        <p><strong>${daysToComplete}일 안에</strong> 함께 방문해서 이 퀘스트를 완료해보세요!</p>
+        <p style="color:#575D71;font-size:13px;">
+          그룹 채팅 기능이 곧 열립니다. 지금은 아래 버튼을 눌러 그룹 정보를 확인하세요.
+        </p>
+      `,
+      bodyEn: `
+        <p>You've been matched with <strong>${otherNamesJoined}</strong>.</p>
+        <div style="background:#F5F2EB;border-radius:12px;padding:16px;margin:20px 0;">
+          <p style="margin:0 0 8px;font-weight:700;font-size:16px;color:#1E2230;">
+            ${questTitleEn}
+          </p>
+          <p style="margin:0 0 12px;color:#575D71;font-size:14px;line-height:1.5;">
+            ${questDescriptionEn}
+          </p>
+          <p style="margin:0;font-size:13px;color:#FF6A3D;font-weight:600;">
+            📍 ${venueName}
+          </p>
+        </div>
+        <p>Visit together within <strong>${daysToComplete} days</strong> to complete your quest!</p>
+        <p style="color:#575D71;font-size:13px;">
+          Group chat is coming soon. For now, tap below to see your group details.
+        </p>
+      `,
+      ctaText: { ko: '내 그룹 보기', en: 'See my group' },
+      ctaUrl: `https://doreham.co.kr/matches`,
     }),
   };
 }

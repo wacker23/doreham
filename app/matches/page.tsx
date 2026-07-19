@@ -292,7 +292,12 @@ export default function MyMatchesPage() {
                       {match.members.map((m) => {
                         const isMe = m.user_id === user.id;
                         return (
-                          <div key={m.user_id} className={`member-card ${isMe ? 'is-me' : ''}`}>
+                          <a
+                            key={m.user_id}
+                            href={`/profile/${m.user_id}`}
+                            className={`member-card ${isMe ? 'is-me' : ''}`}
+                            style={{ textDecoration: 'none' }}
+                          >
                             {m.photo_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={m.photo_url} alt="" className="member-avatar" />
@@ -315,7 +320,7 @@ export default function MyMatchesPage() {
                                 {m.zodiac_sign && <span className="mini-tag">{m.zodiac_sign}</span>}
                               </div>
                             </div>
-                          </div>
+                          </a>
                         );
                       })}
                     </div>
@@ -417,7 +422,8 @@ export default function MyMatchesPage() {
         .members-section, .venue-section, .menu-section { margin-bottom: 24px; }
         h3 { font-family: var(--display); font-weight: 700; font-size: 15px; margin: 0 0 12px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em; }
         .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-        .member-card { display: flex; gap: 10px; align-items: center; padding: 12px; background: var(--paper-2); border-radius: 12px; }
+        .member-card { display: flex; gap: 10px; align-items: center; padding: 12px; background: var(--paper-2); border-radius: 12px; color: var(--ink); cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+        .member-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
         .member-card.is-me { background: rgba(255, 106, 61, 0.06); border: 1px solid rgba(255, 106, 61, 0.2); }
         .member-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
         .avatar-fallback { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-weight: 700; }

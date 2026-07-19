@@ -41,7 +41,24 @@ type MenuItem = {
   is_signature: boolean;
 };
 
-// Preset cities matching the KOREAN_CITIES list
+type ExistingMatch = {
+  group_id: string;
+  city: string;
+  created_at: string;
+  quest_id: string;
+  quest_title: string;
+  quest_title_en: string | null;
+  quest_description: string;
+  quest_status: string;
+  expires_at: string;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  venue_id: string;
+  venue_name: string;
+  venue_category: string;
+  members: { user_id: string; display_name: string; photo_url: string | null }[];
+};
+
 const CITIES = [
   { code: 'asan', label: '아산 · Asan' },
   { code: 'cheonan', label: '천안 · Cheonan' },
@@ -70,15 +87,19 @@ const CATEGORY_LABELS: Record<string, { en: string; emoji: string; needsMenu: bo
   other:             { en: 'Other', emoji: '🏪', needsMenu: false },
 };
 
-// Compatibility scoring — simple Big Five difference
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  proposed:  { label: 'Proposed',  color: 'blue' },
+  scheduled: { label: 'Scheduled', color: 'jade' },
+  completed: { label: 'Completed', color: 'green' },
+  cancelled: { label: 'Cancelled', color: 'gray' },
+  no_show:   { label: 'No show',   color: 'gray' },
+};
+
 function compatibilityScore(a: Profile, b: Profile): number {
   if (!a.big_five_openness || !b.big_five_openness) return 0;
   const traits: (keyof Profile)[] = [
-    'big_five_openness',
-    'big_five_conscientiousness',
-    'big_five_extraversion',
-    'big_five_agreeableness',
-    'big_five_neuroticism',
+    'big_five_openness', 'big_five_conscientiousness', 'big_five_extraversion',
+    'big_five_agreeableness', 'big_five_neuroticism',
   ];
   let sumDiff = 0;
   for (const t of traits) {
@@ -86,20 +107,14 @@ function compatibilityScore(a: Profile, b: Profile): number {
     const bv = (b[t] as number) ?? 0.5;
     sumDiff += Math.abs(av - bv);
   }
-  // Lower diff = better match. Score: 100 - (avg diff * 100)
   const avgDiff = sumDiff / traits.length;
   const bigFiveScore = Math.max(0, 100 - avgDiff * 100);
-
-  // Interest overlap bonus
   const aInterests = new Set([...(a.activity_preferences ?? []), ...(a.interests ?? [])]);
   const bInterests = new Set([...(b.activity_preferences ?? []), ...(b.interests ?? [])]);
   const overlap = [...aInterests].filter((x) => bInterests.has(x)).length;
-  const interestBonus = overlap * 5;
-
-  return Math.min(100, Math.round(bigFiveScore + interestBonus));
+  return Math.min(100, Math.round(bigFiveScore + overlap * 5));
 }
 
-// Group compatibility = average of all pairs
 function groupCompatibility(profiles: Profile[]): number {
   if (profiles.length < 2) return 0;
   let sum = 0;
@@ -113,10 +128,7 @@ function groupCompatibility(profiles: Profile[]): number {
   return Math.round(sum / pairs);
 }
 
-function generateQuestTitleAndDescription(
-  venue: Venue,
-  menuItems: MenuItem[]
-): { title: string; title_en: string; description: string; description_en: string } {
+function generateQuestTitleAndDescription(venue: Venue, menuItems: MenuItem[]) {
   const catInfo = CATEGORY_LABELS[venue.category];
   const emoji = catInfo?.emoji ?? '🌟';
 
@@ -126,11 +138,10 @@ function generateQuestTitleAndDescription(
     return {
       title: `${emoji} ${venue.business_name_display}에서 함께 시간 보내기`,
       title_en: `${emoji} Coffee time at ${venue.business_name_display}`,
-      description: `${venue.business_name_display}에 함께 방문해서 ${itemNames}을(를) 각자 주문하고 서로 나눠 마셔보세요. 어떤 메뉴가 가장 마음에 들었는지 이야기해보세요!`,
-      description_en: `Visit ${venue.business_name_display} together and each order one of these: ${itemNamesEn}. Share sips and talk about which was your favorite!`,
+      description: `${venue.business_name_display}에 함께 방문해서 ${itemNames}을(를) 각자 주문하고 서로 나눠 마셔보세요.`,
+      description_en: `Visit ${venue.business_name_display} together and each order one of: ${itemNamesEn}. Share sips!`,
     };
   }
-
   if (venue.category === 'restaurant' && menuItems.length > 0) {
     const itemNames = menuItems.map((m) => m.name).join(', ');
     const itemNamesEn = menuItems.map((m) => m.name_en ?? m.name).join(', ');
@@ -138,75 +149,23 @@ function generateQuestTitleAndDescription(
       title: `${emoji} ${venue.business_name_display}에서 함께 식사`,
       title_en: `${emoji} Share a meal at ${venue.business_name_display}`,
       description: `${venue.business_name_display}에서 함께 식사해요. ${itemNames} 중 하나씩 주문해서 나눠 먹으면 좋겠어요!`,
-      description_en: `Meet at ${venue.business_name_display} for a meal. Try ordering ${itemNamesEn} — sharing dishes is more fun!`,
+      description_en: `Meet at ${venue.business_name_display}. Try ordering ${itemNamesEn} — sharing dishes is more fun!`,
     };
   }
 
-  // Generic templates for other categories
-  const genericByCategory: Record<string, { ko: string; en: string; titleKo: string; titleEn: string }> = {
-    board_game_cafe: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 보드게임`,
-      titleEn: `${emoji} Board game night at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에서 함께 보드게임을 즐겨보세요. 잘 모르는 게임이라도 도전해보는 게 재미의 시작이에요!`,
-      en: `Head to ${venue.business_name_display} and play a board game together. Pick something none of you have tried — that's where the fun starts!`,
-    },
-    escape_room: {
-      titleKo: `${emoji} ${venue.business_name_display} 방탈출 도전`,
-      titleEn: `${emoji} Escape ${venue.business_name_display} together`,
-      ko: `${venue.business_name_display}에서 함께 방탈출을 도전해보세요. 협력이 관건이에요!`,
-      en: `Take on an escape room at ${venue.business_name_display} together. Teamwork is everything!`,
-    },
-    bookshop: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 서로에게 책 추천`,
-      titleEn: `${emoji} Book swap at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에 함께 방문해서 각자 상대방에게 추천할 책을 골라주세요. 왜 그 책을 골랐는지 이야기해요.`,
-      en: `Visit ${venue.business_name_display} together. Each pick a book to recommend to another group member — then explain your choice!`,
-    },
-    workshop_creative: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 함께 만들기`,
-      titleEn: `${emoji} Make something at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에서 함께 원데이 클래스를 즐겨보세요. 각자 만든 작품을 마지막에 자랑해요!`,
-      en: `Join a workshop at ${venue.business_name_display} together. Show off your creations at the end!`,
-    },
-    active_sports: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 함께 운동`,
-      titleEn: `${emoji} Active time at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에서 함께 활동해요. 땀 흘리면서 서로 응원해봐요!`,
-      en: `Get active together at ${venue.business_name_display}. Sweat and cheer each other on!`,
-    },
-    cultural_venue: {
-      titleKo: `${emoji} ${venue.business_name_display} 함께 둘러보기`,
-      titleEn: `${emoji} Explore ${venue.business_name_display} together`,
-      ko: `${venue.business_name_display}을(를) 함께 둘러보세요. 서로에게 가장 인상 깊었던 것을 공유해봐요.`,
-      en: `Explore ${venue.business_name_display} together. Share what stood out most to each of you.`,
-    },
-    nature_outdoor: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 자연 속으로`,
-      titleEn: `${emoji} Into nature at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에서 함께 시간을 보내세요. 자연 속에서 편안한 대화를 나눠봐요.`,
-      en: `Enjoy ${venue.business_name_display} together. Relax and let the conversation flow.`,
-    },
-    music_movie: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 함께 즐기기`,
-      titleEn: `${emoji} Together at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에서 함께 시간을 보내고, 후기를 나눠봐요.`,
-      en: `Meet at ${venue.business_name_display}. Enjoy together and share your thoughts after.`,
-    },
-    other: {
-      titleKo: `${emoji} ${venue.business_name_display}에서 만나기`,
-      titleEn: `${emoji} Meet up at ${venue.business_name_display}`,
-      ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`,
-      en: `Spend time together at ${venue.business_name_display}.`,
-    },
+  const generic: Record<string, { titleKo: string; titleEn: string; ko: string; en: string }> = {
+    board_game_cafe: { titleKo: `${emoji} ${venue.business_name_display}에서 보드게임`, titleEn: `${emoji} Board game night at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 보드게임을 즐겨보세요.`, en: `Head to ${venue.business_name_display} and play a board game together.` },
+    escape_room: { titleKo: `${emoji} ${venue.business_name_display} 방탈출 도전`, titleEn: `${emoji} Escape ${venue.business_name_display} together`, ko: `${venue.business_name_display}에서 함께 방탈출을 도전해보세요.`, en: `Take on an escape room at ${venue.business_name_display} together.` },
+    bookshop: { titleKo: `${emoji} ${venue.business_name_display}에서 서로에게 책 추천`, titleEn: `${emoji} Book swap at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 각자 상대에게 책을 추천해주세요.`, en: `Visit ${venue.business_name_display} together. Recommend books to each other!` },
+    workshop_creative: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 만들기`, titleEn: `${emoji} Make something at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 원데이 클래스를 즐겨보세요.`, en: `Join a workshop at ${venue.business_name_display} together.` },
+    active_sports: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 운동`, titleEn: `${emoji} Active time at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 활동해요.`, en: `Get active together at ${venue.business_name_display}.` },
+    cultural_venue: { titleKo: `${emoji} ${venue.business_name_display} 함께 둘러보기`, titleEn: `${emoji} Explore ${venue.business_name_display} together`, ko: `${venue.business_name_display}을(를) 함께 둘러보세요.`, en: `Explore ${venue.business_name_display} together.` },
+    nature_outdoor: { titleKo: `${emoji} ${venue.business_name_display}에서 자연 속으로`, titleEn: `${emoji} Into nature at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Enjoy ${venue.business_name_display} together.` },
+    music_movie: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 즐기기`, titleEn: `${emoji} Together at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Meet at ${venue.business_name_display}.` },
+    other: { titleKo: `${emoji} ${venue.business_name_display}에서 만나기`, titleEn: `${emoji} Meet up at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Spend time together at ${venue.business_name_display}.` },
   };
-
-  const preset = genericByCategory[venue.category] ?? genericByCategory.other;
-  return {
-    title: preset.titleKo,
-    title_en: preset.titleEn,
-    description: preset.ko,
-    description_en: preset.en,
-  };
+  const preset = generic[venue.category] ?? generic.other;
+  return { title: preset.titleKo, title_en: preset.titleEn, description: preset.ko, description_en: preset.en };
 }
 
 export default function AdminMatchesPage() {
@@ -216,7 +175,15 @@ export default function AdminMatchesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [existingMatches, setExistingMatches] = useState<ExistingMatch[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  const [view, setView] = useState<'list' | 'create'>('list');
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [processingMatchId, setProcessingMatchId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   const [selectedCity, setSelectedCity] = useState('asan');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
@@ -228,67 +195,89 @@ export default function AdminMatchesPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      router.push('/sign-in?return=/admin/matches');
-      return;
-    }
-    if (user.id !== ADMIN_USER_ID) {
-      router.push('/');
-      return;
-    }
-    loadData();
+    if (!user) { router.push('/sign-in?return=/admin/matches'); return; }
+    if (user.id !== ADMIN_USER_ID) { router.push('/'); return; }
+    loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, router]);
 
-  async function loadData() {
+  async function loadAll() {
     setLoadingData(true);
     setError(null);
+    await Promise.all([loadProfilesAndVenues(), loadExistingMatches()]);
+    setLoadingData(false);
+  }
 
+  async function loadProfilesAndVenues() {
     const [profilesRes, venuesRes] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id, display_name, home_district, mbti_type, zodiac_sign, activity_preferences, interests, big_five_openness, big_five_conscientiousness, big_five_extraversion, big_five_agreeableness, big_five_neuroticism, onboarding_completed, photo_url')
-        .eq('onboarding_completed', true)
-        .order('display_name'),
-      supabase
-        .from('venues')
-        .select('id, business_name_display, category, city, district, photo_urls')
-        .eq('is_active', true)
-        .is('deactivated_at', null)
-        .order('business_name_display'),
+      supabase.from('profiles').select('id, display_name, home_district, mbti_type, zodiac_sign, activity_preferences, interests, big_five_openness, big_five_conscientiousness, big_five_extraversion, big_five_agreeableness, big_five_neuroticism, onboarding_completed, photo_url').eq('onboarding_completed', true).order('display_name'),
+      supabase.from('venues').select('id, business_name_display, category, city, district, photo_urls').eq('is_active', true).is('deactivated_at', null).order('business_name_display'),
     ]);
-
     if (profilesRes.error) setError(profilesRes.error.message);
     else setProfiles(profilesRes.data ?? []);
-
     if (venuesRes.error) setError(venuesRes.error.message);
     else setVenues(venuesRes.data ?? []);
+  }
 
-    setLoadingData(false);
+  async function loadExistingMatches() {
+    // Get all groups + quests + members + venues in one go
+    const { data: groups } = await supabase.from('groups').select('id, city, created_at').order('created_at', { ascending: false });
+    if (!groups) return;
+
+    const groupIds = groups.map((g) => g.id);
+    if (groupIds.length === 0) { setExistingMatches([]); return; }
+
+    const [membersRes, questsRes] = await Promise.all([
+      supabase.from('group_members').select('group_id, user_id, profiles:profiles!inner(id, display_name, photo_url)').in('group_id', groupIds),
+      supabase.from('quests').select('id, group_id, venue_id, title, title_en, quest_description, status, expires_at, completed_at, cancelled_at, venue:venues!inner(id, business_name_display, category)').in('group_id', groupIds),
+    ]);
+
+    const members = (membersRes.data ?? []) as any[];
+    const quests = (questsRes.data ?? []) as any[];
+
+    const built: ExistingMatch[] = groups.map((g) => {
+      const quest = quests.find((q) => q.group_id === g.id);
+      if (!quest) return null;
+      const groupMembers = members.filter((m) => m.group_id === g.id).map((m: any) => ({
+        user_id: m.user_id,
+        display_name: m.profiles?.display_name ?? '?',
+        photo_url: m.profiles?.photo_url ?? null,
+      }));
+      return {
+        group_id: g.id,
+        city: g.city,
+        created_at: g.created_at,
+        quest_id: quest.id,
+        quest_title: quest.title ?? 'Untitled',
+        quest_title_en: quest.title_en,
+        quest_description: quest.quest_description ?? '',
+        quest_status: quest.status,
+        expires_at: quest.expires_at,
+        completed_at: quest.completed_at,
+        cancelled_at: quest.cancelled_at,
+        venue_id: quest.venue_id,
+        venue_name: quest.venue.business_name_display,
+        venue_category: quest.venue.category,
+        members: groupMembers,
+      } as ExistingMatch;
+    }).filter(Boolean) as ExistingMatch[];
+
+    setExistingMatches(built);
   }
 
   async function loadMenuItemsForVenue(venueId: string) {
     setMenuItems([]);
     setSelectedMenuIds(new Set());
     if (!venueId) return;
-
     const venue = venues.find((v) => v.id === venueId);
     if (!venue) return;
     const cat = CATEGORY_LABELS[venue.category];
     if (!cat?.needsMenu) return;
 
-    const { data } = await supabase
-      .from('venue_menu_items')
-      .select('id, name, name_en, price_won, is_signature')
-      .eq('venue_id', venueId)
-      .order('is_signature', { ascending: false })
-      .order('display_order');
-
+    const { data } = await supabase.from('venue_menu_items').select('id, name, name_en, price_won, is_signature').eq('venue_id', venueId).order('is_signature', { ascending: false }).order('display_order');
     if (data) {
       setMenuItems(data);
-      // Auto-select signature items
-      const sigIds = new Set(data.filter((m) => m.is_signature).map((m) => m.id));
-      setSelectedMenuIds(sigIds);
+      setSelectedMenuIds(new Set(data.filter((m) => m.is_signature).map((m) => m.id)));
     }
   }
 
@@ -311,88 +300,77 @@ export default function AdminMatchesPage() {
   }
 
   async function createMatch() {
-    if (selectedUserIds.size !== 3) {
-      setError('Please select exactly 3 users.');
-      return;
-    }
-    if (!selectedVenueId) {
-      setError('Please select a venue.');
-      return;
-    }
-
+    if (selectedUserIds.size !== 3) { setError('Please select exactly 3 users.'); return; }
+    if (!selectedVenueId) { setError('Please select a venue.'); return; }
     const selectedVenue = venues.find((v) => v.id === selectedVenueId);
     if (!selectedVenue) return;
-
     const selectedMenuItems = menuItems.filter((m) => selectedMenuIds.has(m.id));
     const catInfo = CATEGORY_LABELS[selectedVenue.category];
-    if (catInfo?.needsMenu && selectedMenuItems.length === 0) {
-      setError('Please select at least one menu item for this venue.');
-      return;
-    }
+    if (catInfo?.needsMenu && selectedMenuItems.length === 0) { setError('Please select at least one menu item.'); return; }
 
     setCreating(true);
     setError(null);
     setSuccess(null);
 
-    try {
-      // 1. Create group
-      const { data: group, error: groupError } = await supabase
-        .from('groups')
-        .insert({
-          city: selectedCity,
-          created_by: user!.id,
-        })
-        .select('id')
-        .single();
+    const selectedProfilesArr = profiles.filter((p) => selectedUserIds.has(p.id));
 
+    try {
+      const { data: group, error: groupError } = await supabase.from('groups').insert({ city: selectedCity, created_by: user!.id }).select('id').single();
       if (groupError || !group) throw new Error(`Group creation failed: ${groupError?.message}`);
 
-      // 2. Add members
-      const memberRows = [...selectedUserIds].map((uid) => ({
-        group_id: group.id,
-        user_id: uid,
-      }));
+      const memberRows = [...selectedUserIds].map((uid) => ({ group_id: group.id, user_id: uid }));
       const { error: membersError } = await supabase.from('group_members').insert(memberRows);
       if (membersError) throw new Error(`Members insert failed: ${membersError.message}`);
 
-      // 3. Create quest with generated content
       const questContent = generateQuestTitleAndDescription(selectedVenue, selectedMenuItems);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 14);
 
-      const { data: quest, error: questError } = await supabase
-        .from('quests')
-        .insert({
-          group_id: group.id,
-          venue_id: selectedVenueId,
-          title: questContent.title,
-          title_en: questContent.title_en,
-          quest_description: questContent.description,
-          description_en: questContent.description_en,
-          status: 'proposed',
-          expires_at: expiresAt.toISOString(),
-        })
-        .select('id')
-        .single();
-
+      const { data: quest, error: questError } = await supabase.from('quests').insert({
+        group_id: group.id,
+        venue_id: selectedVenueId,
+        title: questContent.title,
+        title_en: questContent.title_en,
+        quest_description: questContent.description,
+        description_en: questContent.description_en,
+        status: 'proposed',
+        expires_at: expiresAt.toISOString(),
+      }).select('id').single();
       if (questError || !quest) throw new Error(`Quest creation failed: ${questError?.message}`);
 
-      // 4. Insert quest menu items (if any)
       if (selectedMenuItems.length > 0) {
-        const questMenuRows = selectedMenuItems.map((m) => ({
-          quest_id: quest.id,
-          menu_item_id: m.id,
-        }));
-        await supabase.from('quest_menu_items').insert(questMenuRows);
+        await supabase.from('quest_menu_items').insert(selectedMenuItems.map((m) => ({ quest_id: quest.id, menu_item_id: m.id })));
       }
 
-      setSuccess(`✓ Match created! Group of ${selectedUserIds.size} at ${selectedVenue.business_name_display}`);
+      // Send match emails (fire and forget)
+      Promise.all(selectedProfilesArr.map(async (up) => {
+        const otherNames = selectedProfilesArr.filter((p) => p.id !== up.id).map((p) => p.display_name);
+        try {
+          await fetch('/api/emails/match-created', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: up.id, recipientName: up.display_name, otherMemberNames: otherNames,
+              venueName: selectedVenue.business_name_display,
+              questTitle: questContent.title, questTitleEn: questContent.title_en,
+              questDescription: questContent.description, questDescriptionEn: questContent.description_en,
+              daysToComplete: 14,
+            }),
+          });
+        } catch (e) { console.error('Email failed for', up.id, e); }
+      })).catch((e) => console.error(e));
+
+      setSuccess(`✓ Match created at ${selectedVenue.business_name_display}. Emails sent.`);
       setSelectedUserIds(new Set());
       setSelectedVenueId('');
       setSelectedMenuIds(new Set());
       setMenuItems([]);
       setCreating(false);
 
+      // Reload existing matches
+      await loadExistingMatches();
+
+      // Switch to list view to show the new match
+      setView('list');
       setTimeout(() => setSuccess(null), 6000);
     } catch (e) {
       setError((e as Error).message);
@@ -400,23 +378,95 @@ export default function AdminMatchesPage() {
     }
   }
 
+  async function cancelMatch(match: ExistingMatch) {
+    setProcessingMatchId(match.group_id);
+    setError(null);
+    try {
+      const { error: qErr } = await supabase.from('quests').update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+      }).eq('id', match.quest_id);
+      if (qErr) throw new Error(qErr.message);
+
+      setSuccess(`✓ Match cancelled: ${match.venue_name}`);
+      setCancelingId(null);
+      setCancelReason('');
+      await loadExistingMatches();
+      setProcessingMatchId(null);
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (e) {
+      setError((e as Error).message);
+      setProcessingMatchId(null);
+    }
+  }
+
+  async function completeMatch(match: ExistingMatch) {
+    if (!confirm(`Mark ${match.venue_name} match as completed?`)) return;
+    setProcessingMatchId(match.group_id);
+    setError(null);
+    try {
+      const { error: qErr } = await supabase.from('quests').update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      }).eq('id', match.quest_id);
+      if (qErr) throw new Error(qErr.message);
+
+      setSuccess(`✓ Match completed: ${match.venue_name}`);
+      await loadExistingMatches();
+      setProcessingMatchId(null);
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (e) {
+      setError((e as Error).message);
+      setProcessingMatchId(null);
+    }
+  }
+
+  async function scheduleMatch(match: ExistingMatch) {
+    if (!confirm(`Mark ${match.venue_name} as scheduled?`)) return;
+    setProcessingMatchId(match.group_id);
+    setError(null);
+    try {
+      const { error: qErr } = await supabase.from('quests').update({ status: 'scheduled' }).eq('id', match.quest_id);
+      if (qErr) throw new Error(qErr.message);
+
+      setSuccess(`✓ Match scheduled: ${match.venue_name}`);
+      await loadExistingMatches();
+      setProcessingMatchId(null);
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (e) {
+      setError((e as Error).message);
+      setProcessingMatchId(null);
+    }
+  }
+
   if (loading || (user && user.id !== ADMIN_USER_ID)) {
     return (
       <main className="loading-wrap">
         <div className="loader" />
-        <style jsx>{`
-          .loading-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-          .loader { width: 40px; height: 40px; border: 3px solid var(--ink-12); border-top-color: var(--persimmon); border-radius: 50%; animation: spin 0.8s linear infinite; }
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
+        <style jsx>{`.loading-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; } .loader { width: 40px; height: 40px; border: 3px solid var(--ink-12); border-top-color: var(--persimmon); border-radius: 50%; animation: spin 0.8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </main>
     );
   }
-
   if (!user) return null;
 
+  // Users already in active matches (proposed or scheduled) — hidden from new match creation
+  const activeMatchUserIds = new Set<string>();
+  for (const m of existingMatches) {
+    if (m.quest_status === 'proposed' || m.quest_status === 'scheduled') {
+      for (const mem of m.members) activeMatchUserIds.add(mem.user_id);
+    }
+  }
+
+  // Filter matches by status
+  const filteredMatches = existingMatches.filter((m) => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return m.quest_status === 'proposed' || m.quest_status === 'scheduled';
+    return m.quest_status === statusFilter;
+  });
+
+  // Filter profiles for match creation: by city + exclude users in active matches
   const filteredProfiles = profiles.filter((p) => {
-    // For matching, we filter by home_district containing the city name
+    if (activeMatchUserIds.has(p.id)) return false;
     const cityInfo = CITIES.find((c) => c.code === selectedCity);
     if (!cityInfo) return true;
     if (!p.home_district) return false;
@@ -427,91 +477,184 @@ export default function AdminMatchesPage() {
   });
 
   const filteredVenues = venues.filter((v) => v.city === selectedCity);
-
   const selectedProfiles = profiles.filter((p) => selectedUserIds.has(p.id));
   const groupScore = selectedProfiles.length >= 2 ? groupCompatibility(selectedProfiles) : 0;
+
+  function daysUntil(iso: string) { return Math.ceil((new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60 * 24)); }
 
   return (
     <>
       <header className="a-nav">
         <div className="wrap a-nav-in">
-          <a className="brand" href="/">
-            Doreham <span className="ko-mark">도레함</span> · Match
-          </a>
+          <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span> · Matches</a>
           <a href="/admin/venues" className="back-link">Venues admin</a>
         </div>
       </header>
 
       <main className="a-wrap">
         <div className="a-header">
-          <h1>Create a match</h1>
-          <p>Select 3 compatible users + a venue, we build the quest.</p>
+          <h1>Matches</h1>
+          <div className="view-toggle">
+            <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>
+              📋 View all ({existingMatches.length})
+            </button>
+            <button className={view === 'create' ? 'active' : ''} onClick={() => setView('create')}>
+              ✨ Create new
+            </button>
+          </div>
         </div>
 
         {error && <div className="error-banner">{error}</div>}
         {success && <div className="success-banner">{success}</div>}
 
         {loadingData ? (
-          <div className="loading-inline">Loading data…</div>
+          <div className="loading-inline">Loading…</div>
+        ) : view === 'list' ? (
+          <>
+            {/* Status filter */}
+            <div className="filter-bar">
+              {(['active', 'proposed', 'scheduled', 'completed', 'cancelled', 'all'] as const).map((s) => (
+                <button key={s} className={`filter-btn ${statusFilter === s ? 'active' : ''}`} onClick={() => setStatusFilter(s)}>
+                  {s === 'active' ? 'Active' : s === 'all' ? 'All' : STATUS_LABELS[s]?.label ?? s}
+                </button>
+              ))}
+            </div>
+
+            {filteredMatches.length === 0 ? (
+              <div className="empty-state">
+                <p>No matches in this filter.</p>
+                {statusFilter !== 'all' && <button className="btn-link" onClick={() => setStatusFilter('all')}>Show all</button>}
+              </div>
+            ) : (
+              <div className="matches-list">
+                {filteredMatches.map((match) => {
+                  const isExpanded = expandedMatchId === match.group_id;
+                  const status = STATUS_LABELS[match.quest_status];
+                  const days = daysUntil(match.expires_at);
+                  const cat = CATEGORY_LABELS[match.venue_category];
+                  const isProcessing = processingMatchId === match.group_id;
+                  const isCanceling = cancelingId === match.group_id;
+
+                  return (
+                    <div key={match.group_id} className={`match-row ${isExpanded ? 'expanded' : ''}`}>
+                      <div className="match-header" onClick={() => setExpandedMatchId(isExpanded ? null : match.group_id)}>
+                        <div className="match-main">
+                          <div className="match-title">
+                            {cat?.emoji} {match.quest_title_en ?? match.quest_title}
+                          </div>
+                          <div className="match-meta">
+                            {match.members.map((m) => m.display_name).join(' · ')} — {match.city} · {days > 0 ? `${days}d left` : 'expired'}
+                          </div>
+                        </div>
+                        <span className={`status-badge status-${status?.color ?? 'gray'}`}>{status?.label ?? match.quest_status}</span>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="match-expanded">
+                          <div className="match-detail">
+                            <strong>Venue:</strong> {match.venue_name}
+                          </div>
+                          <div className="match-detail">
+                            <strong>Quest:</strong> {match.quest_title}
+                          </div>
+                          <div className="match-detail">
+                            <strong>Description:</strong>
+                            <p>{match.quest_description}</p>
+                          </div>
+                          <div className="match-detail">
+                            <strong>Members:</strong>
+                            <div className="members-row">
+                              {match.members.map((m) => (
+                                <div key={m.user_id} className="member-pill">
+                                  {m.photo_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={m.photo_url} alt="" />
+                                  ) : (
+                                    <span className="pill-fallback">{m.display_name[0]?.toUpperCase()}</span>
+                                  )}
+                                  {m.display_name}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="match-detail">
+                            <strong>Created:</strong> {new Date(match.created_at).toLocaleString()}
+                          </div>
+                          {match.completed_at && (
+                            <div className="match-detail">
+                              <strong>Completed:</strong> {new Date(match.completed_at).toLocaleString()}
+                            </div>
+                          )}
+                          {match.cancelled_at && (
+                            <div className="match-detail">
+                              <strong>Cancelled:</strong> {new Date(match.cancelled_at).toLocaleString()}
+                            </div>
+                          )}
+
+                          {/* Action buttons for active matches */}
+                          {(match.quest_status === 'proposed' || match.quest_status === 'scheduled') && (
+                            <div className="match-actions">
+                              {isCanceling ? (
+                                <div className="cancel-form">
+                                  <textarea placeholder="Reason for cancellation (optional, internal)" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} rows={2} />
+                                  <div className="cancel-actions">
+                                    <button className="btn-secondary" onClick={() => { setCancelingId(null); setCancelReason(''); }}>Cancel</button>
+                                    <button className="btn-danger" onClick={() => cancelMatch(match)} disabled={isProcessing}>Confirm cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {match.quest_status === 'proposed' && (
+                                    <button className="btn-secondary" onClick={() => scheduleMatch(match)} disabled={isProcessing}>📅 Mark scheduled</button>
+                                  )}
+                                  <button className="btn-success" onClick={() => completeMatch(match)} disabled={isProcessing}>✓ Mark completed</button>
+                                  <button className="btn-danger-outline" onClick={() => setCancelingId(match.group_id)} disabled={isProcessing}>✗ Cancel match</button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         ) : (
           <>
-            {/* City filter */}
+            {/* Create new match view */}
             <div className="section">
               <h2>1. City</h2>
-              <select
-                value={selectedCity}
-                onChange={(e) => {
-                  setSelectedCity(e.target.value);
-                  setSelectedUserIds(new Set());
-                  setSelectedVenueId('');
-                  setMenuItems([]);
-                }}
-                className="input"
-              >
-                {CITIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.label}
-                  </option>
-                ))}
+              <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedUserIds(new Set()); setSelectedVenueId(''); setMenuItems([]); }} className="input">
+                {CITIES.map((c) => (<option key={c.code} value={c.code}>{c.label}</option>))}
               </select>
             </div>
 
-            {/* User selection */}
             <div className="section">
               <div className="section-header">
                 <h2>2. Users (select 3)</h2>
                 <span className="selected-count">{selectedUserIds.size} / 3 selected</span>
               </div>
-
+              {activeMatchUserIds.size > 0 && (
+                <p className="section-hint">Users already in active matches are hidden ({activeMatchUserIds.size} users).</p>
+              )}
               {filteredProfiles.length === 0 ? (
-                <p className="empty">No users in this city yet.</p>
+                <p className="empty-inline">No unmatched users in this city.</p>
               ) : (
                 <>
-                  {selectedProfiles.length >= 2 && (
-                    <div className="score-preview">
-                      Group compatibility: <strong>{groupScore}</strong> / 100
-                    </div>
-                  )}
+                  {selectedProfiles.length >= 2 && <div className="score-preview">Group compatibility: <strong>{groupScore}</strong> / 100</div>}
                   <div className="users-grid">
                     {filteredProfiles.map((p) => {
                       const isSelected = selectedUserIds.has(p.id);
                       const canSelect = selectedUserIds.size < 3 || isSelected;
-
-                      // Score against other selected users
                       let scoreVsSelected = 0;
                       if (selectedProfiles.length > 0 && !isSelected) {
                         const scores = selectedProfiles.map((s) => compatibilityScore(p, s));
                         scoreVsSelected = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
                       }
-
                       return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          className={`user-card ${isSelected ? 'selected' : ''} ${!canSelect ? 'disabled' : ''}`}
-                          onClick={() => canSelect && toggleUser(p.id)}
-                          disabled={!canSelect}
-                        >
+                        <button key={p.id} type="button" className={`user-card ${isSelected ? 'selected' : ''} ${!canSelect ? 'disabled' : ''}`} onClick={() => canSelect && toggleUser(p.id)} disabled={!canSelect}>
                           <div className="user-top">
                             {p.photo_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -528,16 +671,7 @@ export default function AdminMatchesPage() {
                             {p.mbti_type && <span className="tag">{p.mbti_type}</span>}
                             {p.zodiac_sign && <span className="tag">{p.zodiac_sign}</span>}
                           </div>
-                          {p.activity_preferences && p.activity_preferences.length > 0 && (
-                            <div className="user-interests">
-                              {p.activity_preferences.slice(0, 3).map((a) => (
-                                <span key={a} className="interest">{a.replace(/_/g, ' ')}</span>
-                              ))}
-                            </div>
-                          )}
-                          {scoreVsSelected > 0 && (
-                            <div className="user-score">Compat: {scoreVsSelected}/100</div>
-                          )}
+                          {scoreVsSelected > 0 && <div className="user-score">Compat: {scoreVsSelected}/100</div>}
                         </button>
                       );
                     })}
@@ -546,51 +680,26 @@ export default function AdminMatchesPage() {
               )}
             </div>
 
-            {/* Venue selection */}
             <div className="section">
               <h2>3. Venue</h2>
-              {filteredVenues.length === 0 ? (
-                <p className="empty">No approved venues in this city yet.</p>
-              ) : (
-                <select
-                  value={selectedVenueId}
-                  onChange={(e) => {
-                    setSelectedVenueId(e.target.value);
-                    loadMenuItemsForVenue(e.target.value);
-                  }}
-                  className="input"
-                >
+              {filteredVenues.length === 0 ? <p className="empty-inline">No approved venues in this city.</p> : (
+                <select value={selectedVenueId} onChange={(e) => { setSelectedVenueId(e.target.value); loadMenuItemsForVenue(e.target.value); }} className="input">
                   <option value="">— Select a venue —</option>
-                  {filteredVenues.map((v) => {
-                    const cat = CATEGORY_LABELS[v.category];
-                    return (
-                      <option key={v.id} value={v.id}>
-                        {cat?.emoji} {v.business_name_display} · {cat?.en ?? v.category}
-                      </option>
-                    );
-                  })}
+                  {filteredVenues.map((v) => { const cat = CATEGORY_LABELS[v.category]; return (<option key={v.id} value={v.id}>{cat?.emoji} {v.business_name_display} · {cat?.en ?? v.category}</option>); })}
                 </select>
               )}
             </div>
 
-            {/* Menu items (only if venue needs them) */}
             {menuItems.length > 0 && (
               <div className="section">
                 <h2>4. Menu items for quest</h2>
-                <p className="section-hint">Select which items the group will try. Signature items are pre-selected.</p>
+                <p className="section-hint">Signature items are pre-selected.</p>
                 <div className="menu-grid">
                   {menuItems.map((m) => {
                     const isSelected = selectedMenuIds.has(m.id);
                     return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`menu-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleMenuItem(m.id)}
-                      >
-                        <div className="menu-name">
-                          {m.name} {m.is_signature && '⭐'}
-                        </div>
+                      <button key={m.id} type="button" className={`menu-card ${isSelected ? 'selected' : ''}`} onClick={() => toggleMenuItem(m.id)}>
+                        <div className="menu-name">{m.name} {m.is_signature && '⭐'}</div>
                         {m.name_en && <div className="menu-name-en">{m.name_en}</div>}
                         {m.price_won && <div className="menu-price">₩{m.price_won.toLocaleString()}</div>}
                       </button>
@@ -600,19 +709,8 @@ export default function AdminMatchesPage() {
               </div>
             )}
 
-            {/* Create button */}
             <div className="create-actions">
-              <button
-                type="button"
-                className="btn-create"
-                onClick={createMatch}
-                disabled={
-                  creating ||
-                  selectedUserIds.size !== 3 ||
-                  !selectedVenueId ||
-                  (menuItems.length > 0 && selectedMenuIds.size === 0)
-                }
-              >
+              <button type="button" className="btn-create" onClick={createMatch} disabled={creating || selectedUserIds.size !== 3 || !selectedVenueId || (menuItems.length > 0 && selectedMenuIds.size === 0)}>
                 {creating ? 'Creating…' : '✨ Create match'}
               </button>
             </div>
@@ -628,23 +726,64 @@ export default function AdminMatchesPage() {
         .back-link { color: var(--ink-60); text-decoration: none; font-size: 14px; font-weight: 500; }
         .back-link:hover { color: var(--ink); }
         .a-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
-        .a-header { margin-bottom: 24px; }
-        .a-header h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 4px; letter-spacing: -0.02em; }
-        .a-header p { color: var(--ink-60); margin: 0; }
+        .a-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px; }
+        .a-header h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0; letter-spacing: -0.02em; }
+        .view-toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
+        .view-toggle button { border: 0; background: transparent; font-family: var(--body); font-weight: 600; font-size: 13px; padding: 10px 18px; cursor: pointer; color: var(--ink-60); }
+        .view-toggle button.active { background: var(--ink); color: var(--paper); }
         .error-banner { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; }
         .success-banner { background: rgba(15, 157, 119, 0.1); color: var(--jade); border: 1px solid rgba(15, 157, 119, 0.25); padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 16px; }
         .loading-inline { text-align: center; padding: 60px; color: var(--ink-60); }
+        .filter-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-btn { background: #fff; border: 1px solid var(--ink-12); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink-60); }
+        .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .btn-link { background: none; border: none; color: var(--persimmon); font-weight: 600; cursor: pointer; text-decoration: underline; padding: 8px 0; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--ink-60); background: #fff; border-radius: 12px; }
+        .empty-inline { color: var(--ink-60); text-align: center; padding: 20px; }
+        .matches-list { display: flex; flex-direction: column; gap: 8px; }
+        .match-row { background: #fff; border: 1px solid var(--ink-12); border-radius: 12px; overflow: hidden; }
+        .match-row.expanded { border-color: var(--persimmon); }
+        .match-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+        .match-header:hover { background: var(--paper-2); }
+        .match-main { flex: 1; min-width: 0; }
+        .match-title { font-weight: 700; font-size: 15px; color: var(--ink); margin-bottom: 4px; }
+        .match-meta { font-size: 13px; color: var(--ink-60); }
+        .status-badge { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; flex-shrink: 0; }
+        .status-blue { background: rgba(37, 99, 235, 0.15); color: #1D4ED8; }
+        .status-jade { background: rgba(15, 157, 119, 0.15); color: var(--jade); }
+        .status-green { background: rgba(15, 157, 119, 0.15); color: var(--jade); }
+        .status-gray { background: rgba(30, 34, 48, 0.08); color: var(--ink-60); }
+        .match-expanded { padding: 16px; border-top: 1px solid var(--ink-12); background: var(--paper-2); }
+        .match-detail { margin-bottom: 12px; font-size: 14px; }
+        .match-detail strong { display: block; font-size: 12px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .match-detail p { margin: 0; color: var(--ink); }
+        .members-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .member-pill { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--ink-12); padding: 4px 12px 4px 4px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+        .member-pill img, .pill-fallback { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+        .pill-fallback { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+        .match-actions { display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ink-12); flex-wrap: wrap; }
+        .btn-secondary, .btn-success, .btn-danger, .btn-danger-outline { padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+        .btn-secondary { background: #fff; border-color: var(--ink-12); color: var(--ink); }
+        .btn-secondary:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+        .btn-success { background: var(--jade); color: #fff; }
+        .btn-success:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn-danger { background: var(--persimmon); color: #fff; }
+        .btn-danger-outline { background: transparent; border-color: var(--persimmon); color: var(--persimmon); }
+        .btn-danger-outline:hover:not(:disabled) { background: var(--persimmon); color: #fff; }
+        .btn-secondary:disabled, .btn-success:disabled, .btn-danger:disabled, .btn-danger-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cancel-form { flex: 1; }
+        .cancel-form textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--ink-12); border-radius: 10px; font-family: var(--body); font-size: 14px; resize: vertical; margin-bottom: 8px; }
+        .cancel-actions { display: flex; gap: 8px; justify-content: flex-end; }
         .section { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .section h2 { font-family: var(--display); font-weight: 700; font-size: 18px; margin: 0 0 12px; color: var(--ink); }
         .selected-count { font-size: 14px; color: var(--persimmon); font-weight: 600; }
         .section-hint { font-size: 13px; color: var(--ink-60); margin: 0 0 12px; }
-        .empty { color: var(--ink-60); font-size: 14px; text-align: center; padding: 20px; }
         .input { width: 100%; padding: 12px 16px; border: 1px solid var(--ink-12); border-radius: 12px; background: #fff; font-size: 15px; outline: none; }
         .input:focus { border-color: var(--persimmon); }
         .score-preview { background: rgba(15, 157, 119, 0.08); color: var(--jade); font-size: 14px; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; font-weight: 500; }
         .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-        .user-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; text-align: left; transition: border-color 0.15s, transform 0.12s; }
+        .user-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; text-align: left; }
         .user-card:hover:not(.disabled) { border-color: var(--ink-60); }
         .user-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
         .user-card.disabled { opacity: 0.4; cursor: not-allowed; }
@@ -655,18 +794,16 @@ export default function AdminMatchesPage() {
         .user-district { font-size: 12px; color: var(--ink-60); }
         .user-tags { display: flex; gap: 4px; flex-wrap: wrap; }
         .tag { background: #fff; border: 1px solid var(--ink-12); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--ink-60); }
-        .user-interests { display: flex; gap: 4px; flex-wrap: wrap; }
-        .interest { font-size: 11px; color: var(--ink-60); background: rgba(15, 157, 119, 0.1); padding: 2px 6px; border-radius: 6px; }
         .user-score { font-size: 12px; font-weight: 700; color: var(--jade); margin-top: 4px; }
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-        .menu-card { padding: 12px; background: var(--paper-2); border: 2px solid transparent; border-radius: 10px; cursor: pointer; text-align: left; transition: border-color 0.15s; }
+        .menu-card { padding: 12px; background: var(--paper-2); border: 2px solid transparent; border-radius: 10px; cursor: pointer; text-align: left; }
         .menu-card:hover { border-color: var(--ink-60); }
         .menu-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
         .menu-name { font-weight: 700; font-size: 14px; color: var(--ink); }
         .menu-name-en { font-size: 12px; color: var(--ink-60); margin-top: 2px; }
         .menu-price { font-size: 12px; color: var(--jade); font-weight: 700; margin-top: 4px; }
         .create-actions { display: flex; justify-content: flex-end; padding-top: 12px; }
-        .btn-create { background: var(--persimmon); color: #fff; border: 0; padding: 16px 40px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 16px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+        .btn-create { background: var(--persimmon); color: #fff; border: 0; padding: 16px 40px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 16px; cursor: pointer; }
         .btn-create:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
         .btn-create:disabled { opacity: 0.55; cursor: not-allowed; }
       `}</style>

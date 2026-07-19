@@ -184,18 +184,6 @@ export function UserMenu({ lang }: Props) {
             </span>
           </a>
 
-          <a
-            href="/matches"
-            className="user-menu-item"
-            role="menuitem"
-            onClick={() => setMenuOpen(false)}
-          >
-            <span className="menu-icon">🤝</span>
-            <span>
-              <span className="en">My matches</span>
-              <span className="ko lang-ko">내 매치</span>
-            </span>
-          </a>
 
           {isAdmin && (
             <>

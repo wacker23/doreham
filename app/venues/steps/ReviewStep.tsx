@@ -55,6 +55,20 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
               value={formData.business_opened_at}
             />
           )}
+          <Row
+            label={lang === 'ko' ? '연락처 이메일' : 'Contact email'}
+            value={formData.contact_email}
+          />
+          <Row
+            label={lang === 'ko' ? '연락처 전화' : 'Contact phone'}
+            value={formData.contact_phone}
+          />
+          {formData.contact_name && (
+            <Row
+              label={lang === 'ko' ? '담당자' : 'Contact person'}
+              value={formData.contact_name}
+            />
+          )}
         </div>
       </div>
 
@@ -67,6 +81,9 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
           </button>
         </div>
         <div className="rows">
+          {formData.zipcode && (
+            <Row label={lang === 'ko' ? '우편번호' : 'Zip'} value={formData.zipcode} />
+          )}
           <Row label={lang === 'ko' ? '도시' : 'City'} value={cityLabel} />
           {formData.district && (
             <Row label={lang === 'ko' ? '구/동' : 'District'} value={formData.district} />

@@ -3,7 +3,7 @@ import Script from 'next/script';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Doreham 도레함 — small adventures, real friends',
+  title: 'Doreham - Small adventures, Real friends',
   description:
     'Doreham is a friendship app for immigrants and international residents in Korea. Small groups, real venues, real connection. Persian for the gathering of friends together.',
   openGraph: {

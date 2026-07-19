@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const result = await resend.emails.send({
       from: 'Doreham <noreply@doreham.co.kr>',
-      replyTo: 'sophia@doreham.co.kr',
+      replyTo: 'info@doreham.co.kr',
       to: [to],
       subject,
       html,

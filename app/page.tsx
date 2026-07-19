@@ -122,8 +122,8 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="hero-sub">
-                <span className="en">Doreham gives you a reason to leave the house — a real activity at a real place with a small, well-matched group. The friendship happens sideways.</span>
-                <span className="ko lang-ko">도레함은 집을 나설 이유를 줍니다 — 잘 맞는 작은 그룹과 함께, 진짜 장소에서의 진짜 활동. 우정은 그 곁에서 자연스럽게 생깁니다.</span>
+                <span className="en">Doreham gives you a reason to leave the house a real activity at a real place with a small, well-matched group. The friendship happens sideways.</span>
+                <span className="ko lang-ko">도레함은 집을 나설 이유를 줍니다 잘 맞는 작은 그룹과 함께, 진짜 장소에서의 진짜 활동. 우정은 그 곁에서 자연스럽게 생깁니다.</span>
               </p>
               <div className="hero-cta">
                 <a href="#join" className="btn btn-primary">
@@ -215,7 +215,7 @@ export default function HomePage() {
                 <div className="num">1</div>
                 <h3><span className="en">Get matched</span><span className="ko lang-ko">매칭받기</span></h3>
                 <p>
-                  <span className="en">A small group of 2–3 near you, matched on interests, personality, and pace — so there&apos;s always an easy conversation in the room.</span>
+                  <span className="en">A small group of 2–3 near you, matched on interests, personality, and pace so there&apos;s always an easy conversation in the room.</span>
                   <span className="ko lang-ko">관심사·성격·생활 반경으로 맞춘 2–3명의 작은 그룹. 언제나 대화를 여는 사람이 한 명은 있습니다.</span>
                 </p>
               </div>
@@ -231,8 +231,8 @@ export default function HomePage() {
                 <div className="num">3</div>
                 <h3><span className="en">Show up &amp; meet</span><span className="ko lang-ko">만나기</span></h3>
                 <p>
-                  <span className="en">Do the quest together, scan the venue QR, earn points. High-fit groups can keep going — friendship forms through repetition.</span>
-                  <span className="ko lang-ko">함께 퀘스트를 완료하고 QR을 스캔, 포인트를 얻습니다. 잘 맞은 그룹은 계속 이어집니다 — 우정은 반복에서 자랍니다.</span>
+                  <span className="en">Do the quest together, scan the venue QR, earn points. High-fit groups can keep going friendship forms through repetition.</span>
+                  <span className="ko lang-ko">함께 퀘스트를 완료하고 QR을 스캔, 포인트를 얻습니다. 잘 맞은 그룹은 계속 이어집니다 우정은 반복에서 자랍니다.</span>
                 </p>
               </div>
             </div>
@@ -252,8 +252,8 @@ export default function HomePage() {
                 <span className="ko lang-ko">어떤 관심사든, 도레함은 그것이 모양을 갖추도록 돕습니다.</span>
               </h2>
               <p className="sec-lead">
-                <span className="en">Doro and Hami show you the way — coffee, making things, the outdoors, games, good food and more. Same two friends, every kind of day.</span>
-                <span className="ko lang-ko">도로와 하미가 안내합니다 — 커피, 만들기, 바깥 공기, 게임, 맛있는 음식까지. 같은 두 친구, 모든 종류의 하루.</span>
+                <span className="en">Doro and Hami show you the way coffee, making things, the outdoors, games, good food and more. Same two friends, every kind of day.</span>
+                <span className="ko lang-ko">도로와 하미가 안내합니다 커피, 만들기, 바깥 공기, 게임, 맛있는 음식까지. 같은 두 친구, 모든 종류의 하루.</span>
               </p>
             </div>
             <div className="scenes">
@@ -351,8 +351,8 @@ export default function HomePage() {
                   <span className="ko lang-ko">학창 시절 친구를 어떻게 사귀었는지 떠올려 보세요.</span>
                 </h3>
                 <p>
-                  <span className="en">You didn&apos;t choose to — you were thrown together, day after day, doing the same things. And somehow the closest friendships of your life formed there. We can&apos;t put you back in a classroom, but we can give you the next best thing.</span>
-                  <span className="ko lang-ko">의도해서 사귄 게 아닙니다 — 매일 같은 자리에서 같은 일을 하다 보니, 어느새 인생에서 가장 가까운 친구가 되어 있었습니다. 교실을 다시 만들어 드릴 순 없지만, 그 다음으로 가까운 것은 드릴 수 있습니다.</span>
+                  <span className="en">You didn&apos;t choose to you were thrown together, day after day, doing the same things. And somehow the closest friendships of your life formed there. We can&apos;t put you back in a classroom, but we can give you the next best thing.</span>
+                  <span className="ko lang-ko">의도해서 사귄 게 아닙니다 매일 같은 자리에서 같은 일을 하다 보니, 어느새 인생에서 가장 가까운 친구가 되어 있었습니다. 교실을 다시 만들어 드릴 순 없지만, 그 다음으로 가까운 것은 드릴 수 있습니다.</span>
                 </p>
               </div>
             </div>
@@ -372,13 +372,13 @@ export default function HomePage() {
                 <span className="ko lang-ko">남들보다 먼저 발견하는 한국.</span>
               </h3>
               <p>
-                <span className="en">Doreham quietly surfaces small, independent, genuinely good venues — new, well-rated, under-the-radar — and sends groups who actually fit. Real foot traffic when they need it most.</span>
-                <span className="ko lang-ko">도레함은 작고 독립적이면서 진짜 좋은 가게를 조용히 띄웁니다 — 새롭고, 평점 좋고, 아직 덜 알려진 곳. 잘 맞는 그룹을 보내, 가장 필요한 시기에 손님을 만듭니다.</span>
+                <span className="en">Doreham quietly surfaces small, independent, genuinely good venues new, well-rated, under-the-radar and sends groups who actually fit. Real foot traffic when they need it most.</span>
+                <span className="ko lang-ko">도레함은 작고 독립적이면서 진짜 좋은 가게를 조용히 띄웁니다 새롭고, 평점 좋고, 아직 덜 알려진 곳. 잘 맞는 그룹을 보내, 가장 필요한 시기에 손님을 만듭니다.</span>
               </p>
               <div className="ticks">
                 <div className="tick">
-                  ✓ <span className="en">Fit always comes first — paid boosts never override a good match.</span>
-                  <span className="ko lang-ko">매칭 품질이 항상 우선 — 유료 노출이 좋은 매칭을 덮지 않습니다.</span>
+                  ✓ <span className="en">Fit always comes first paid boosts never override a good match.</span>
+                  <span className="ko lang-ko">매칭 품질이 항상 우선 유료 노출이 좋은 매칭을 덮지 않습니다.</span>
                 </div>
                 <div className="tick">
                   ✓ <span className="en">60% of quests stay under ₩10,000 per person.</span>
@@ -399,12 +399,12 @@ export default function HomePage() {
                 <div className="tick">
                   <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 9l3 3 7-7" stroke="#0F9D77" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <span className="en">Small groups, never one-on-one for a first meet.</span>
-                  <span className="ko lang-ko">작은 그룹으로 — 첫 만남은 절대 1:1이 아닙니다.</span>
+                  <span className="ko lang-ko">작은 그룹으로, 첫 만남은 절대 1:1이 아닙니다.</span>
                 </div>
                 <div className="tick">
                   <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 9l3 3 7-7" stroke="#0F9D77" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="en">Public, licensed venues only — never private homes.</span>
-                  <span className="ko lang-ko">공개된 등록 가게에서만 — 개인 공간은 없습니다.</span>
+                  <span className="en">Public, licensed venues only never private homes.</span>
+                  <span className="ko lang-ko">공개된 등록 가게에서만 개인 공간은 없습니다.</span>
                 </div>
                 <div className="tick">
                   <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 9l3 3 7-7" stroke="#0F9D77" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -413,8 +413,8 @@ export default function HomePage() {
                 </div>
                 <div className="tick">
                   <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 9l3 3 7-7" stroke="#0F9D77" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="en">After every meet-up, members tag each other with structured reviews. Kind tags build a reputation you can see before you go — the way you trust a place with lots of good reviews. Concern flags stay private and go straight to safety, so no one can be review-bombed.</span>
-                  <span className="ko lang-ko">매 만남이 끝나면 서로를 구조화된 태그로 남깁니다. 좋은 태그는 미리 볼 수 있는 평판이 됩니다 — 리뷰 많은 가게를 믿고 가듯, 누구를 만나는지 알 수 있죠. 우려 신호는 비공개로 안전팀에만 전달되어, 악의적 평점 폭격은 불가능합니다.</span>
+                  <span className="en">After every meet-up, members tag each other with structured reviews. Kind tags build a reputation you can see before you go the way you trust a place with lots of good reviews. Concern flags stay private and go straight to safety, so no one can be review-bombed.</span>
+                  <span className="ko lang-ko">매 만남이 끝나면 서로를 구조화된 태그로 남깁니다. 좋은 태그는 미리 볼 수 있는 평판이 됩니다 리뷰 많은 가게를 믿고 가듯, 누구를 만나는지 알 수 있죠. 우려 신호는 비공개로 안전팀에만 전달되어, 악의적 평점 폭격은 불가능합니다.</span>
                 </div>
               </div>
             </div>
@@ -430,8 +430,8 @@ export default function HomePage() {
               <span className="ko lang-ko">어떤 관심사도 혼자 남겨지지 않는 도시.</span>
             </h2>
             <p className="sec-lead">
-              <span className="en">Where cultures meet and grow stronger for it — and where no one in Korea feels like an <span className="alien">alien</span> on their own registration card. We hope to make every place we reach a little less lonely, and a little more alive.</span>
-              <span className="ko lang-ko">서로 다른 문화가 만나 더 강해지는 곳 — 그리고 한국에 사는 누구도 <span className="alien">외국인</span>이라는 단어에서 외로움을 느끼지 않는 곳. 저희가 닿는 모든 곳이 조금 덜 외롭고, 조금 더 살아 있기를 바랍니다.</span>
+              <span className="en">Where cultures meet and grow stronger for it and where no one in Korea feels like an <span className="alien">alien</span> on their own registration card. We hope to make every place we reach a little less lonely, and a little more alive.</span>
+              <span className="ko lang-ko">서로 다른 문화가 만나 더 강해지는 곳 그리고 한국에 사는 누구도 <span className="alien">외국인</span>이라는 단어에서 외로움을 느끼지 않는 곳. 저희가 닿는 모든 곳이 조금 덜 외롭고, 조금 더 살아 있기를 바랍니다.</span>
             </p>
           </div>
         </section>
