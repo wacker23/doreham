@@ -7,23 +7,40 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  const next = searchParams.get('next') ?? '/home';
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Successful sign-in — send the user to `next` (or homepage).
+      // Get the user
+      const { data: { user } } = await supabase.auth.getUser();
+
+      let redirectTo = next;
+
+      if (user) {
+        // Check profile — if no profile OR basic_signup_completed = false, route to /signup
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('basic_signup_completed')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!profile || !profile.basic_signup_completed) {
+          redirectTo = '/signup';
+        }
+      }
+
       const forwardedHost = request.headers.get('x-forwarded-host');
       const isLocalEnv = process.env.NODE_ENV === 'development';
 
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`);
+        return NextResponse.redirect(`${origin}${redirectTo}`);
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
+        return NextResponse.redirect(`https://${forwardedHost}${redirectTo}`);
       } else {
-        return NextResponse.redirect(`${origin}${next}`);
+        return NextResponse.redirect(`${origin}${redirectTo}`);
       }
     }
   }
