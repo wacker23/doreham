@@ -52,7 +52,7 @@ export default function SignupPage() {
     }
     // If already completed, redirect
     if (profile?.basic_signup_completed) {
-      router.push('/home');
+      router.push('/home?welcome=true');
       return;
     }
     // Prefill display_name from Google if available
