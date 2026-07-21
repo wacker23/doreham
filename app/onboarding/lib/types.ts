@@ -58,11 +58,13 @@ export type OnboardingFormData = {
   big_five_extraversion?: number;
   big_five_agreeableness?: number;
   big_five_neuroticism?: number;
+  bio?: string | null;
+  job_title?: string | null;
 };
 
-export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
+export type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6 ;
 
-export const TOTAL_STEPS = 5;
+export const TOTAL_STEPS = 6;
 
 export const SPOKEN_LANGUAGES: {
   code: SpokenLanguage;
