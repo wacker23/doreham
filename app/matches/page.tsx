@@ -380,11 +380,12 @@ export default function MyMatchesPage() {
                     </div>
                   )}
 
-                  <div className="chat-placeholder">
-                    💬 {lang === 'ko'
-                      ? '그룹 채팅이 곧 오픈됩니다!'
-                      : 'Group chat is coming soon!'}
-                  </div>
+                  <a
+                    href={`/matches/${match.group_id}/chat`}
+                    className="chat-open-btn"
+                  >
+                    💬 {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
+                  </a>
                 </div>
               );
             })}
@@ -443,7 +444,23 @@ export default function MyMatchesPage() {
         .menu-photo { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; }
         .menu-name { font-weight: 600; font-size: 12px; color: var(--ink); }
         .menu-price { font-size: 11px; color: var(--jade); font-weight: 700; margin-top: 2px; }
-        .chat-placeholder { background: rgba(15, 157, 119, 0.06); border: 1px dashed rgba(15, 157, 119, 0.25); color: var(--jade); padding: 12px 16px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 500; margin-top: 8px; }
+        .chat-open-btn {
+          display: block;
+          background: var(--persimmon);
+          color: #fff;
+          padding: 14px 16px;
+          border-radius: 12px;
+          text-align: center;
+          font-size: 15px;
+          font-weight: 700;
+          margin-top: 8px;
+          text-decoration: none;
+          transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .chat-open-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32);
+        }
         @media (max-width: 640px) {
           .match-card { padding: 20px; }
           .quest-title { font-size: 20px; }
