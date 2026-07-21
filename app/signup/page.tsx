@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
 import { computeZodiacSign } from '../onboarding/lib/zodiac';
@@ -32,7 +32,6 @@ const TOTAL_STEPS = 8;
 
 export default function SignupPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, profile, loading } = useUser();
   const [lang, setLang] = useState<'en' | 'ko'>('en');
   const [step, setStep] = useState(1);
