@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
-import { BasicInfoStep } from './steps/BasicInfoStep';
+import {LanguagesAndMbtiStep} from './steps/LanguagesAndMbtiStep'
 import { LocationStep } from './steps/LocationStep';
 import { InterestsStep } from './steps/InterestsStep';
 import { SocialEnergyStep } from './steps/SocialEnergyStep';
 import { BigFiveQuiz } from './steps/BigFiveQuiz';
+import { BioAndJobStep } from './steps/BioAndJobStep';
 import { savePartialProfile, completeOnboarding } from './lib/save';
 import type {
   UiLanguage,
@@ -173,7 +174,7 @@ export default function OnboardingPage() {
           )}
 
           {currentStep === 1 && (
-            <BasicInfoStep
+            <LanguagesAndMbtiStep
               lang={lang}
               initialData={formData}
               onNext={(data) => advanceStep(data, 2)}
@@ -214,8 +215,64 @@ export default function OnboardingPage() {
           {currentStep === 5 && (
             <BigFiveQuiz
               lang={lang}
-              onNext={finishOnboarding}
+              onNext={async (bigFiveScores) => {
+                // Save Big Five scores, then advance to bio step
+                setSaving(true);
+                setErrorMsg(null);
+                const scoresWithTimestamp = {
+                  ...bigFiveScores,
+                  big_five_completed_at: new Date().toISOString(),
+                };
+                const result = await savePartialProfile(scoresWithTimestamp);
+                setSaving(false);
+                if (!result.ok) {
+                  setErrorMsg(
+                    lang === 'ko'
+                      ? '점수 저장 중 문제가 발생했습니다.'
+                      : 'Failed to save results.'
+                  );
+                  return;
+                }
+                setFormData({ ...formData, ...bigFiveScores });
+                setCurrentStep(6);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               onBack={() => setCurrentStep(4)}
+              saving={saving}
+            />
+          )}
+
+          {currentStep === 6 && (
+            <BioAndJobStep
+              lang={lang}
+              initialData={formData}
+              onNext={async (bioData) => {
+                // Save bio + job_title, then complete onboarding
+                setSaving(true);
+                setErrorMsg(null);
+                const result = await savePartialProfile(bioData);
+                if (!result.ok) {
+                  setSaving(false);
+                  setErrorMsg(
+                    lang === 'ko'
+                      ? '저장 중 문제가 발생했습니다.'
+                      : 'Failed to save.'
+                  );
+                  return;
+                }
+                const completeResult = await completeOnboarding();
+                setSaving(false);
+                if (!completeResult.ok) {
+                  setErrorMsg(
+                    lang === 'ko'
+                      ? '완료 처리 중 문제가 발생했습니다.'
+                      : 'Failed to complete onboarding.'
+                  );
+                  return;
+                }
+                router.push('/home');
+              }}
+              onBack={() => setCurrentStep(5)}
               saving={saving}
             />
           )}
