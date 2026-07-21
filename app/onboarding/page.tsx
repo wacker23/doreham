@@ -270,7 +270,7 @@ export default function OnboardingPage() {
                   );
                   return;
                 }
-                router.push('/home');
+                router.push('/home?welcome=true');
               }}
               onBack={() => setCurrentStep(5)}
               saving={saving}
