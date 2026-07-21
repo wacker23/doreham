@@ -137,6 +137,18 @@ export function UserMenu({ lang }: Props) {
           )}
 
           <a
+          href={`/profile/${user.id}`}
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">👤</span>
+            <span>
+              <span className="en">My profile</span>
+              <span className="ko lang-ko">내 프로필</span>
+            </span>
+          </a>
+          <a
             href="/matches"
             className="user-menu-item"
             role="menuitem"
