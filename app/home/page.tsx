@@ -27,14 +27,27 @@ export default function HomePage() {
       return;
     }
 
-    // Signed in but hasn't onboarded → send back to onboarding
+    // Signed in but hasn't done basic signup → send to signup
+    if (profile && !profile.basic_signup_completed) {
+      router.push('/signup');
+      return;
+    }
+
+    // Signed in, basic signup done, but hasn't onboarded → send to onboarding
     if (profile && !profile.onboarding_completed) {
       router.push('/onboarding');
       return;
     }
+
+    // If they didn't come from signup/onboarding (no ?welcome=true), send them to matches
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('welcome')) {
+      router.push('/');
+      return;
+    }
   }, [user, profile, loading, router]);
 
-  if (loading || !user || (profile && !profile.onboarding_completed)) {
+  if (loading || !user || (profile && !profile.onboarding_completed) || (profile && !profile.basic_signup_completed)) {
     return (
       <main className="loading-wrap">
         <div className="loader" />
