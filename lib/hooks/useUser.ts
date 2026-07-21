@@ -9,6 +9,7 @@ type Profile = {
   display_name: string;
   photo_url: string | null;
   onboarding_completed: boolean;
+  basic_signup_completed: boolean;
 };
 
 type UseUserResult = {
@@ -37,7 +38,7 @@ export function useUser(): UseUserResult {
       if (user) {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('id, display_name, photo_url, onboarding_completed')
+          .select('id, display_name, photo_url, onboarding_completed, basic_signup_completed')
           .eq('id', user.id)
           .single();
         if (!cancelled) setProfile(profileData);
@@ -52,7 +53,7 @@ export function useUser(): UseUserResult {
         if (session?.user) {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('id, display_name, photo_url, onboarding_completed')
+            .select('id, display_name, photo_url, onboarding_completed, basic_signup_completed')
             .eq('id', session.user.id)
             .single();
           setProfile(profileData);
