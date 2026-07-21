@@ -10,6 +10,7 @@ import { EditPersonalityModal } from './modals/EditPersonalityModal';
 import { EditLifestyleModal } from './modals/EditLifestyleModal';
 import { EditLanguagesModal } from './modals/EditLanguagesModal';
 import { EditInterestsModal } from './modals/EditInterestsModal';
+import { EditPhotoModal } from './modals/EditPhotoModal';
 
 type Profile = {
   id: string;
@@ -196,7 +197,7 @@ function bigFiveLabels(profile: Profile, lang: 'en' | 'ko'): { emoji: string; la
   return labels;
 }
 
-type ModalKind = 'basic' | 'lifestyle' | 'personality' | 'languages' | 'interests' | 'bio' | null;
+type ModalKind = 'basic' | 'lifestyle' | 'personality' | 'languages' | 'interests' | 'bio' | 'photo' | null;
 
 export default function ProfilePage() {
   const params = useParams();
@@ -426,14 +427,24 @@ export default function ProfilePage() {
         </button>
 
         <div className="profile-hero">
-          {profile.photo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={profile.photo_url} alt="" className="hero-avatar" />
-          ) : (
-            <div className="hero-avatar avatar-fallback">
-              {profile.display_name[0]?.toUpperCase()}
-            </div>
-          )}
+          <div className="avatar-wrap">
+            {profile.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.photo_url} alt="" className="hero-avatar" />
+            ) : (
+              <div className="hero-avatar avatar-fallback">
+                {profile.display_name[0]?.toUpperCase()}
+              </div>
+            )}
+            {isOwn && (
+              <button className="photo-edit-btn" onClick={() => setOpenModal('photo')} aria-label="Edit photo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.46957 1.21071 6.96086 1.58579 6.58579C1.96086 6.21071 2.46957 6 3 6H7L9 3H15L17 6H21C21.5304 6 22.0391 6.21071 22.4142 6.58579C22.7893 6.96086 23 7.46957 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 17C14.2091 17 16 15.2091 16 13C16 10.7909 14.2091 9 12 9C9.79086 9 8 10.7909 8 13C8 15.2091 9.79086 17 12 17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="hero-info">
             <h1>
               {profile.display_name}
@@ -681,6 +692,11 @@ export default function ProfilePage() {
           onClose={() => setOpenModal(null)}
           onSaved={() => { setOpenModal(null); loadProfile(); }} />
       )}
+      {openModal === 'photo' && (
+        <EditPhotoModal profile={profile} lang={lang}
+          onClose={() => setOpenModal(null)}
+          onSaved={() => { setOpenModal(null); loadProfile(); }} />
+      )}
 
       <style jsx>{`
         .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
@@ -694,7 +710,28 @@ export default function ProfilePage() {
         .back-btn { background: transparent; border: 0; color: var(--ink-60); font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; padding: 0 0 16px; }
         .back-btn:hover { color: var(--ink); }
         .profile-hero { display: flex; gap: 24px; align-items: center; padding: 32px; background: linear-gradient(135deg, rgba(255, 106, 61, 0.05), rgba(15, 157, 119, 0.03)); border-radius: 20px; margin-bottom: 20px; position: relative; }
-        .hero-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .avatar-wrap { position: relative; flex-shrink: 0; }
+        .hero-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.06); display: block; }
+        .photo-edit-btn { 
+          position: absolute; 
+          bottom: 4px; 
+          right: 4px; 
+          background: var(--persimmon); 
+          color: #fff; 
+          border: 3px solid #fff; 
+          border-radius: 50%; 
+          width: 40px; 
+          height: 40px; 
+          display: grid; 
+          place-items: center; 
+          cursor: pointer; 
+          transition: all 0.15s; 
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .photo-edit-btn:hover { 
+          transform: scale(1.08); 
+          box-shadow: 0 4px 12px rgba(255, 106, 61, 0.4);
+        }
         .avatar-fallback { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 42px; }
         .hero-info { flex: 1; }
         .hero-info h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
