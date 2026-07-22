@@ -20,15 +20,22 @@ export async function GET(request: Request) {
       let redirectTo = next;
 
       if (user) {
-        // Check profile — if no profile OR basic_signup_completed = false, route to /signup
+        // Check profile status
         const { data: profile } = await supabase
           .from('profiles')
-          .select('basic_signup_completed')
+          .select('basic_signup_completed, onboarding_completed')
           .eq('id', user.id)
           .maybeSingle();
 
         if (!profile || !profile.basic_signup_completed) {
+          // Haven't completed signup yet
           redirectTo = '/signup';
+        } else if (!profile.onboarding_completed) {
+          // Signup done but not full onboarding
+          redirectTo = '/onboarding';
+        } else {
+          // Fully complete → go straight to main page
+          redirectTo = '/';
         }
       }
 
