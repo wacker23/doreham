@@ -81,6 +81,13 @@ export default function ChatPage() {
 
     setCanView(true);
 
+    // Mark as read now that user opened the chat
+    await supabase
+      .from('group_members')
+      .update({ last_read_at: new Date().toISOString() })
+      .eq('group_id', groupId)
+      .eq('user_id', user!.id);
+
     // Load group members (for display names)
     const { data: membersData } = await supabase
       .from('group_members')

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
+import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
   title: 'Doreham - Small adventures, Real friends',
@@ -27,6 +28,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
         {children}
+        <Footer />
       </body>
     </html>
   );

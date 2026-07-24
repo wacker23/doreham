@@ -492,6 +492,9 @@ export default function HomePage() {
             <span className="ko lang-ko">우정이 만들어지는 모임, 페르시아어로 도레함.</span>
           </div>
           <div style={{ display: 'flex', gap: 18 }}>
+            <a href="/legal/privacy"><span className="en">Privacy</span><span className="ko lang-ko">개인정보</span></a>
+            <a href="/legal/terms"><span className="en">Terms</span><span className="ko lang-ko">약관</span></a>
+            <a href="mailto:support@doreham.co.kr"><span className="en">Contact</span><span className="ko lang-ko">문의</span></a>
             <a href="#how"><span className="en">How it works</span><span className="ko lang-ko">이용 방법</span></a>
             <a href="#venues"><span className="en">For venues</span><span className="ko lang-ko">가게 파트너</span></a>
             <a href="#join"><span className="en">Join</span><span className="ko lang-ko">신청</span></a>

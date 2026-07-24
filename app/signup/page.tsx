@@ -38,6 +38,7 @@ export default function SignupPage() {
   const [data, setData] = useState<SignupData>(INITIAL_DATA);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     document.body.setAttribute('data-lang', lang);
@@ -69,7 +70,7 @@ export default function SignupPage() {
 
   function canProceed(): boolean {
     switch (step) {
-      case 1: return data.display_name.trim().length >= 2;
+      case 1: return data.display_name.trim().length >= 2 && termsAccepted;
       case 2: return data.gender !== '';
       case 3: return data.date_of_birth.length === 10 && isValidAge(data.date_of_birth);
       case 4: return data.exercise_frequency !== '';
@@ -171,7 +172,7 @@ export default function SignupPage() {
         {error && <div className="error-banner">{error}</div>}
 
         <div className="step-card">
-          {step === 1 && <Step1Name data={data} updateField={updateField} lang={lang} />}
+          {step === 1 && <Step1Name data={data} updateField={updateField} lang={lang} termsAccepted={termsAccepted} setTermsAccepted={setTermsAccepted} />}
           {step === 2 && <Step2Gender data={data} updateField={updateField} lang={lang} />}
           {step === 3 && <Step3DOB data={data} updateField={updateField} lang={lang} />}
           {step === 4 && <Step4Exercise data={data} updateField={updateField} lang={lang} />}
@@ -244,7 +245,7 @@ type StepProps = {
   lang: 'en' | 'ko';
 };
 
-function Step1Name({ data, updateField, lang }: StepProps) {
+function Step1Name({ data, updateField, lang, termsAccepted, setTermsAccepted }: StepProps & { termsAccepted: boolean; setTermsAccepted: (v: boolean) => void }) {
   return (
     <div>
       <h2 className="step-title">
@@ -262,11 +263,38 @@ function Step1Name({ data, updateField, lang }: StepProps) {
         maxLength={30}
         autoFocus
       />
+
+      <label className="terms-check">
+        <input
+          type="checkbox"
+          checked={termsAccepted}
+          onChange={(e) => setTermsAccepted(e.target.checked)}
+        />
+        <span className="terms-text">
+          {lang === 'ko' ? (
+            <>
+              <a href="/legal/terms" target="_blank" rel="noopener noreferrer">이용약관</a>과{' '}
+              <a href="/legal/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>에 동의합니다.
+            </>
+          ) : (
+            <>
+              I agree to the <a href="/legal/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and{' '}
+              <a href="/legal/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+            </>
+          )}
+        </span>
+      </label>
+
       <style jsx>{`
         .step-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--ink); }
         .step-sub { font-size: 16px; color: var(--ink-60); margin: 0 0 24px; }
         .input { width: 100%; padding: 14px 18px; border: 1px solid var(--ink-12); border-radius: 12px; background: #fff; font-family: var(--body); font-size: 16px; color: var(--ink); outline: none; }
         .input:focus { border-color: var(--persimmon); }
+        .terms-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 20px; cursor: pointer; padding: 12px; background: var(--paper-2); border-radius: 12px; }
+        .terms-check input { margin-top: 3px; cursor: pointer; accent-color: var(--persimmon); width: 16px; height: 16px; flex-shrink: 0; }
+        .terms-text { font-size: 14px; color: var(--ink); line-height: 1.5; }
+        .terms-text a { color: var(--persimmon); text-decoration: underline; font-weight: 600; }
+        .terms-text a:hover { text-decoration: none; }
       `}</style>
     </div>
   );

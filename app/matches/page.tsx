@@ -27,6 +27,7 @@ type Match = {
   group_id: string;
   city: string;
   members: GroupMember[];
+  unread_count: number;
   quest: {
     id: string;
     title: string;
@@ -101,7 +102,7 @@ export default function MyMatchesPage() {
     // Find all groups the user is a member of
     const { data: memberships, error: memErr } = await supabase
       .from('group_members')
-      .select('group_id')
+      .select('group_id, last_read_at')
       .eq('user_id', user!.id);
 
     if (memErr) {
@@ -148,6 +149,20 @@ export default function MyMatchesPage() {
           .in('quest_id', questIds)
       : { data: [] };
 
+    // Fetch unread counts for each group
+    const unreadCounts: Record<string, number> = {};
+    for (const membership of memberships) {
+      const lastRead = membership.last_read_at ?? '1970-01-01';
+      const { count } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('group_id', membership.group_id)
+        .eq('is_hidden', false)
+        .neq('sender_id', user!.id)  // Don't count own messages
+        .gt('created_at', lastRead);
+      unreadCounts[membership.group_id] = count ?? 0;
+    }
+
     // Assemble matches
     const built: Match[] = (groups ?? []).map((g) => {
       const members: GroupMember[] = ((allMembers ?? []).filter((m) => m.group_id === g.id) as any[])
@@ -170,6 +185,7 @@ export default function MyMatchesPage() {
         group_id: g.id,
         city: g.city,
         members,
+        unread_count: unreadCounts[g.id] ?? 0,
         quest: {
           id: quest.id,
           title: quest.title,
@@ -385,6 +401,9 @@ export default function MyMatchesPage() {
                     className="chat-open-btn"
                   >
                     💬 {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
+                    {match.unread_count > 0 && (
+                      <span className="unread-badge">{match.unread_count}</span>
+                    )}
                   </a>
                 </div>
               );
@@ -445,7 +464,10 @@ export default function MyMatchesPage() {
         .menu-name { font-weight: 600; font-size: 12px; color: var(--ink); }
         .menu-price { font-size: 11px; color: var(--jade); font-weight: 700; margin-top: 2px; }
         .chat-open-btn {
-          display: block;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
           background: var(--persimmon);
           color: #fff;
           padding: 14px 16px;
@@ -456,10 +478,21 @@ export default function MyMatchesPage() {
           margin-top: 8px;
           text-decoration: none;
           transition: transform 0.12s, box-shadow 0.12s;
+          position: relative;
         }
         .chat-open-btn:hover {
           transform: translateY(-1px);
           box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32);
+        }
+        .unread-badge {
+          background: #fff;
+          color: var(--persimmon);
+          font-weight: 800;
+          font-size: 13px;
+          padding: 2px 10px;
+          border-radius: 999px;
+          min-width: 24px;
+          text-align: center;
         }
         @media (max-width: 640px) {
           .match-card { padding: 20px; }

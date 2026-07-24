@@ -318,7 +318,12 @@ export default function AdminMatchesPage() {
       const { data: group, error: groupError } = await supabase.from('groups').insert({ city: selectedCity, created_by: user!.id }).select('id').single();
       if (groupError || !group) throw new Error(`Group creation failed: ${groupError?.message}`);
 
-      const memberRows = [...selectedUserIds].map((uid) => ({ group_id: group.id, user_id: uid }));
+      const memberRows = [...selectedUserIds].map((uid) => ({ 
+        group_id: group.id, 
+        user_id: uid,
+        invited_at: new Date().toISOString(),
+        accepted_at: new Date().toISOString(),
+      }));
       const { error: membersError } = await supabase.from('group_members').insert(memberRows);
       if (membersError) throw new Error(`Members insert failed: ${membersError.message}`);
 
