@@ -25,6 +25,7 @@ export function Footer() {
   const hiddenPaths = [
     '/',
     '/signup',
+    '/matches',
     '/onboarding',
     '/sign-in',
     '/auth/callback',
