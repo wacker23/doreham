@@ -156,8 +156,8 @@ export function UserMenu({ lang }: Props) {
           >
             <span className="menu-icon">🌸</span>
             <span>
-              <span className="en">My groups</span>
-              <span className="ko lang-ko">내 그룹</span>
+              <span className="en">My matches</span>
+              <span className="ko lang-ko">내 성냥</span>
             </span>
           </a>
 

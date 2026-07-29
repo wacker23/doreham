@@ -28,6 +28,10 @@ type Match = {
   city: string;
   members: GroupMember[];
   unread_count: number;
+  availability_submitted_count: number;
+  availability_phase_ends_at: string | null;
+  my_availability_submitted: boolean;
+  quest_scheduled_at: string | null;
   quest: {
     id: string;
     title: string;
@@ -99,7 +103,6 @@ export default function MyMatchesPage() {
     setLoadingMatches(true);
     setError(null);
 
-    // Find all groups the user is a member of
     const { data: memberships, error: memErr } = await supabase
       .from('group_members')
       .select('group_id, last_read_at')
@@ -119,19 +122,17 @@ export default function MyMatchesPage() {
 
     const groupIds = memberships.map((m) => m.group_id);
 
-    // Get groups
+    // Get groups (with phase timestamps)
     const { data: groups } = await supabase
       .from('groups')
-      .select('id, city')
+      .select('id, city, availability_phase_ends_at, quest_scheduled_at')
       .in('id', groupIds);
 
-    // Get all group members (across all my groups) with profile info
     const { data: allMembers } = await supabase
       .from('group_members')
       .select('group_id, user_id, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
       .in('group_id', groupIds);
 
-    // Get all quests for these groups
     const { data: quests } = await supabase
       .from('quests')
       .select(`
@@ -140,7 +141,6 @@ export default function MyMatchesPage() {
       `)
       .in('group_id', groupIds);
 
-    // Get quest menu items
     const questIds = (quests ?? []).map((q) => q.id);
     const { data: questMenus } = questIds.length > 0
       ? await supabase
@@ -149,7 +149,7 @@ export default function MyMatchesPage() {
           .in('quest_id', questIds)
       : { data: [] };
 
-    // Fetch unread counts for each group
+    // Fetch unread counts
     const unreadCounts: Record<string, number> = {};
     for (const membership of memberships) {
       const lastRead = membership.last_read_at ?? '1970-01-01';
@@ -158,10 +158,32 @@ export default function MyMatchesPage() {
         .select('id', { count: 'exact', head: true })
         .eq('group_id', membership.group_id)
         .eq('is_hidden', false)
-        .neq('sender_id', user!.id)  // Don't count own messages
+        .neq('sender_id', user!.id)
         .gt('created_at', lastRead);
       unreadCounts[membership.group_id] = count ?? 0;
     }
+
+    // Fetch availability submissions
+    const { data: submissions } = await supabase
+      .from('availability_submissions')
+      .select('group_id, user_id')
+      .in('group_id', groupIds);
+
+    const submissionCounts: Record<string, number> = {};
+    const mySubmitted: Record<string, boolean> = {};
+    (submissions ?? []).forEach((s: any) => {
+      submissionCounts[s.group_id] = (submissionCounts[s.group_id] ?? 0) + 1;
+      if (s.user_id === user!.id) mySubmitted[s.group_id] = true;
+    });
+
+    // Build phase lookup
+    const groupPhases: Record<string, { ends: string | null; scheduled: string | null }> = {};
+    (groups ?? []).forEach((g: any) => {
+      groupPhases[g.id] = {
+        ends: g.availability_phase_ends_at,
+        scheduled: g.quest_scheduled_at,
+      };
+    });
 
     // Assemble matches
     const built: Match[] = (groups ?? []).map((g) => {
@@ -186,6 +208,10 @@ export default function MyMatchesPage() {
         city: g.city,
         members,
         unread_count: unreadCounts[g.id] ?? 0,
+        availability_submitted_count: submissionCounts[g.id] ?? 0,
+        availability_phase_ends_at: groupPhases[g.id]?.ends ?? null,
+        my_availability_submitted: mySubmitted[g.id] ?? false,
+        quest_scheduled_at: groupPhases[g.id]?.scheduled ?? null,
         quest: {
           id: quest.id,
           title: quest.title,
@@ -201,7 +227,6 @@ export default function MyMatchesPage() {
       } as Match;
     }).filter(Boolean) as Match[];
 
-    // Sort by expires_at (most urgent first)
     built.sort((a, b) => new Date(a.quest.expires_at).getTime() - new Date(b.quest.expires_at).getTime());
 
     setMatches(built);
@@ -299,7 +324,6 @@ export default function MyMatchesPage() {
                       : (match.quest.description_en ?? match.quest.quest_description)}
                   </p>
 
-                  {/* Members section */}
                   <div className="members-section">
                     <h3>
                       {lang === 'ko' ? '함께할 친구들' : 'Your group'}
@@ -342,7 +366,6 @@ export default function MyMatchesPage() {
                     </div>
                   </div>
 
-                  {/* Venue section */}
                   <div className="venue-section">
                     <h3>
                       {lang === 'ko' ? '만날 장소' : 'Where to meet'}
@@ -368,9 +391,31 @@ export default function MyMatchesPage() {
                         </div>
                       </div>
                     </div>
+                    {match.quest_scheduled_at && (
+                      <div className="scheduled-info">
+                        <div className="scheduled-label">
+                          {lang === 'ko' ? '📅 만나는 시간' : '📅 Meeting time'}
+                        </div>
+                        <div className="scheduled-time">
+                          {new Date(match.quest_scheduled_at).toLocaleDateString(
+                            lang === 'ko' ? 'ko-KR' : 'en-US',
+                            { weekday: 'long', month: 'long', day: 'numeric' }
+                          )}
+                          {' · '}
+                          {new Date(match.quest_scheduled_at).toLocaleTimeString(
+                            lang === 'ko' ? 'ko-KR' : 'en-US',
+                            { hour: '2-digit', minute: '2-digit' }
+                          )}
+                          {' — '}
+                          {new Date(new Date(match.quest_scheduled_at).getTime() + 2 * 60 * 60 * 1000).toLocaleTimeString(
+                            lang === 'ko' ? 'ko-KR' : 'en-US',
+                            { hour: '2-digit', minute: '2-digit' }
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Menu items (if any) */}
                   {match.quest.menu_items.length > 0 && (
                     <div className="menu-section">
                       <h3>
@@ -394,6 +439,21 @@ export default function MyMatchesPage() {
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Availability picker button */}
+                  {!match.quest_scheduled_at && (
+                    <a
+                      href={`/matches/${match.group_id}/availability`}
+                      className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
+                    >
+                      {match.my_availability_submitted
+                        ? (lang === 'ko' ? '📅 가능한 시간 업데이트' : '📅 Update your availability')
+                        : (lang === 'ko' ? '📅 가능한 시간 선택' : '📅 Pick your availability')}
+                      <span className="avail-progress">
+                        {match.availability_submitted_count} / {match.members.length}
+                      </span>
+                    </a>
                   )}
 
                   <a
@@ -458,11 +518,69 @@ export default function MyMatchesPage() {
         .venue-name { font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
         .venue-category { color: var(--ink-60); font-size: 13px; margin-bottom: 6px; }
         .venue-address { color: var(--ink-60); font-size: 13px; line-height: 1.4; }
+        .scheduled-info {
+          margin-top: 12px;
+          padding: 14px 18px;
+          background: linear-gradient(135deg, rgba(15, 157, 119, 0.08), rgba(255, 106, 61, 0.05));
+          border: 1px solid rgba(15, 157, 119, 0.2);
+          border-radius: 12px;
+        }
+        .scheduled-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--jade);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 4px;
+        }
+        .scheduled-time {
+          font-family: var(--display);
+          font-weight: 700;
+          font-size: 17px;
+          color: var(--ink);
+        }
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         .menu-tile { background: var(--paper-2); border-radius: 10px; padding: 8px; text-align: center; }
         .menu-photo { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; }
         .menu-name { font-weight: 600; font-size: 12px; color: var(--ink); }
         .menu-price { font-size: 11px; color: var(--jade); font-weight: 700; margin-top: 2px; }
+        .avail-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          text-align: center;
+          font-size: 14px;
+          font-weight: 700;
+          margin-top: 8px;
+          text-decoration: none;
+          transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .avail-btn.pending {
+          background: var(--jade);
+          color: #fff;
+        }
+        .avail-btn.submitted {
+          background: rgba(15, 157, 119, 0.1);
+          color: var(--jade);
+          border: 1px solid rgba(15, 157, 119, 0.3);
+        }
+        .avail-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 22px rgba(15, 157, 119, 0.25);
+        }
+        .avail-progress {
+          background: rgba(255, 255, 255, 0.25);
+          padding: 2px 10px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .avail-btn.submitted .avail-progress {
+          background: rgba(15, 157, 119, 0.15);
+        }
         .chat-open-btn {
           display: flex;
           align-items: center;

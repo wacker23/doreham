@@ -30,11 +30,13 @@ export function Footer() {
     '/sign-in',
     '/auth/callback',
     '/auth/error',
+    '/venues/my',
   ];
 
-  // Also hide on chat pages (/matches/[group_id]/chat)
+  // Also hide on chat and availability pages for grouped match flows
   const isChatPage = pathname?.match(/^\/matches\/[^/]+\/chat/);
-  const isHidden = hiddenPaths.includes(pathname ?? '') || isChatPage;
+  const isAvailabilityPage = pathname?.match(/^\/matches\/[^/]+\/availability/);
+  const isHidden = hiddenPaths.includes(pathname ?? '') || isChatPage || isAvailabilityPage;
 
   if (isHidden) return null;
 
