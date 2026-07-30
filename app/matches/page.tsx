@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+
+type Tab = 'pending' | 'request' | 'history';
 
 type GroupMember = {
   user_id: string;
@@ -29,9 +31,9 @@ type Match = {
   members: GroupMember[];
   unread_count: number;
   availability_submitted_count: number;
-  availability_phase_ends_at: string | null;
   my_availability_submitted: boolean;
   quest_scheduled_at: string | null;
+  phase: string;
   quest: {
     id: string;
     title: string;
@@ -40,7 +42,6 @@ type Match = {
     description_en: string | null;
     status: string;
     expires_at: string;
-    proposed_at: string | null;
     venue: {
       id: string;
       business_name_display: string;
@@ -54,18 +55,49 @@ type Match = {
   };
 };
 
+type MatchRequest = {
+  id: string;
+  city: string | null;
+  group_size: number | null;
+  status: string;
+  created_at: string;
+  matched_group_id: string | null;
+};
+
+type KoreanCity = {
+  slug: string;
+  name_en: string;
+  name_ko: string;
+  emoji: string;
+};
+
+const KOREAN_CITIES: KoreanCity[] = [
+  { slug: 'seoul', name_en: 'Seoul', name_ko: '서울', emoji: '🏙️' },
+  { slug: 'busan', name_en: 'Busan', name_ko: '부산', emoji: '🌊' },
+  { slug: 'incheon', name_en: 'Incheon', name_ko: '인천', emoji: '✈️' },
+  { slug: 'daegu', name_en: 'Daegu', name_ko: '대구', emoji: '⛰️' },
+  { slug: 'daejeon', name_en: 'Daejeon', name_ko: '대전', emoji: '🔬' },
+  { slug: 'gwangju', name_en: 'Gwangju', name_ko: '광주', emoji: '🎨' },
+  { slug: 'suwon', name_en: 'Suwon', name_ko: '수원', emoji: '🏯' },
+  { slug: 'ulsan', name_en: 'Ulsan', name_ko: '울산', emoji: '🏭' },
+  { slug: 'cheonan', name_en: 'Cheonan', name_ko: '천안', emoji: '🌸' },
+  { slug: 'asan', name_en: 'Asan', name_ko: '아산', emoji: '🍃' },
+  { slug: 'jeonju', name_en: 'Jeonju', name_ko: '전주', emoji: '🍚' },
+  { slug: 'jeju', name_en: 'Jeju', name_ko: '제주', emoji: '🌴' },
+];
+
 const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }> = {
-  cafe:              { en: 'Café', ko: '카페', emoji: '☕' },
-  restaurant:        { en: 'Restaurant', ko: '식당', emoji: '🍜' },
-  board_game_cafe:   { en: 'Board game café', ko: '보드게임 카페', emoji: '🎲' },
-  escape_room:       { en: 'Escape room', ko: '방탈출', emoji: '🧩' },
-  bookshop:          { en: 'Bookshop', ko: '서점', emoji: '📚' },
+  cafe: { en: 'Café', ko: '카페', emoji: '☕' },
+  restaurant: { en: 'Restaurant', ko: '식당', emoji: '🍜' },
+  board_game_cafe: { en: 'Board game café', ko: '보드게임 카페', emoji: '🎲' },
+  escape_room: { en: 'Escape room', ko: '방탈출', emoji: '🧩' },
+  bookshop: { en: 'Bookshop', ko: '서점', emoji: '📚' },
   workshop_creative: { en: 'Workshop', ko: '원데이 클래스', emoji: '🏺' },
-  active_sports:     { en: 'Sports', ko: '스포츠', emoji: '🥾' },
-  cultural_venue:    { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
-  nature_outdoor:    { en: 'Nature', ko: '자연', emoji: '🌿' },
-  music_movie:       { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
-  other:             { en: 'Other', ko: '기타', emoji: '🏪' },
+  active_sports: { en: 'Sports', ko: '스포츠', emoji: '🥾' },
+  cultural_venue: { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
+  nature_outdoor: { en: 'Nature', ko: '자연', emoji: '🌿' },
+  music_movie: { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
+  other: { en: 'Other', ko: '기타', emoji: '🏪' },
 };
 
 const STATUS_LABELS: Record<string, { en: string; ko: string; color: string }> = {
@@ -76,13 +108,33 @@ const STATUS_LABELS: Record<string, { en: string; ko: string; color: string }> =
   no_show: { en: 'Missed', ko: '불참', color: 'gray' },
 };
 
-export default function MyMatchesPage() {
+export default function MatchesPage() {
   const router = useRouter();
   const { user, loading } = useUser();
   const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [activeTab, setActiveTab] = useState<Tab>('pending');
   const [matches, setMatches] = useState<Match[]>([]);
-  const [loadingMatches, setLoadingMatches] = useState(true);
+  const [requests, setRequests] = useState<MatchRequest[]>([]);
+  const [availableCities, setAvailableCities] = useState<Set<string>>(new Set());
+  const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Request form state
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [randomCity, setRandomCity] = useState(false);
+  const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
+  const [randomSize, setRandomSize] = useState(false);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+
+  // Freeze
+  const [isFrozen, setIsFrozen] = useState(false);
+  const [frozenUntil, setFrozenUntil] = useState<string | null>(null);
+  const [strikeCount, setStrikeCount] = useState(0);
+
+  // Touch swipe
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   useEffect(() => {
     document.body.setAttribute('data-lang', lang);
@@ -95,37 +147,66 @@ export default function MyMatchesPage() {
       router.push('/sign-in?return=/matches');
       return;
     }
-    loadMatches();
+    loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, router]);
 
-  async function loadMatches() {
-    setLoadingMatches(true);
+  async function loadAll() {
+    setLoadingData(true);
     setError(null);
 
-    const { data: memberships, error: memErr } = await supabase
+    // Available cities
+    const { data: venues } = await supabase
+      .from('venues')
+      .select('city')
+      .eq('is_active', true)
+      .is('deactivated_at', null);
+    const cities = new Set((venues ?? []).map((v: any) => (v.city ?? '').toLowerCase()));
+    setAvailableCities(cities);
+
+    // Penalties
+    const { data: penalties } = await supabase
+      .from('user_penalties')
+      .select('freeze_until, strike_number')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false });
+    if (penalties && penalties.length > 0) {
+      const maxStrike = Math.max(...penalties.map((p: any) => p.strike_number));
+      setStrikeCount(maxStrike);
+      const activeFreeze = (penalties as any[]).find(
+        (p) => p.freeze_until && new Date(p.freeze_until) > new Date()
+      );
+      if (activeFreeze) {
+        setIsFrozen(true);
+        setFrozenUntil(activeFreeze.freeze_until);
+      }
+    }
+
+    // Match requests
+    const { data: reqs } = await supabase
+      .from('match_requests')
+      .select('id, city, group_size, status, created_at, matched_group_id')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false });
+    if (reqs) setRequests(reqs as MatchRequest[]);
+
+    // Matches
+    const { data: memberships } = await supabase
       .from('group_members')
       .select('group_id, last_read_at')
       .eq('user_id', user!.id);
 
-    if (memErr) {
-      setError(memErr.message);
-      setLoadingMatches(false);
-      return;
-    }
-
     if (!memberships || memberships.length === 0) {
       setMatches([]);
-      setLoadingMatches(false);
+      setLoadingData(false);
       return;
     }
 
     const groupIds = memberships.map((m) => m.group_id);
 
-    // Get groups (with phase timestamps)
     const { data: groups } = await supabase
       .from('groups')
-      .select('id, city, availability_phase_ends_at, quest_scheduled_at')
+      .select('id, city, phase, availability_phase_ends_at, quest_scheduled_at')
       .in('id', groupIds);
 
     const { data: allMembers } = await supabase
@@ -136,12 +217,12 @@ export default function MyMatchesPage() {
     const { data: quests } = await supabase
       .from('quests')
       .select(`
-        id, group_id, title, title_en, quest_description, description_en, status, expires_at, proposed_at,
+        id, group_id, title, title_en, quest_description, description_en, status, expires_at,
         venue:venues!inner(id, business_name_display, category, address, road_address, city, photo_urls)
       `)
       .in('group_id', groupIds);
 
-    const questIds = (quests ?? []).map((q) => q.id);
+    const questIds = (quests ?? []).map((q: any) => q.id);
     const { data: questMenus } = questIds.length > 0
       ? await supabase
           .from('quest_menu_items')
@@ -149,7 +230,6 @@ export default function MyMatchesPage() {
           .in('quest_id', questIds)
       : { data: [] };
 
-    // Fetch unread counts
     const unreadCounts: Record<string, number> = {};
     for (const membership of memberships) {
       const lastRead = membership.last_read_at ?? '1970-01-01';
@@ -163,7 +243,6 @@ export default function MyMatchesPage() {
       unreadCounts[membership.group_id] = count ?? 0;
     }
 
-    // Fetch availability submissions
     const { data: submissions } = await supabase
       .from('availability_submissions')
       .select('group_id, user_id')
@@ -176,19 +255,9 @@ export default function MyMatchesPage() {
       if (s.user_id === user!.id) mySubmitted[s.group_id] = true;
     });
 
-    // Build phase lookup
-    const groupPhases: Record<string, { ends: string | null; scheduled: string | null }> = {};
-    (groups ?? []).forEach((g: any) => {
-      groupPhases[g.id] = {
-        ends: g.availability_phase_ends_at,
-        scheduled: g.quest_scheduled_at,
-      };
-    });
-
-    // Assemble matches
-    const built: Match[] = (groups ?? []).map((g) => {
-      const members: GroupMember[] = ((allMembers ?? []).filter((m) => m.group_id === g.id) as any[])
-        .map((m) => ({
+    const built: Match[] = (groups ?? []).map((g: any) => {
+      const members: GroupMember[] = ((allMembers ?? []).filter((m: any) => m.group_id === g.id) as any[])
+        .map((m: any) => ({
           user_id: m.user_id,
           display_name: m.profiles.display_name,
           photo_url: m.profiles.photo_url,
@@ -197,11 +266,11 @@ export default function MyMatchesPage() {
           activity_preferences: m.profiles.activity_preferences,
         }));
 
-      const quest = (quests as any[])?.find((q) => q.group_id === g.id);
+      const quest = (quests as any[])?.find((q: any) => q.group_id === g.id);
       if (!quest) return null;
 
       const menuItems: QuestMenuItem[] = ((questMenus ?? []).filter((qm: any) => qm.quest_id === quest.id) as any[])
-        .map((qm) => qm.menu_item);
+        .map((qm: any) => qm.menu_item);
 
       return {
         group_id: g.id,
@@ -209,9 +278,9 @@ export default function MyMatchesPage() {
         members,
         unread_count: unreadCounts[g.id] ?? 0,
         availability_submitted_count: submissionCounts[g.id] ?? 0,
-        availability_phase_ends_at: groupPhases[g.id]?.ends ?? null,
         my_availability_submitted: mySubmitted[g.id] ?? false,
-        quest_scheduled_at: groupPhases[g.id]?.scheduled ?? null,
+        quest_scheduled_at: g.quest_scheduled_at ?? null,
+        phase: g.phase ?? 'availability',
         quest: {
           id: quest.id,
           title: quest.title,
@@ -220,7 +289,6 @@ export default function MyMatchesPage() {
           description_en: quest.description_en,
           status: quest.status,
           expires_at: quest.expires_at,
-          proposed_at: quest.proposed_at,
           venue: quest.venue,
           menu_items: menuItems,
         },
@@ -228,17 +296,105 @@ export default function MyMatchesPage() {
     }).filter(Boolean) as Match[];
 
     built.sort((a, b) => new Date(a.quest.expires_at).getTime() - new Date(b.quest.expires_at).getTime());
-
     setMatches(built);
-    setLoadingMatches(false);
+    setLoadingData(false);
   }
+
+  async function submitMatchRequest() {
+    if (isFrozen) {
+      setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
+      return;
+    }
+    if (!randomCity && !selectedCity) {
+      setError(lang === 'ko' ? '도시를 선택해주세요.' : 'Please select a city.');
+      return;
+    }
+
+    setSubmittingRequest(true);
+    setError(null);
+    setRequestSuccess(false);
+
+    const { error: err } = await supabase.from('match_requests').insert({
+      user_id: user!.id,
+      city: randomCity ? null : selectedCity,
+      group_size: randomSize ? null : selectedGroupSize,
+      status: 'searching',
+    });
+
+    if (err) {
+      setError(err.message);
+      setSubmittingRequest(false);
+      return;
+    }
+
+    setSubmittingRequest(false);
+    setRequestSuccess(true);
+    setSelectedCity(null);
+    setRandomCity(false);
+    setSelectedGroupSize(3);
+    setRandomSize(false);
+    await loadAll();
+    // Auto-switch to pending tab so user sees the searching card
+    setTimeout(() => setActiveTab('pending'), 800);
+  }
+
+  async function cancelRequest(requestId: string) {
+    if (!confirm(lang === 'ko' ? '이 요청을 취소하시겠습니까?' : 'Cancel this request?')) return;
+    const { error: err } = await supabase
+      .from('match_requests')
+      .update({ status: 'cancelled_by_user', resolved_at: new Date().toISOString() })
+      .eq('id', requestId);
+    if (err) { setError(err.message); return; }
+    await loadAll();
+  }
+
+  const cityDisplayName = (slug: string | null): string => {
+    if (!slug) return lang === 'ko' ? '랜덤' : 'Random';
+    const c = KOREAN_CITIES.find((c) => c.slug === slug);
+    if (!c) return slug;
+    return lang === 'ko' ? c.name_ko : c.name_en;
+  };
 
   function daysRemaining(expiresAt: string): number {
     const ms = new Date(expiresAt).getTime() - Date.now();
     return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
   }
 
-  if (loading || loadingMatches) {
+  // Split
+  const pendingMatches = matches.filter((m) =>
+    m.quest.status !== 'completed' && m.quest.status !== 'cancelled' && m.phase !== 'cancelled'
+  );
+  const historyMatches = matches.filter((m) =>
+    m.quest.status === 'completed' || m.quest.status === 'cancelled' || m.phase === 'cancelled'
+  );
+  const activeRequests = requests.filter((r) => r.status === 'searching');
+  const pastRequests = requests.filter((r) => r.status !== 'searching');
+  const totalPending = pendingMatches.length + activeRequests.length;
+
+  // Swipe handlers
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = null;
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    touchEndX.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd() {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const dx = touchEndX.current - touchStartX.current;
+    const threshold = 60;
+    if (Math.abs(dx) < threshold) return;
+
+    const tabs: Tab[] = ['pending', 'request', 'history'];
+    const currentIdx = tabs.indexOf(activeTab);
+    if (dx < 0 && currentIdx < tabs.length - 1) setActiveTab(tabs[currentIdx + 1]);
+    if (dx > 0 && currentIdx > 0) setActiveTab(tabs[currentIdx - 1]);
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  }
+
+  if (loading || loadingData) {
     return (
       <main className="loading-wrap">
         <div className="loader" />
@@ -257,9 +413,7 @@ export default function MyMatchesPage() {
     <>
       <header className="v-nav">
         <div className="wrap v-nav-in">
-          <a className="brand" href="/">
-            Doreham <span className="ko-mark">도레함</span>
-          </a>
+          <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span></a>
           <div className="toggle">
             <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
             <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
@@ -267,229 +421,643 @@ export default function MyMatchesPage() {
         </div>
       </header>
 
-      <main className="wrap main-wrap">
-        <div className="page-header">
-          <h1>
-            {lang === 'ko' ? '내 그룹' : 'My groups'}
-          </h1>
-          <p className="sub">
-            {lang === 'ko'
-              ? '도레함이 매칭해준 새로운 친구들과의 모험을 확인하세요.'
-              : "Adventures with the friends Doreham matched you with."}
-          </p>
+      {/* Top tab bar */}
+      <div className="tab-bar-wrap">
+        <div className="wrap tab-bar">
+          <button
+            className={`tab ${activeTab === 'pending' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pending')}
+          >
+            {lang === 'ko' ? '진행 중' : 'Pending'}
+            {totalPending > 0 && <span className="tab-count">{totalPending}</span>}
+          </button>
+          <button
+            className={`tab ${activeTab === 'request' ? 'active' : ''}`}
+            onClick={() => setActiveTab('request')}
+          >
+            {lang === 'ko' ? '매칭 요청' : 'Request a match'}
+            <span className="premium-dot" title="Premium">⭐</span>
+          </button>
+          <button
+            className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            {lang === 'ko' ? '기록' : 'History'}
+          </button>
         </div>
+      </div>
 
-        {error && <div className="error-banner">{error}</div>}
-
-        {matches.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">🌸</div>
-            <h2>
-              {lang === 'ko' ? '아직 매칭이 없어요' : 'No matches yet'}
-            </h2>
-            <p>
-              {lang === 'ko'
-                ? '도레함 팀이 곧 당신을 잘 어울리는 친구들과 매칭해드릴 예정입니다. 프로필이 완성되어 있는지 확인하세요.'
-                : "Doreham will match you with compatible friends soon. Make sure your profile is complete."}
-            </p>
-          </div>
-        ) : (
-          <div className="matches-list">
-            {matches.map((match) => {
-              const cat = CATEGORY_LABELS[match.quest.venue.category];
-              const status = STATUS_LABELS[match.quest.status] ?? STATUS_LABELS.proposed;
-              const days = daysRemaining(match.quest.expires_at);
-              const otherMembers = match.members.filter((m) => m.user_id !== user.id);
-
-              return (
-                <div key={match.group_id} className="match-card">
-                  <div className="match-header">
-                    <span className={`status-badge status-${status.color}`}>
-                      {lang === 'ko' ? status.ko : status.en}
-                    </span>
-                    <span className="days-remaining">
-                      {days > 0
-                        ? (lang === 'ko' ? `${days}일 남음` : `${days} days left`)
-                        : (lang === 'ko' ? '기한 만료' : 'Expired')}
-                    </span>
-                  </div>
-
-                  <h2 className="quest-title">
-                    {lang === 'ko' ? match.quest.title : (match.quest.title_en ?? match.quest.title)}
-                  </h2>
-
-                  <p className="quest-description">
-                    {lang === 'ko'
-                      ? match.quest.quest_description
-                      : (match.quest.description_en ?? match.quest.quest_description)}
-                  </p>
-
-                  <div className="members-section">
-                    <h3>
-                      {lang === 'ko' ? '함께할 친구들' : 'Your group'}
-                    </h3>
-                    <div className="members-grid">
-                      {match.members.map((m) => {
-                        const isMe = m.user_id === user.id;
-                        return (
-                          <a
-                            key={m.user_id}
-                            href={`/profile/${m.user_id}`}
-                            className={`member-card ${isMe ? 'is-me' : ''}`}
-                            style={{ textDecoration: 'none' }}
-                          >
-                            {m.photo_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={m.photo_url} alt="" className="member-avatar" />
-                            ) : (
-                              <div className="member-avatar avatar-fallback">
-                                {m.display_name[0]?.toUpperCase()}
-                              </div>
-                            )}
-                            <div className="member-info">
-                              <div className="member-name">
-                                {m.display_name}
-                                {isMe && (
-                                  <span className="you-tag">
-                                    {lang === 'ko' ? '나' : 'you'}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="member-tags">
-                                {m.mbti_type && <span className="mini-tag">{m.mbti_type}</span>}
-                                {m.zodiac_sign && <span className="mini-tag">{m.zodiac_sign}</span>}
-                              </div>
-                            </div>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="venue-section">
-                    <h3>
-                      {lang === 'ko' ? '만날 장소' : 'Where to meet'}
-                    </h3>
-                    <div className="venue-card">
-                      {match.quest.venue.photo_urls?.[0] && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={match.quest.venue.photo_urls[0]}
-                          alt=""
-                          className="venue-photo"
-                        />
-                      )}
-                      <div className="venue-info">
-                        <div className="venue-name">
-                          {cat?.emoji} {match.quest.venue.business_name_display}
+      <main
+        className="wrap main-wrap"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* ============ PENDING TAB ============ */}
+        {activeTab === 'pending' && (
+          <>
+            {/* Searching requests */}
+            {activeRequests.length > 0 && (
+              <div className="active-requests">
+                {activeRequests.map((req) => (
+                  <div key={req.id} className="searching-card">
+                    <div className="searching-left">
+                      <div className="pulse-wrap">
+                        <div className="pulse-dot" />
+                      </div>
+                      <div>
+                        <div className="searching-title">
+                          {lang === 'ko' ? '매칭 찾는 중…' : 'Searching for your match…'}
                         </div>
-                        <div className="venue-category">
-                          {cat ? (lang === 'ko' ? cat.ko : cat.en) : match.quest.venue.category}
+                        <div className="searching-meta">
+                          {cityDisplayName(req.city)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
                         </div>
-                        <div className="venue-address">
-                          {match.quest.venue.road_address ?? match.quest.venue.address}
+                        <div className="searching-est">
+                          {lang === 'ko' ? '⏱ 예상 시간: 몇 시간 정도 걸릴 수 있어요' : '⏱ Est. wait: could be a few hours'}
                         </div>
                       </div>
                     </div>
-                    {match.quest_scheduled_at && (
-                      <div className="scheduled-info">
-                        <div className="scheduled-label">
-                          {lang === 'ko' ? '📅 만나는 시간' : '📅 Meeting time'}
-                        </div>
-                        <div className="scheduled-time">
-                          {new Date(match.quest_scheduled_at).toLocaleDateString(
-                            lang === 'ko' ? 'ko-KR' : 'en-US',
-                            { weekday: 'long', month: 'long', day: 'numeric' }
-                          )}
-                          {' · '}
-                          {new Date(match.quest_scheduled_at).toLocaleTimeString(
-                            lang === 'ko' ? 'ko-KR' : 'en-US',
-                            { hour: '2-digit', minute: '2-digit' }
-                          )}
-                          {' — '}
-                          {new Date(new Date(match.quest_scheduled_at).getTime() + 2 * 60 * 60 * 1000).toLocaleTimeString(
-                            lang === 'ko' ? 'ko-KR' : 'en-US',
-                            { hour: '2-digit', minute: '2-digit' }
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    <button className="cancel-btn" onClick={() => cancelRequest(req.id)}>
+                      {lang === 'ko' ? '취소' : 'Cancel'}
+                    </button>
                   </div>
+                ))}
+              </div>
+            )}
 
-                  {match.quest.menu_items.length > 0 && (
-                    <div className="menu-section">
-                      <h3>
-                        {lang === 'ko' ? '함께 시도할 메뉴' : 'What to try together'}
-                      </h3>
-                      <div className="menu-grid">
-                        {match.quest.menu_items.map((item) => (
-                          <div key={item.id} className="menu-tile">
-                            {item.photo_url && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={item.photo_url} alt="" className="menu-photo" />
-                            )}
-                            <div className="menu-name">
-                              {lang === 'ko' ? item.name : (item.name_en ?? item.name)}
-                              {item.is_signature && ' ⭐'}
-                            </div>
-                            {item.price_won && (
-                              <div className="menu-price">₩{item.price_won.toLocaleString()}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            {pendingMatches.length === 0 && activeRequests.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">🌸</div>
+                <h2>
+                  {lang === 'ko' ? '아직 매칭이 없어요' : 'No matches yet'}
+                </h2>
+                <p>
+                  {lang === 'ko'
+                    ? '매칭 요청 탭에서 새로운 친구를 찾아보세요.'
+                    : "Head to the Request tab to find new friends."}
+                </p>
+                <button className="cta-btn" onClick={() => setActiveTab('request')}>
+                  {lang === 'ko' ? '매칭 요청하기' : 'Request a match →'}
+                </button>
+              </div>
+            ) : (
+              <div className="matches-list">
+                {pendingMatches.map((match) => (
+                  <FullMatchCard key={match.group_id} match={match} lang={lang} user={user} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
-                  {/* Availability picker button */}
-                  {!match.quest_scheduled_at && (
-                    <a
-                      href={`/matches/${match.group_id}/availability`}
-                      className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
+        {/* ============ REQUEST TAB ============ */}
+        {activeTab === 'request' && (
+          <div className="request-container">
+            <div className="request-hero">
+              <h1>{lang === 'ko' ? '매칭 요청' : 'Request a match'}</h1>
+              <p>
+                {lang === 'ko'
+                  ? '도시와 인원을 선택하고 새로운 친구를 만나보세요.'
+                  : 'Pick a city and group size to meet new friends.'}
+              </p>
+              <div className="premium-tag">
+                {lang === 'ko' ? '⭐ 프리미엄 기능' : '⭐ Premium feature'}
+              </div>
+            </div>
+
+            {isFrozen ? (
+              <div className="frozen-notice">
+                <div className="frozen-icon">❄️</div>
+                <h3>{lang === 'ko' ? '계정 일시 정지' : 'Account frozen'}</h3>
+                <p className="frozen-when">
+                  {lang === 'ko'
+                    ? `해제 시간: ${frozenUntil ? new Date(frozenUntil).toLocaleString('ko-KR') : ''}`
+                    : `Until: ${frozenUntil ? new Date(frozenUntil).toLocaleString('en-US') : ''}`}
+                </p>
+                <p className="frozen-note">
+                  {lang === 'ko'
+                    ? '매칭 취소가 반복되어 일시 정지되었습니다.'
+                    : 'Frozen due to repeated cancellations.'}
+                </p>
+              </div>
+            ) : activeRequests.length > 0 ? (
+              <div className="already-searching">
+                <div className="pulse-wrap large"><div className="pulse-dot" /></div>
+                <h3>{lang === 'ko' ? '이미 매칭을 찾고 있어요' : "You're already in the queue"}</h3>
+                <p>
+                  {lang === 'ko'
+                    ? '진행 중 탭에서 요청 상태를 확인하세요.'
+                    : 'Check the Pending tab to see your request status.'}
+                </p>
+                <button className="cta-btn secondary" onClick={() => setActiveTab('pending')}>
+                  {lang === 'ko' ? '진행 중 보기' : 'View pending →'}
+                </button>
+              </div>
+            ) : (
+              <>
+                {strikeCount > 0 && (
+                  <div className="strike-warning">
+                    ⚠️ {lang === 'ko' ? `주의: ${strikeCount}회 취소 기록` : `Heads up: ${strikeCount} previous strike${strikeCount > 1 ? 's' : ''}`}
+                  </div>
+                )}
+
+                {/* City */}
+                <div className="form-section">
+                  <label className="form-label">
+                    {lang === 'ko' ? '🗺 도시 선택' : '🗺 Pick a city'}
+                  </label>
+                  <div className="cities-grid">
+                    <button
+                      className={`city-card random ${randomCity ? 'selected' : ''}`}
+                      onClick={() => { setRandomCity(!randomCity); if (!randomCity) setSelectedCity(null); }}
                     >
-                      {match.my_availability_submitted
-                        ? (lang === 'ko' ? '📅 가능한 시간 업데이트' : '📅 Update your availability')
-                        : (lang === 'ko' ? '📅 가능한 시간 선택' : '📅 Pick your availability')}
-                      <span className="avail-progress">
-                        {match.availability_submitted_count} / {match.members.length}
-                      </span>
-                    </a>
-                  )}
-
-                  <a
-                    href={`/matches/${match.group_id}/chat`}
-                    className="chat-open-btn"
-                  >
-                    💬 {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
-                    {match.unread_count > 0 && (
-                      <span className="unread-badge">{match.unread_count}</span>
-                    )}
-                  </a>
+                      <div className="city-emoji">🎲</div>
+                      <div className="city-name">
+                        {lang === 'ko' ? '랜덤' : 'Random'}
+                      </div>
+                    </button>
+                    {KOREAN_CITIES.map((c) => {
+                      const hasVenues = availableCities.has(c.slug);
+                      const isSelected = selectedCity === c.slug && !randomCity;
+                      return (
+                        <button
+                          key={c.slug}
+                          className={`city-card ${isSelected ? 'selected' : ''} ${!hasVenues ? 'disabled' : ''}`}
+                          onClick={() => {
+                            if (!hasVenues) return;
+                            setRandomCity(false);
+                            setSelectedCity(isSelected ? null : c.slug);
+                          }}
+                          disabled={!hasVenues}
+                          title={!hasVenues ? (lang === 'ko' ? '아직 준비 중' : 'Coming soon') : ''}
+                        >
+                          <div className="city-emoji">{c.emoji}</div>
+                          <div className="city-name">
+                            {lang === 'ko' ? c.name_ko : c.name_en}
+                          </div>
+                          {!hasVenues && (
+                            <div className="city-soon">
+                              {lang === 'ko' ? '준비 중' : 'Soon'}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+
+                {/* Group size */}
+                <div className="form-section">
+                  <label className="form-label">
+                    {lang === 'ko' ? '👥 인원 선택' : '👥 Group size'}
+                  </label>
+                  <div className="size-options">
+                    {[2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        className={`size-btn ${!randomSize && selectedGroupSize === n ? 'selected' : ''}`}
+                        onClick={() => { setRandomSize(false); setSelectedGroupSize(n); }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      className={`size-btn size-random ${randomSize ? 'selected' : ''}`}
+                      onClick={() => { setRandomSize(!randomSize); if (!randomSize) setSelectedGroupSize(null); }}
+                    >
+                      🎲 {lang === 'ko' ? '랜덤' : 'Random'}
+                    </button>
+                  </div>
+                </div>
+
+                {error && <div className="error-msg">{error}</div>}
+                {requestSuccess && (
+                  <div className="success-msg">
+                    ✓ {lang === 'ko' ? '요청 접수 완료!' : 'Request submitted!'}
+                  </div>
+                )}
+
+                <button className="find-btn" onClick={submitMatchRequest} disabled={submittingRequest}>
+                  {submittingRequest
+                    ? (lang === 'ko' ? '요청 중…' : 'Requesting…')
+                    : (lang === 'ko' ? '🔍 매칭 찾기' : '🔍 Find a match')}
+                </button>
+
+                <div className="commit-note">
+                  {lang === 'ko'
+                    ? '💡 매칭 확정 후 취소하면 경고를 받습니다. 3회 이상 취소 시 계정이 일시 정지됩니다.'
+                    : '💡 Cancelling after a match is confirmed counts as a strike. 3 strikes → account frozen.'}
+                </div>
+              </>
+            )}
           </div>
+        )}
+
+        {/* ============ HISTORY TAB ============ */}
+        {activeTab === 'history' && (
+          <>
+            {historyMatches.length === 0 && pastRequests.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📜</div>
+                <h2>{lang === 'ko' ? '아직 기록이 없어요' : 'No history yet'}</h2>
+                <p>{lang === 'ko' ? '완료된 매칭과 지난 요청이 여기에 표시됩니다.' : 'Completed matches and past requests will appear here.'}</p>
+              </div>
+            ) : (
+              <div className="history-list">
+                {historyMatches.map((match) => (
+                  <FullMatchCard key={match.group_id} match={match} lang={lang} user={user} isHistory />
+                ))}
+                {pastRequests.map((req) => (
+                  <div key={req.id} className="request-history-card">
+                    <div className="history-status">
+                      {req.status === 'no_match_found'
+                        ? `✗ ${lang === 'ko' ? '매칭 실패' : 'No match found'}`
+                        : req.status === 'cancelled_by_user'
+                          ? `✗ ${lang === 'ko' ? '요청 취소됨' : 'Request cancelled'}`
+                          : req.status === 'expired'
+                            ? `⏱ ${lang === 'ko' ? '만료됨' : 'Expired'}`
+                            : req.status}
+                    </div>
+                    <div className="history-body">
+                      <div className="history-title">
+                        {cityDisplayName(req.city)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                      </div>
+                      <div className="history-date">
+                        {new Date(req.created_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+                          year: 'numeric', month: 'long', day: 'numeric',
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 
       <style jsx>{`
-        .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
+        .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px); }
         .v-nav-in { display: flex; align-items: center; justify-content: space-between; height: 68px; }
         .brand { display: flex; align-items: baseline; gap: 9px; font-family: var(--display); font-weight: 800; font-size: 20px; text-decoration: none; color: var(--ink); }
-        .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 17px; }
+        .ko-mark { color: var(--ink-60); font-weight: 700; font-size: 17px; }
         .toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
         .toggle button { border: 0; background: transparent; font-family: var(--body); font-weight: 600; font-size: 13px; padding: 7px 13px; cursor: pointer; color: var(--ink-60); }
         .toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
-        .main-wrap { padding: 32px 24px 80px; max-width: 900px; }
-        .page-header { margin-bottom: 32px; }
-        h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 4px; letter-spacing: -0.02em; }
-        .sub { color: var(--ink-60); margin: 0; }
-        .error-banner { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; }
+
+        /* Tab bar */
+        .tab-bar-wrap { background: rgba(245, 242, 235, 0.95); border-bottom: 1px solid var(--ink-12); position: sticky; top: 68px; z-index: 15; backdrop-filter: blur(8px); }
+        .tab-bar {
+          display: flex;
+          gap: 4px;
+          padding: 8px 20px 0;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab {
+          position: relative;
+          background: transparent;
+          border: 0;
+          padding: 14px 20px;
+          font-family: var(--body);
+          font-weight: 700;
+          font-size: 15px;
+          color: var(--ink-60);
+          cursor: pointer;
+          white-space: nowrap;
+          border-bottom: 3px solid transparent;
+          transition: color 0.15s, border-color 0.15s;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .tab:hover { color: var(--ink); }
+        .tab.active { color: var(--persimmon); border-bottom-color: var(--persimmon); }
+        .tab-count {
+          background: var(--persimmon);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 999px;
+          min-width: 20px;
+          text-align: center;
+        }
+        .premium-dot { font-size: 12px; }
+
+        .main-wrap { padding: 32px 24px 80px; max-width: 900px; min-height: 60vh; }
+
+        /* Empty states */
         .empty-state { text-align: center; padding: 80px 20px; background: var(--paper-2); border-radius: 24px; }
         .empty-icon { font-size: 64px; margin-bottom: 20px; }
         .empty-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 8px; }
-        .empty-state p { color: var(--ink-60); font-size: 16px; margin: 0; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .matches-list { display: flex; flex-direction: column; gap: 20px; }
+        .empty-state p { color: var(--ink-60); font-size: 16px; margin: 0 0 24px; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .cta-btn {
+          background: var(--persimmon);
+          color: #fff;
+          border: 0;
+          padding: 12px 26px;
+          border-radius: 999px;
+          font-family: var(--body);
+          font-weight: 700;
+          font-size: 15px;
+          cursor: pointer;
+        }
+        .cta-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
+        .cta-btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--ink-12); }
+        .cta-btn.secondary:hover { background: var(--paper-2); box-shadow: none; transform: none; }
+
+        /* PENDING tab: searching cards */
+        .active-requests { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .searching-card {
+          display: flex; justify-content: space-between; align-items: center; gap: 16px;
+          background: linear-gradient(135deg, rgba(255, 106, 61, 0.06), rgba(255, 106, 61, 0.02));
+          border: 2px solid rgba(255, 106, 61, 0.25);
+          border-radius: 16px;
+          padding: 18px 20px;
+        }
+        .searching-left { display: flex; align-items: center; gap: 14px; }
+        .pulse-wrap { position: relative; width: 40px; height: 40px; display: grid; place-items: center; flex-shrink: 0; }
+        .pulse-wrap.large { width: 60px; height: 60px; }
+        .pulse-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--persimmon); position: relative; }
+        .pulse-wrap.large .pulse-dot { width: 24px; height: 24px; }
+        .pulse-dot::before, .pulse-dot::after {
+          content: ''; position: absolute; inset: -8px;
+          border-radius: 50%; border: 2px solid var(--persimmon);
+          animation: pulse-ring 2s infinite; opacity: 0;
+        }
+        .pulse-dot::after { animation-delay: 1s; }
+        @keyframes pulse-ring {
+          0% { transform: scale(0.5); opacity: 1; }
+          100% { transform: scale(2); opacity: 0; }
+        }
+        .searching-title { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); margin-bottom: 2px; }
+        .searching-meta { font-size: 13px; color: var(--ink); font-weight: 600; }
+        .searching-est { font-size: 12px; color: var(--ink-60); margin-top: 2px; }
+        .cancel-btn {
+          background: transparent; border: 1px solid var(--ink-12);
+          padding: 8px 16px; border-radius: 999px;
+          font-family: var(--body); font-weight: 600; font-size: 13px;
+          color: var(--ink-60); cursor: pointer; flex-shrink: 0;
+        }
+        .cancel-btn:hover { color: var(--persimmon); border-color: var(--persimmon); }
+
+        .matches-list, .history-list { display: flex; flex-direction: column; gap: 20px; }
+
+        /* REQUEST tab */
+        .request-container { max-width: 700px; margin: 0 auto; }
+        .request-hero { text-align: center; margin-bottom: 32px; }
+        .request-hero h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 8px; letter-spacing: -0.02em; }
+        .request-hero p { color: var(--ink-60); font-size: 15px; margin: 0 0 16px; }
+        .premium-tag {
+          display: inline-block;
+          background: linear-gradient(135deg, #fbbf24, #f97316);
+          color: #fff; font-weight: 700; font-size: 12px;
+          padding: 5px 14px; border-radius: 999px;
+        }
+
+        .frozen-notice { text-align: center; padding: 60px 30px; background: rgba(91, 124, 250, 0.06); border: 1px solid rgba(91, 124, 250, 0.2); border-radius: 20px; }
+        .frozen-icon { font-size: 64px; margin-bottom: 16px; }
+        .frozen-notice h3 { font-family: var(--display); font-size: 24px; margin: 0 0 12px; color: var(--ink); }
+        .frozen-when { font-weight: 700; color: var(--ink); font-size: 15px; margin: 0 0 6px; }
+        .frozen-note { font-size: 13px; color: var(--ink-60); font-style: italic; margin: 0; }
+
+        .already-searching { text-align: center; padding: 60px 30px; background: rgba(255, 106, 61, 0.04); border-radius: 20px; }
+        .already-searching .pulse-wrap { margin: 0 auto 16px; }
+        .already-searching h3 { font-family: var(--display); font-size: 22px; margin: 0 0 8px; }
+        .already-searching p { color: var(--ink-60); font-size: 14px; margin: 0 0 20px; }
+
+        .strike-warning { background: rgba(232, 169, 63, 0.15); color: #a86720; padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; margin-bottom: 20px; text-align: center; border: 1px solid rgba(232, 169, 63, 0.3); }
+
+        .form-section { margin-bottom: 24px; }
+        .form-label { display: block; font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .cities-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; }
+        .city-card {
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          padding: 16px 8px;
+          background: #fff;
+          border: 2px solid var(--ink-12);
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: var(--body);
+          position: relative;
+        }
+        .city-card:hover:not(.disabled) { transform: translateY(-2px); border-color: var(--persimmon); box-shadow: 0 6px 16px rgba(255, 106, 61, 0.15); }
+        .city-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); }
+        .city-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .city-card.random { background: linear-gradient(135deg, rgba(255, 106, 61, 0.05), rgba(15, 157, 119, 0.05)); }
+        .city-emoji { font-size: 32px; }
+        .city-name { font-weight: 700; font-size: 13px; color: var(--ink); }
+        .city-soon { font-size: 10px; color: var(--ink-60); font-weight: 600; }
+
+        .size-options { display: flex; gap: 8px; flex-wrap: wrap; }
+        .size-btn {
+          padding: 14px 24px;
+          background: #fff;
+          border: 2px solid var(--ink-12);
+          border-radius: 14px;
+          font-family: var(--body);
+          font-weight: 800;
+          font-size: 18px;
+          cursor: pointer;
+          color: var(--ink);
+          min-width: 60px;
+        }
+        .size-btn.size-random { font-size: 14px; min-width: auto; }
+        .size-btn:hover { border-color: var(--persimmon); transform: translateY(-1px); }
+        .size-btn.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); color: var(--persimmon); }
+
+        .error-msg { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; }
+        .success-msg { background: rgba(15, 157, 119, 0.1); color: var(--jade); border: 1px solid rgba(15, 157, 119, 0.25); padding: 12px 16px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; text-align: center; font-weight: 600; }
+
+        .find-btn {
+          width: 100%;
+          background: var(--persimmon);
+          color: #fff;
+          border: 0;
+          padding: 18px 28px;
+          border-radius: 14px;
+          font-family: var(--body);
+          font-weight: 800;
+          font-size: 17px;
+          cursor: pointer;
+          transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .find-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(255, 106, 61, 0.35); }
+        .find-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .commit-note { font-size: 12px; color: var(--ink-60); margin-top: 16px; text-align: center; line-height: 1.5; padding: 0 20px; }
+
+        /* History card for requests */
+        .request-history-card {
+          background: var(--paper-2);
+          border: 1px solid var(--ink-12);
+          border-radius: 14px;
+          padding: 14px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+        }
+        .history-status { font-weight: 700; font-size: 12px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
+        .history-body { flex: 1; text-align: right; }
+        .history-title { font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
+        .history-date { font-size: 12px; color: var(--ink-60); }
+      `}</style>
+    </>
+  );
+}
+
+// Full match card (same design as old /matches page)
+function FullMatchCard({ match, lang, user, isHistory }: { match: Match; lang: 'en' | 'ko'; user: any; isHistory?: boolean }) {
+  const cat = CATEGORY_LABELS[match.quest.venue.category];
+  const status = STATUS_LABELS[match.quest.status] ?? STATUS_LABELS.proposed;
+
+  function daysRemaining(iso: string) {
+    const ms = new Date(iso).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  }
+  const days = daysRemaining(match.quest.expires_at);
+
+  return (
+    <div className="match-card">
+      <div className="match-header">
+        <span className={`status-badge status-${status.color}`}>
+          {lang === 'ko' ? status.ko : status.en}
+        </span>
+        {!isHistory && (
+          <span className="days-remaining">
+            {days > 0
+              ? (lang === 'ko' ? `${days}일 남음` : `${days} days left`)
+              : (lang === 'ko' ? '기한 만료' : 'Expired')}
+          </span>
+        )}
+      </div>
+
+      <h2 className="quest-title">
+        {lang === 'ko' ? match.quest.title : (match.quest.title_en ?? match.quest.title)}
+      </h2>
+
+      <p className="quest-description">
+        {lang === 'ko'
+          ? match.quest.quest_description
+          : (match.quest.description_en ?? match.quest.quest_description)}
+      </p>
+
+      <div className="members-section">
+        <h3>{lang === 'ko' ? '함께할 친구들' : 'Your group'}</h3>
+        <div className="members-grid">
+          {match.members.map((m) => {
+            const isMe = m.user_id === user.id;
+            return (
+              <a key={m.user_id} href={`/profile/${m.user_id}`} className={`member-card ${isMe ? 'is-me' : ''}`}>
+                {m.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.photo_url} alt="" className="member-avatar" />
+                ) : (
+                  <div className="member-avatar avatar-fallback">
+                    {m.display_name[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="member-info">
+                  <div className="member-name">
+                    {m.display_name}
+                    {isMe && <span className="you-tag">{lang === 'ko' ? '나' : 'you'}</span>}
+                  </div>
+                  <div className="member-tags">
+                    {m.mbti_type && <span className="mini-tag">{m.mbti_type}</span>}
+                    {m.zodiac_sign && <span className="mini-tag">{m.zodiac_sign}</span>}
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="venue-section">
+        <h3>{lang === 'ko' ? '만날 장소' : 'Where to meet'}</h3>
+        <div className="venue-card">
+          {match.quest.venue.photo_urls?.[0] && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={match.quest.venue.photo_urls[0]} alt="" className="venue-photo" />
+          )}
+          <div className="venue-info">
+            <div className="venue-name">
+              {cat?.emoji} {match.quest.venue.business_name_display}
+            </div>
+            <div className="venue-category">
+              {cat ? (lang === 'ko' ? cat.ko : cat.en) : match.quest.venue.category}
+            </div>
+            <div className="venue-address">
+              {match.quest.venue.road_address ?? match.quest.venue.address}
+            </div>
+          </div>
+        </div>
+        {match.quest_scheduled_at && (
+          <div className="scheduled-info">
+            <div className="scheduled-label">
+              {lang === 'ko' ? '📅 만나는 시간' : '📅 Meeting time'}
+            </div>
+            <div className="scheduled-time">
+              {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {' · '}
+              {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+              {' — '}
+              {new Date(new Date(match.quest_scheduled_at).getTime() + 2 * 60 * 60 * 1000).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {match.quest.menu_items.length > 0 && (
+        <div className="menu-section">
+          <h3>{lang === 'ko' ? '함께 시도할 메뉴' : 'What to try together'}</h3>
+          <div className="menu-grid">
+            {match.quest.menu_items.map((item) => (
+              <div key={item.id} className="menu-tile">
+                {item.photo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.photo_url} alt="" className="menu-photo" />
+                )}
+                <div className="menu-name">
+                  {lang === 'ko' ? item.name : (item.name_en ?? item.name)}
+                  {item.is_signature && ' ⭐'}
+                </div>
+                {item.price_won && (
+                  <div className="menu-price">₩{item.price_won.toLocaleString()}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isHistory && !match.quest_scheduled_at && (
+        <a
+          href={`/matches/${match.group_id}/availability`}
+          className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
+        >
+          {match.my_availability_submitted
+            ? (lang === 'ko' ? '📅 가능한 시간 업데이트' : '📅 Update your availability')
+            : (lang === 'ko' ? '📅 가능한 시간 선택' : '📅 Pick your availability')}
+          <span className="avail-progress">
+            {match.availability_submitted_count} / {match.members.length}
+          </span>
+        </a>
+      )}
+
+      {!isHistory && (
+        <a href={`/matches/${match.group_id}/chat`} className="chat-open-btn">
+          💬 {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
+          {match.unread_count > 0 && <span className="unread-badge">{match.unread_count}</span>}
+        </a>
+      )}
+
+      <style jsx>{`
         .match-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 28px; }
         .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .status-badge { padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.03em; }
@@ -502,7 +1070,7 @@ export default function MyMatchesPage() {
         .members-section, .venue-section, .menu-section { margin-bottom: 24px; }
         h3 { font-family: var(--display); font-weight: 700; font-size: 15px; margin: 0 0 12px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em; }
         .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-        .member-card { display: flex; gap: 10px; align-items: center; padding: 12px; background: var(--paper-2); border-radius: 12px; color: var(--ink); cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+        .member-card { display: flex; gap: 10px; align-items: center; padding: 12px; background: var(--paper-2); border-radius: 12px; color: var(--ink); cursor: pointer; text-decoration: none; }
         .member-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
         .member-card.is-me { background: rgba(255, 106, 61, 0.06); border: 1px solid rgba(255, 106, 61, 0.2); }
         .member-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
@@ -518,108 +1086,22 @@ export default function MyMatchesPage() {
         .venue-name { font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
         .venue-category { color: var(--ink-60); font-size: 13px; margin-bottom: 6px; }
         .venue-address { color: var(--ink-60); font-size: 13px; line-height: 1.4; }
-        .scheduled-info {
-          margin-top: 12px;
-          padding: 14px 18px;
-          background: linear-gradient(135deg, rgba(15, 157, 119, 0.08), rgba(255, 106, 61, 0.05));
-          border: 1px solid rgba(15, 157, 119, 0.2);
-          border-radius: 12px;
-        }
-        .scheduled-label {
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--jade);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 4px;
-        }
-        .scheduled-time {
-          font-family: var(--display);
-          font-weight: 700;
-          font-size: 17px;
-          color: var(--ink);
-        }
+        .scheduled-info { margin-top: 12px; padding: 14px 18px; background: linear-gradient(135deg, rgba(15, 157, 119, 0.08), rgba(255, 106, 61, 0.05)); border: 1px solid rgba(15, 157, 119, 0.2); border-radius: 12px; }
+        .scheduled-label { font-size: 11px; font-weight: 700; color: var(--jade); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .scheduled-time { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--ink); }
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         .menu-tile { background: var(--paper-2); border-radius: 10px; padding: 8px; text-align: center; }
         .menu-photo { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; }
         .menu-name { font-weight: 600; font-size: 12px; color: var(--ink); }
         .menu-price { font-size: 11px; color: var(--jade); font-weight: 700; margin-top: 2px; }
-        .avail-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 14px 16px;
-          border-radius: 12px;
-          text-align: center;
-          font-size: 14px;
-          font-weight: 700;
-          margin-top: 8px;
-          text-decoration: none;
-          transition: transform 0.12s, box-shadow 0.12s;
-        }
-        .avail-btn.pending {
-          background: var(--jade);
-          color: #fff;
-        }
-        .avail-btn.submitted {
-          background: rgba(15, 157, 119, 0.1);
-          color: var(--jade);
-          border: 1px solid rgba(15, 157, 119, 0.3);
-        }
-        .avail-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 22px rgba(15, 157, 119, 0.25);
-        }
-        .avail-progress {
-          background: rgba(255, 255, 255, 0.25);
-          padding: 2px 10px;
-          border-radius: 999px;
-          font-size: 12px;
-          font-weight: 800;
-        }
-        .avail-btn.submitted .avail-progress {
-          background: rgba(15, 157, 119, 0.15);
-        }
-        .chat-open-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          background: var(--persimmon);
-          color: #fff;
-          padding: 14px 16px;
-          border-radius: 12px;
-          text-align: center;
-          font-size: 15px;
-          font-weight: 700;
-          margin-top: 8px;
-          text-decoration: none;
-          transition: transform 0.12s, box-shadow 0.12s;
-          position: relative;
-        }
-        .chat-open-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32);
-        }
-        .unread-badge {
-          background: #fff;
-          color: var(--persimmon);
-          font-weight: 800;
-          font-size: 13px;
-          padding: 2px 10px;
-          border-radius: 999px;
-          min-width: 24px;
-          text-align: center;
-        }
-        @media (max-width: 640px) {
-          .match-card { padding: 20px; }
-          .quest-title { font-size: 20px; }
-          .venue-card { flex-direction: column; }
-          .venue-photo { width: 100%; height: 180px; }
-          .members-grid { grid-template-columns: 1fr; }
-        }
+        .avail-btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+        .avail-btn.pending { background: var(--jade); color: #fff; }
+        .avail-btn.submitted { background: rgba(15, 157, 119, 0.1); color: var(--jade); border: 1px solid rgba(15, 157, 119, 0.3); }
+        .avail-progress { background: rgba(255, 255, 255, 0.25); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+        .avail-btn.submitted .avail-progress { background: rgba(15, 157, 119, 0.15); }
+        .chat-open-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--persimmon); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+        .unread-badge { background: #fff; color: var(--persimmon); font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 999px; min-width: 24px; text-align: center; }
       `}</style>
-    </>
+    </div>
   );
 }

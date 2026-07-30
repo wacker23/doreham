@@ -59,6 +59,20 @@ type ExistingMatch = {
   members: { user_id: string; display_name: string; photo_url: string | null }[];
 };
 
+type MatchRequestRow = {
+  id: string;
+  user_id: string;
+  city: string | null;
+  group_size: number | null;
+  status: string;
+  created_at: string;
+  profile: {
+    display_name: string;
+    photo_url: string | null;
+    home_district: string | null;
+  } | null;
+};
+
 const CITIES = [
   { code: 'asan', label: '아산 · Asan' },
   { code: 'cheonan', label: '천안 · Cheonan' },
@@ -176,6 +190,8 @@ export default function AdminMatchesPage() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [existingMatches, setExistingMatches] = useState<ExistingMatch[]>([]);
+  const [matchRequests, setMatchRequests] = useState<MatchRequestRow[]>([]);
+  const [prefilledRequestId, setPrefilledRequestId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   const [view, setView] = useState<'list' | 'create'>('list');
@@ -204,7 +220,7 @@ export default function AdminMatchesPage() {
   async function loadAll() {
     setLoadingData(true);
     setError(null);
-    await Promise.all([loadProfilesAndVenues(), loadExistingMatches()]);
+    await Promise.all([loadProfilesAndVenues(), loadExistingMatches(), loadMatchRequests()]);
     setLoadingData(false);
   }
 
@@ -220,7 +236,6 @@ export default function AdminMatchesPage() {
   }
 
   async function loadExistingMatches() {
-    // Get all groups + quests + members + venues in one go
     const { data: groups } = await supabase.from('groups').select('id, city, created_at').order('created_at', { ascending: false });
     if (!groups) return;
 
@@ -263,6 +278,43 @@ export default function AdminMatchesPage() {
     }).filter(Boolean) as ExistingMatch[];
 
     setExistingMatches(built);
+  }
+
+  async function loadMatchRequests() {
+    const { data } = await supabase
+      .from('match_requests')
+      .select('id, user_id, city, group_size, status, created_at, profile:profiles!inner(display_name, photo_url, home_district)')
+      .eq('status', 'searching')
+      .order('created_at', { ascending: true });
+    if (data) setMatchRequests(data as any);
+  }
+
+  function prefillFromRequest(req: MatchRequestRow) {
+    setView('create');
+    if (req.city) setSelectedCity(req.city);
+    setSelectedUserIds(new Set([req.user_id]));
+    setPrefilledRequestId(req.id);
+    setSelectedVenueId('');
+    setMenuItems([]);
+    setSelectedMenuIds(new Set());
+    setError(null);
+    setSuccess(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function rejectRequest(req: MatchRequestRow) {
+    if (!confirm(`Mark ${req.profile?.display_name}'s request as "no match found"?`)) return;
+    const { error: err } = await supabase
+      .from('match_requests')
+      .update({
+        status: 'no_match_found',
+        resolved_at: new Date().toISOString(),
+      })
+      .eq('id', req.id);
+    if (err) { setError(err.message); return; }
+    setSuccess(`✓ Request marked as no-match: ${req.profile?.display_name}`);
+    await loadMatchRequests();
+    setTimeout(() => setSuccess(null), 4000);
   }
 
   async function loadMenuItemsForVenue(venueId: string) {
@@ -347,6 +399,19 @@ export default function AdminMatchesPage() {
         await supabase.from('quest_menu_items').insert(selectedMenuItems.map((m) => ({ quest_id: quest.id, menu_item_id: m.id })));
       }
 
+      // If this was from a match request, mark it matched
+      if (prefilledRequestId) {
+        await supabase
+          .from('match_requests')
+          .update({
+            status: 'matched',
+            matched_group_id: group.id,
+            resolved_at: new Date().toISOString(),
+          })
+          .eq('id', prefilledRequestId);
+        setPrefilledRequestId(null);
+      }
+
       // Send match emails (fire and forget)
       Promise.all(selectedProfilesArr.map(async (up) => {
         const otherNames = selectedProfilesArr.filter((p) => p.id !== up.id).map((p) => p.display_name);
@@ -371,10 +436,9 @@ export default function AdminMatchesPage() {
       setMenuItems([]);
       setCreating(false);
 
-      // Reload existing matches
       await loadExistingMatches();
+      await loadMatchRequests();
 
-      // Switch to list view to show the new match
       setView('list');
       setTimeout(() => setSuccess(null), 6000);
     } catch (e) {
@@ -454,7 +518,6 @@ export default function AdminMatchesPage() {
   }
   if (!user) return null;
 
-  // Users already in active matches (proposed or scheduled) — hidden from new match creation
   const activeMatchUserIds = new Set<string>();
   for (const m of existingMatches) {
     if (m.quest_status === 'proposed' || m.quest_status === 'scheduled') {
@@ -462,14 +525,12 @@ export default function AdminMatchesPage() {
     }
   }
 
-  // Filter matches by status
   const filteredMatches = existingMatches.filter((m) => {
     if (statusFilter === 'all') return true;
     if (statusFilter === 'active') return m.quest_status === 'proposed' || m.quest_status === 'scheduled';
     return m.quest_status === statusFilter;
   });
 
-  // Filter profiles for match creation: by city + exclude users in active matches
   const filteredProfiles = profiles.filter((p) => {
     if (activeMatchUserIds.has(p.id)) return false;
     const cityInfo = CITIES.find((c) => c.code === selectedCity);
@@ -512,11 +573,64 @@ export default function AdminMatchesPage() {
         {error && <div className="error-banner">{error}</div>}
         {success && <div className="success-banner">{success}</div>}
 
+        {/* Pending match requests section */}
+        {matchRequests.length > 0 && (
+          <div className="requests-section">
+            <div className="requests-header">
+              <h2>🔔 Pending match requests <span className="req-count">{matchRequests.length}</span></h2>
+              <p className="req-hint">Click a request to prefill the create-match form with that user + their city.</p>
+            </div>
+            <div className="requests-list">
+              {matchRequests.map((req) => {
+                const isPrefilled = prefilledRequestId === req.id;
+                const cityLabel = req.city ? (CITIES.find((c) => c.code === req.city)?.label ?? req.city) : 'Random';
+                const sizeLabel = req.group_size ? `${req.group_size} people` : 'Random size';
+                const ageMinutes = Math.floor((Date.now() - new Date(req.created_at).getTime()) / 60000);
+                const ageDisplay = ageMinutes < 60 ? `${ageMinutes}m ago` : `${Math.floor(ageMinutes / 60)}h ago`;
+
+                return (
+                  <div key={req.id} className={`request-row ${isPrefilled ? 'prefilled' : ''}`}>
+                    <div className="req-left" onClick={() => prefillFromRequest(req)}>
+                      {req.profile?.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={req.profile.photo_url} alt="" className="req-avatar" />
+                      ) : (
+                        <div className="req-avatar req-avatar-fb">
+                          {req.profile?.display_name?.[0]?.toUpperCase() ?? '?'}
+                        </div>
+                      )}
+                      <div>
+                        <div className="req-name">
+                          {req.profile?.display_name ?? 'Unknown'}
+                          {isPrefilled && <span className="prefilled-tag">PREFILLED</span>}
+                        </div>
+                        <div className="req-meta">
+                          📍 {cityLabel} · 👥 {sizeLabel} · ⏱ {ageDisplay}
+                        </div>
+                        {req.profile?.home_district && (
+                          <div className="req-district">{req.profile.home_district}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="req-actions">
+                      <button className="btn-primary-req" onClick={() => prefillFromRequest(req)}>
+                        Match this user →
+                      </button>
+                      <button className="btn-danger-outline" onClick={() => rejectRequest(req)}>
+                        No match
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {loadingData ? (
           <div className="loading-inline">Loading…</div>
         ) : view === 'list' ? (
           <>
-            {/* Status filter */}
             <div className="filter-bar">
               {(['active', 'proposed', 'scheduled', 'completed', 'cancelled', 'all'] as const).map((s) => (
                 <button key={s} className={`filter-btn ${statusFilter === s ? 'active' : ''}`} onClick={() => setStatusFilter(s)}>
@@ -596,7 +710,6 @@ export default function AdminMatchesPage() {
                             </div>
                           )}
 
-                          {/* Action buttons for active matches */}
                           {(match.quest_status === 'proposed' || match.quest_status === 'scheduled') && (
                             <div className="match-actions">
                               {isCanceling ? (
@@ -628,10 +741,16 @@ export default function AdminMatchesPage() {
           </>
         ) : (
           <>
-            {/* Create new match view */}
+            {prefilledRequestId && (
+              <div className="prefill-banner">
+                💡 Form is prefilled from a match request. When you create the match, the request will auto-resolve.
+                <button className="clear-prefill" onClick={() => { setPrefilledRequestId(null); setSelectedUserIds(new Set()); }}>Clear prefill</button>
+              </div>
+            )}
+
             <div className="section">
               <h2>1. City</h2>
-              <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedUserIds(new Set()); setSelectedVenueId(''); setMenuItems([]); }} className="input">
+              <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedUserIds(new Set()); setSelectedVenueId(''); setMenuItems([]); setPrefilledRequestId(null); }} className="input">
                 {CITIES.map((c) => (<option key={c.code} value={c.code}>{c.label}</option>))}
               </select>
             </div>
@@ -811,6 +930,30 @@ export default function AdminMatchesPage() {
         .btn-create { background: var(--persimmon); color: #fff; border: 0; padding: 16px 40px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 16px; cursor: pointer; }
         .btn-create:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
         .btn-create:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        /* Pending requests section */
+        .requests-section { background: linear-gradient(135deg, rgba(255, 106, 61, 0.05), rgba(255, 106, 61, 0.02)); border: 2px solid rgba(255, 106, 61, 0.2); border-radius: 16px; padding: 20px; margin-bottom: 24px; }
+        .requests-header { margin-bottom: 14px; }
+        .requests-header h2 { font-family: var(--display); font-weight: 800; font-size: 20px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+        .req-count { background: var(--persimmon); color: #fff; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+        .req-hint { font-size: 13px; color: var(--ink-60); margin: 0; }
+        .requests-list { display: flex; flex-direction: column; gap: 10px; }
+        .request-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--ink-12); border-radius: 12px; padding: 12px 14px; flex-wrap: wrap; }
+        .request-row.prefilled { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.03); }
+        .req-left { display: flex; gap: 12px; align-items: center; flex: 1; cursor: pointer; min-width: 0; }
+        .req-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .req-avatar-fb { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+        .req-name { font-weight: 700; font-size: 15px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+        .prefilled-tag { background: var(--persimmon); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; }
+        .req-meta { font-size: 12px; color: var(--ink-60); margin-top: 2px; }
+        .req-district { font-size: 11px; color: var(--ink-60); font-style: italic; margin-top: 2px; }
+        .req-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .btn-primary-req { background: var(--persimmon); color: #fff; border: 0; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-primary-req:hover { transform: translateY(-1px); }
+
+        .prefill-banner { background: rgba(255, 106, 61, 0.08); border: 1px solid rgba(255, 106, 61, 0.25); color: var(--ink); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .clear-prefill { background: transparent; border: 1px solid var(--ink-12); color: var(--ink-60); padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .clear-prefill:hover { color: var(--persimmon); border-color: var(--persimmon); }
       `}</style>
     </>
   );
