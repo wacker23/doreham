@@ -14,6 +14,8 @@ type GroupMember = {
   mbti_type: string | null;
   zodiac_sign: string | null;
   activity_preferences: string[] | null;
+  invite_state: string | null;
+  accepted_at: string | null;
 };
 
 type QuestMenuItem = {
@@ -29,6 +31,9 @@ type Match = {
   group_id: string;
   city: string;
   members: GroupMember[];
+  is_pending_invites: boolean;
+  my_invite_state: string | null;
+  my_invite_expires_at: string | null;
   unread_count: number;
   availability_submitted_count: number;
   my_availability_submitted: boolean;
@@ -126,6 +131,8 @@ export default function MatchesPage() {
   const [randomSize, setRandomSize] = useState(false);
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
+  const [isMatchable, setIsMatchable] = useState(true);
+  const [savingMatchable, setSavingMatchable] = useState(false);
 
   // Freeze
   const [isFrozen, setIsFrozen] = useState(false);
@@ -182,6 +189,14 @@ export default function MatchesPage() {
       }
     }
 
+    // Load matchable status
+    const { data: myProfile } = await supabase
+      .from('profiles')
+      .select('is_matchable')
+      .eq('id', user!.id)
+      .maybeSingle();
+    if (myProfile) setIsMatchable(myProfile.is_matchable ?? true);
+
     // Match requests
     const { data: reqs } = await supabase
       .from('match_requests')
@@ -206,12 +221,12 @@ export default function MatchesPage() {
 
     const { data: groups } = await supabase
       .from('groups')
-      .select('id, city, phase, availability_phase_ends_at, quest_scheduled_at')
+      .select('id, city, phase, availability_phase_ends_at, quest_scheduled_at, is_pending_invites')
       .in('id', groupIds);
 
     const { data: allMembers } = await supabase
       .from('group_members')
-      .select('group_id, user_id, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
+      .select('group_id, user_id, invite_state, accepted_at, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
       .in('group_id', groupIds);
 
     const { data: quests } = await supabase
@@ -256,15 +271,18 @@ export default function MatchesPage() {
     });
 
     const built: Match[] = (groups ?? []).map((g: any) => {
-      const members: GroupMember[] = ((allMembers ?? []).filter((m: any) => m.group_id === g.id) as any[])
-        .map((m: any) => ({
-          user_id: m.user_id,
-          display_name: m.profiles.display_name,
-          photo_url: m.profiles.photo_url,
-          mbti_type: m.profiles.mbti_type,
-          zodiac_sign: m.profiles.zodiac_sign,
-          activity_preferences: m.profiles.activity_preferences,
-        }));
+      const membersRaw = ((allMembers ?? []).filter((m: any) => m.group_id === g.id) as any[]);
+      const members: GroupMember[] = membersRaw.map((m: any) => ({
+        user_id: m.user_id,
+        display_name: m.profiles.display_name,
+        photo_url: m.profiles.photo_url,
+        mbti_type: m.profiles.mbti_type,
+        zodiac_sign: m.profiles.zodiac_sign,
+        activity_preferences: m.profiles.activity_preferences,
+        invite_state: m.invite_state,
+        accepted_at: m.accepted_at,
+      }));
+      const myMember = membersRaw.find((m: any) => m.user_id === user!.id);
 
       const quest = (quests as any[])?.find((q: any) => q.group_id === g.id);
       if (!quest) return null;
@@ -281,6 +299,9 @@ export default function MatchesPage() {
         my_availability_submitted: mySubmitted[g.id] ?? false,
         quest_scheduled_at: g.quest_scheduled_at ?? null,
         phase: g.phase ?? 'availability',
+        is_pending_invites: g.is_pending_invites ?? false,
+        my_invite_state: myMember?.invite_state ?? null,
+        my_invite_expires_at: null,
         quest: {
           id: quest.id,
           title: quest.title,
@@ -310,21 +331,41 @@ export default function MatchesPage() {
       return;
     }
 
+    // Server-side city validation — check the city has venues
+    if (!randomCity && selectedCity && !availableCities.has(selectedCity)) {
+      setError(lang === 'ko'
+        ? '이 도시에는 아직 매장이 없습니다. 다른 도시를 선택해주세요.'
+        : 'No venues in this city yet. Please pick another city.');
+      return;
+    }
+
     setSubmittingRequest(true);
     setError(null);
     setRequestSuccess(false);
 
-    const { error: err } = await supabase.from('match_requests').insert({
+    const { data: insertedRequest, error: err } = await supabase.from('match_requests').insert({
       user_id: user!.id,
       city: randomCity ? null : selectedCity,
       group_size: randomSize ? null : selectedGroupSize,
       status: 'searching',
-    });
+    }).select('id').single();
 
     if (err) {
       setError(err.message);
       setSubmittingRequest(false);
       return;
+    }
+
+    // Trigger the algorithm immediately
+    try {
+      await fetch('/api/process-match-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: insertedRequest?.id }),
+      });
+    } catch (e) {
+      console.error('Immediate process failed:', e);
+      // Don't block — cron will pick it up
     }
 
     setSubmittingRequest(false);
@@ -334,8 +375,27 @@ export default function MatchesPage() {
     setSelectedGroupSize(3);
     setRandomSize(false);
     await loadAll();
-    // Auto-switch to pending tab so user sees the searching card
     setTimeout(() => setActiveTab('pending'), 800);
+  }
+
+  async function toggleMatchable() {
+    if (!user) return;
+
+    const nextValue = !isMatchable;
+    setSavingMatchable(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_matchable: nextValue })
+      .eq('id', user.id);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setIsMatchable(nextValue);
+    }
+
+    setSavingMatchable(false);
   }
 
   async function cancelRequest(requestId: string) {
@@ -392,6 +452,46 @@ export default function MatchesPage() {
 
     touchStartX.current = null;
     touchEndX.current = null;
+  }
+
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+
+  async function acceptInvite(groupId: string) {
+    console.log('DEBUG accept — group:', groupId, 'user:', user!.id);
+    setRespondingTo(groupId);
+    setError(null);
+    try {
+      const resp = await fetch('/api/accept-match-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, user_id: user!.id }),
+      });
+      const result = await resp.json();
+      if (result.error) throw new Error(result.error);
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message ?? 'Accept failed');
+    }
+    setRespondingTo(null);
+  }
+
+  async function declineInvite(groupId: string) {
+    if (!confirm(lang === 'ko' ? '이 매칭 초대를 거절하시겠습니까?' : 'Decline this match invite?')) return;
+    setRespondingTo(groupId);
+    setError(null);
+    try {
+      const resp = await fetch('/api/decline-match-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, user_id: user!.id }),
+      });
+      const result = await resp.json();
+      if (result.error) throw new Error(result.error);
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message ?? 'Decline failed');
+    }
+    setRespondingTo(null);
   }
 
   if (loading || loadingData) {
@@ -503,7 +603,15 @@ export default function MatchesPage() {
             ) : (
               <div className="matches-list">
                 {pendingMatches.map((match) => (
-                  <FullMatchCard key={match.group_id} match={match} lang={lang} user={user} />
+                  <FullMatchCard
+                    key={match.group_id}
+                    match={match}
+                    lang={lang}
+                    user={user}
+                    onAccept={acceptInvite}
+                    onDecline={declineInvite}
+                    respondingTo={respondingTo}
+                  />
                 ))}
               </div>
             )}
@@ -523,6 +631,28 @@ export default function MatchesPage() {
               <div className="premium-tag">
                 {lang === 'ko' ? '⭐ 프리미엄 기능' : '⭐ Premium feature'}
               </div>
+            </div>
+
+            <div className="matchable-toggle">
+              <div className="matchable-left">
+                <div className="matchable-title">
+                  {isMatchable ? '✅ ' : '💤 '}
+                  {lang === 'ko' ? '매칭 활성화' : 'Matching enabled'}
+                </div>
+                <div className="matchable-sub">
+                  {isMatchable
+                    ? (lang === 'ko' ? '다른 사용자의 매칭 초대를 받을 수 있어요.' : 'You can receive match invites from other users.')
+                    : (lang === 'ko' ? '매칭 초대를 받지 않습니다.' : "You won't receive any match invites.")}
+                </div>
+              </div>
+              <button
+                className={`toggle-switch ${isMatchable ? 'on' : 'off'}`}
+                onClick={toggleMatchable}
+                disabled={savingMatchable}
+                aria-label="Toggle matchable"
+              >
+                <div className="switch-knob" />
+              </button>
             </div>
 
             {isFrozen ? (
@@ -665,7 +795,16 @@ export default function MatchesPage() {
             ) : (
               <div className="history-list">
                 {historyMatches.map((match) => (
-                  <FullMatchCard key={match.group_id} match={match} lang={lang} user={user} isHistory />
+                  <FullMatchCard
+                    key={match.group_id}
+                    match={match}
+                    lang={lang}
+                    user={user}
+                    isHistory
+                    onAccept={acceptInvite}
+                    onDecline={declineInvite}
+                    respondingTo={respondingTo}
+                  />
                 ))}
                 {pastRequests.map((req) => (
                   <div key={req.id} className="request-history-card">
@@ -891,6 +1030,43 @@ export default function MatchesPage() {
 
         .commit-note { font-size: 12px; color: var(--ink-60); margin-top: 16px; text-align: center; line-height: 1.5; padding: 0 20px; }
 
+        .matchable-toggle {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          background: #fff;
+          border: 1px solid var(--ink-12);
+          border-radius: 14px;
+          padding: 14px 18px;
+          margin-bottom: 24px;
+        }
+        .matchable-left { flex: 1; min-width: 0; }
+        .matchable-title { font-weight: 700; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
+        .matchable-sub { font-size: 12px; color: var(--ink-60); line-height: 1.4; }
+        .toggle-switch {
+          width: 48px; height: 28px;
+          border-radius: 999px;
+          border: 0;
+          padding: 3px;
+          cursor: pointer;
+          transition: background 0.15s;
+          flex-shrink: 0;
+          position: relative;
+        }
+        .toggle-switch.on { background: var(--jade); }
+        .toggle-switch.off { background: var(--ink-12); }
+        .toggle-switch:disabled { opacity: 0.6; cursor: not-allowed; }
+        .switch-knob {
+          width: 22px; height: 22px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+          transition: transform 0.15s;
+          transform: translateX(0);
+        }
+        .toggle-switch.on .switch-knob { transform: translateX(20px); }
+
         /* History card for requests */
         .request-history-card {
           background: var(--paper-2);
@@ -912,7 +1088,15 @@ export default function MatchesPage() {
 }
 
 // Full match card (same design as old /matches page)
-function FullMatchCard({ match, lang, user, isHistory }: { match: Match; lang: 'en' | 'ko'; user: any; isHistory?: boolean }) {
+function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, respondingTo }: { 
+  match: Match; 
+  lang: 'en' | 'ko'; 
+  user: any; 
+  isHistory?: boolean;
+  onAccept?: (groupId: string) => void;
+  onDecline?: (groupId: string) => void;
+  respondingTo?: string | null;
+}) {
   const cat = CATEGORY_LABELS[match.quest.venue.category];
   const status = STATUS_LABELS[match.quest.status] ?? STATUS_LABELS.proposed;
 
@@ -936,6 +1120,30 @@ function FullMatchCard({ match, lang, user, isHistory }: { match: Match; lang: '
           </span>
         )}
       </div>
+      {match.is_pending_invites && match.my_invite_state === 'invited' && (
+        <div className="invite-banner">
+          <div className="invite-title">🎉 {lang === 'ko' ? '매칭 초대!' : "You've been invited!"}</div>
+          <div className="invite-desc">
+            {lang === 'ko'
+              ? '이 그룹에 합류하시겠습니까? 수락하면 그룹 채팅과 일정 조율에 참여할 수 있어요.'
+              : 'Want to join this group? Accept to unlock the group chat and schedule the meetup.'}
+          </div>
+        </div>
+      )}
+
+      {match.is_pending_invites && match.my_invite_state === 'accepted' && (
+        <div className="invite-banner accepted">
+          <div className="invite-title">⏳ {lang === 'ko' ? '다른 멤버의 응답 대기 중' : 'Waiting for other members'}</div>
+          <div className="invite-desc">
+            {(() => {
+              const waiting = match.members.filter((m) => m.invite_state === 'invited').map((m) => m.display_name);
+              return waiting.length > 0
+                ? (lang === 'ko' ? `${waiting.join(', ')}님의 응답을 기다리고 있어요.` : `Waiting on ${waiting.join(', ')} to respond.`)
+                : (lang === 'ko' ? '곧 확정될 예정입니다.' : 'Should be confirmed soon.');
+            })()}
+          </div>
+        </div>
+      )}
 
       <h2 className="quest-title">
         {lang === 'ko' ? match.quest.title : (match.quest.title_en ?? match.quest.title)}
@@ -1036,7 +1244,30 @@ function FullMatchCard({ match, lang, user, isHistory }: { match: Match; lang: '
         </div>
       )}
 
-      {!isHistory && !match.quest_scheduled_at && (
+      {/* Accept/Decline buttons for invited users */}
+      {match.is_pending_invites && match.my_invite_state === 'invited' && onAccept && onDecline && (
+        <div className="invite-actions">
+          <button
+            className="btn-decline"
+            onClick={() => onDecline(match.group_id)}
+            disabled={respondingTo === match.group_id}
+          >
+            ✗ {lang === 'ko' ? '거절' : 'Decline'}
+          </button>
+          <button
+            className="btn-accept"
+            onClick={() => onAccept(match.group_id)}
+            disabled={respondingTo === match.group_id}
+          >
+            {respondingTo === match.group_id
+              ? '…'
+              : `✓ ${lang === 'ko' ? '수락' : 'Accept invite'}`}
+          </button>
+        </div>
+      )}
+
+      {/* Availability button — only if match is active (not pending) and quest not scheduled */}
+      {!isHistory && !match.is_pending_invites && !match.quest_scheduled_at && (
         <a
           href={`/matches/${match.group_id}/availability`}
           className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
@@ -1050,7 +1281,7 @@ function FullMatchCard({ match, lang, user, isHistory }: { match: Match; lang: '
         </a>
       )}
 
-      {!isHistory && (
+      {!isHistory && !match.is_pending_invites && (
         <a href={`/matches/${match.group_id}/chat`} className="chat-open-btn">
           💬 {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
           {match.unread_count > 0 && <span className="unread-badge">{match.unread_count}</span>}
@@ -1101,6 +1332,23 @@ function FullMatchCard({ match, lang, user, isHistory }: { match: Match; lang: '
         .avail-btn.submitted .avail-progress { background: rgba(15, 157, 119, 0.15); }
         .chat-open-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--persimmon); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
         .unread-badge { background: #fff; color: var(--persimmon); font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 999px; min-width: 24px; text-align: center; }
+        .invite-banner { background: linear-gradient(135deg, rgba(255, 106, 61, 0.08), rgba(15, 157, 119, 0.05)); border: 1px solid rgba(255, 106, 61, 0.25); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
+        .invite-banner.accepted { background: linear-gradient(135deg, rgba(15, 157, 119, 0.06), rgba(255, 106, 61, 0.02)); border-color: rgba(15, 157, 119, 0.25); }
+        .invite-title { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
+        .invite-desc { font-size: 13px; color: var(--ink-60); line-height: 1.5; }
+        .member-status { font-size: 10px; font-weight: 700; margin-top: 4px; padding: 2px 8px; border-radius: 999px; display: inline-block; }
+        .member-status.status-accepted { background: rgba(15, 157, 119, 0.15); color: var(--jade); }
+        .member-status.status-invited { background: rgba(232, 169, 63, 0.15); color: #a86720; }
+        .member-status.status-declined { background: rgba(255, 106, 61, 0.15); color: var(--persimmon); }
+        .member-status.status-expired { background: rgba(30, 34, 48, 0.08); color: var(--ink-60); }
+        .invite-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-accept { flex: 1; background: var(--jade); color: #fff; border: 0; padding: 14px 20px; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; }
+        .btn-accept:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(15, 157, 119, 0.25); }
+        .btn-accept:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-decline { background: transparent; border: 2px solid var(--ink-12); color: var(--ink-60); padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
+        .btn-decline:hover:not(:disabled) { border-color: var(--persimmon); color: var(--persimmon); }
+        .btn-decline:disabled { opacity: 0.5; cursor: not-allowed; }
+
       `}</style>
     </div>
   );
