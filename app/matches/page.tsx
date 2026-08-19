@@ -209,7 +209,8 @@ export default function MatchesPage() {
     const { data: memberships } = await supabase
       .from('group_members')
       .select('group_id, last_read_at')
-      .eq('user_id', user!.id);
+      .eq('user_id', user!.id)
+      .is('left_at', null);
 
     if (!memberships || memberships.length === 0) {
       setMatches([]);
@@ -227,7 +228,8 @@ export default function MatchesPage() {
     const { data: allMembers } = await supabase
       .from('group_members')
       .select('group_id, user_id, invite_state, accepted_at, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
-      .in('group_id', groupIds);
+      .in('group_id', groupIds)
+      .is('left_at', null);
 
     const { data: quests } = await supabase
       .from('quests')
@@ -357,15 +359,17 @@ export default function MatchesPage() {
     }
 
     // Trigger the algorithm immediately
+    console.log('DEBUG: about to trigger algorithm for request', insertedRequest?.id);
     try {
-      await fetch('/api/process-match-requests', {
+      const resp = await fetch('/api/process-match-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request_id: insertedRequest?.id }),
       });
+      const respData = await resp.json();
+      console.log('DEBUG: algorithm response:', respData);
     } catch (e) {
-      console.error('Immediate process failed:', e);
-      // Don't block — cron will pick it up
+      console.error('DEBUG: immediate trigger failed', e);
     }
 
     setSubmittingRequest(false);
@@ -400,12 +404,20 @@ export default function MatchesPage() {
 
   async function cancelRequest(requestId: string) {
     if (!confirm(lang === 'ko' ? '이 요청을 취소하시겠습니까?' : 'Cancel this request?')) return;
-    const { error: err } = await supabase
-      .from('match_requests')
-      .update({ status: 'cancelled_by_user', resolved_at: new Date().toISOString() })
-      .eq('id', requestId);
-    if (err) { setError(err.message); return; }
-    await loadAll();
+    
+    // Call the API to properly clean up group + members
+    try {
+      const resp = await fetch('/api/cancel-match-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: requestId, user_id: user!.id }),
+      });
+      const result = await resp.json();
+      if (result.error) throw new Error(result.error);
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message ?? 'Cancel failed');
+    }
   }
 
   const cityDisplayName = (slug: string | null): string => {

@@ -457,6 +457,17 @@ export default function AdminMatchesPage() {
       }).eq('id', match.quest_id);
       if (qErr) throw new Error(qErr.message);
 
+      // Mark all group members as left
+      await supabase.from('group_members').update({
+        left_at: new Date().toISOString(),
+      }).eq('group_id', match.group_id).is('left_at', null);
+
+      // Close the group
+      await supabase.from('groups').update({
+        is_pending_invites: false,
+        phase: 'cancelled',
+      }).eq('id', match.group_id);
+
       setSuccess(`✓ Match cancelled: ${match.venue_name}`);
       setCancelingId(null);
       setCancelReason('');
@@ -479,6 +490,11 @@ export default function AdminMatchesPage() {
         completed_at: new Date().toISOString(),
       }).eq('id', match.quest_id);
       if (qErr) throw new Error(qErr.message);
+
+      // Mark all group members as left (match is done)
+      await supabase.from('group_members').update({
+        left_at: new Date().toISOString(),
+      }).eq('group_id', match.group_id).is('left_at', null);
 
       setSuccess(`✓ Match completed: ${match.venue_name}`);
       await loadExistingMatches();

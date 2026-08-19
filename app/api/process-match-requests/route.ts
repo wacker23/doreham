@@ -151,6 +151,9 @@ export async function POST(request: Request) {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+    // First: expire any invites past their deadline
+    const expireResult = await expireOverdueInvites(admin);
+
     // Load all searching requests (or just one if specified)
     let query = admin
       .from('match_requests')
@@ -187,7 +190,7 @@ export async function POST(request: Request) {
 }
 
 async function processOneRequest(admin: any, req: any, citiesWithVenues: Set<string>) {
-  const ageMinutes = Math.floor((Date.now() - new Date(req.created_at).getTime()) / 60000);
+const ageMinutes = Math.max(0, Math.floor((Date.now() - new Date(req.created_at).getTime()) / 60000));
 
   // Give up if too old
   if (ageMinutes >= GIVE_UP_MINUTES) {
@@ -433,6 +436,27 @@ async function processOneRequest(admin: any, req: any, citiesWithVenues: Set<str
     })
     .eq('id', req.id);
 
+  // Send invite emails to all invitees (fire and forget)
+  const inviteeNames = picked.map((p: any) => p.profile.display_name);
+  const allNames = [requester.display_name, ...inviteeNames];
+  
+  Promise.all(picked.map(async (p: any) => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr'}/api/emails/match-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: p.profile.id,
+          group_id: group.id,
+          venue_name: chosenVenue.business_name_display,
+          other_member_names: allNames.filter((n: string) => n !== p.profile.display_name),
+        }),
+      });
+    } catch (e) {
+      console.error('Invite email failed for', p.profile.id, e);
+    }
+  })).catch((e) => console.error('Batch invite emails error:', e));
+
   return {
     action: 'matched',
     pass: currentPass.pass,
@@ -441,4 +465,161 @@ async function processOneRequest(admin: any, req: any, citiesWithVenues: Set<str
     invited_count: picked.length,
     invitees: picked.map((p: any) => ({ id: p.profile.id, name: p.profile.display_name, score: p.score })),
   };
+}
+
+async function expireOverdueInvites(admin: any) {
+  const now = new Date().toISOString();
+
+  // Find all invites past their expiry
+  const { data: overdueInvites } = await admin
+    .from('group_members')
+    .select('group_id, user_id, invite_expires_at')
+    .eq('invite_state', 'invited')
+    .lt('invite_expires_at', now) as {
+      data: Array<{ group_id: string; user_id: string; invite_expires_at: string }> | null;
+    };
+
+  if (!overdueInvites || overdueInvites.length === 0) {
+    return { expired: 0 };
+  }
+
+  // Mark each as expired + set left_at
+  for (const inv of overdueInvites) {
+    await admin.from('group_members').update({
+      invite_state: 'expired',
+      declined_at: now,
+      left_at: now,
+    }).eq('group_id', inv.group_id).eq('user_id', inv.user_id);
+  }
+
+  // For each affected group, check if it should activate or cancel
+  const affectedGroupIds: string[] = [...new Set(overdueInvites.map((i) => String(i.group_id)))];
+
+  for (const groupId of affectedGroupIds) {
+    await evaluateGroupAfterInviteChange(admin, groupId);
+  }
+
+  return { expired: overdueInvites.length, groups_evaluated: affectedGroupIds.length };
+}
+
+async function evaluateGroupAfterInviteChange(admin: any, groupId: string) {
+  const { data: group } = await admin
+    .from('groups')
+    .select('id, is_pending_invites, originated_by_request_id')
+    .eq('id', groupId)
+    .maybeSingle();
+
+  // Only evaluate pending groups
+  if (!group?.is_pending_invites) return;
+
+  const { data: allMembers } = await admin
+    .from('group_members')
+    .select('user_id, invite_state, accepted_at, left_at')
+    .eq('group_id', groupId)
+    .is('left_at', null);
+
+  if (!allMembers) return;
+
+  const activeMembers = allMembers.filter((m: any) => m.invite_state === 'accepted' || m.accepted_at);
+  const pendingMembers = allMembers.filter((m: any) => m.invite_state === 'invited');
+
+  const MIN_GROUP_SIZE = 2;
+  const everyoneResponded = pendingMembers.length === 0;
+  const enoughAccepted = activeMembers.length >= MIN_GROUP_SIZE;
+
+  if (everyoneResponded && enoughAccepted) {
+    // Activate!
+    await admin.from('groups').update({ is_pending_invites: false }).eq('id', groupId);
+
+    // Send activation email (we'll wire this later)
+    // Trigger email for activated members
+    await sendGroupActivatedEmails(admin, groupId, activeMembers);
+    return;
+  }
+
+  if (everyoneResponded && !enoughAccepted) {
+    // Cancel group - not enough accepts
+    await admin.from('groups').update({ is_pending_invites: false }).eq('id', groupId);
+    await admin.from('group_members').update({ left_at: new Date().toISOString() })
+      .eq('group_id', groupId).is('left_at', null);
+    await admin.from('quests').update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+    }).eq('group_id', groupId);
+
+    // Get all users who were in the group (including left ones) for exclusion
+    const { data: everyone } = await admin
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId);
+
+    // Reopen the request with these users excluded
+    if (group.originated_by_request_id && everyone) {
+      const { data: req } = await admin
+        .from('match_requests')
+        .select('excluded_user_ids, user_id')
+        .eq('id', group.originated_by_request_id)
+        .maybeSingle();
+
+      const newExcluded = new Set(req?.excluded_user_ids ?? []);
+      for (const m of everyone) {
+        if (m.user_id !== req?.user_id) newExcluded.add(m.user_id);
+      }
+
+      await admin.from('match_requests').update({
+        status: 'searching',
+        matched_group_id: null,
+        excluded_user_ids: Array.from(newExcluded),
+      }).eq('id', group.originated_by_request_id);
+
+      // Email requester about the cancellation
+      await sendGroupCancelledEmail(admin, groupId, req?.user_id, 'Not enough people accepted');
+    }
+  }
+}
+
+async function sendGroupActivatedEmails(admin: any, groupId: string, activeMembers: any[]) {
+  const memberIds = activeMembers.map((m: any) => m.user_id);
+  
+  const [{ data: profiles }, { data: quest }] = await Promise.all([
+    admin.from('profiles').select('id, display_name').in('id', memberIds),
+    admin.from('quests').select('venue:venues!inner(business_name_display)').eq('group_id', groupId).maybeSingle(),
+  ]);
+
+  const venueName = (quest as any)?.venue?.business_name_display ?? '';
+  const allNames = (profiles ?? []).map((p: any) => p.display_name);
+
+  await Promise.all((profiles ?? []).map(async (p: any) => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr'}/api/emails/group-activated`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: p.id,
+          group_id: groupId,
+          venue_name: venueName,
+          other_member_names: allNames.filter((n: string) => n !== p.display_name),
+        }),
+      });
+    } catch (e) {
+      console.error('Activation email failed for', p.id, e);
+    }
+  }));
+}
+
+async function sendGroupCancelledEmail(admin: any, groupId: string, userId: string | undefined, reason: string) {
+  if (!userId) return;
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr'}/api/emails/group-cancelled`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        reason,
+        will_retry: true,
+      }),
+    });
+  } catch (e) {
+    console.error('Cancellation email failed for', userId, e);
+  }
 }

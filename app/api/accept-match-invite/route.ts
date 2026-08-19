@@ -71,6 +71,30 @@ export async function POST(request: Request) {
         }).eq('group_id', group_id).in('user_id', declinedOrExpired.map((m: any) => m.user_id));
       }
 
+      // Send activation emails to all accepted members
+      const memberIds = activeMembers.map((m: any) => m.user_id);
+      const [{ data: profiles }, { data: quest }] = await Promise.all([
+        admin.from('profiles').select('id, display_name').in('id', memberIds),
+        admin.from('quests').select('venue:venues!inner(business_name_display)').eq('group_id', group_id).maybeSingle(),
+      ]);
+      const venueName = (quest as any)?.venue?.business_name_display ?? '';
+      const allNames = (profiles ?? []).map((p: any) => p.display_name);
+
+      Promise.all((profiles ?? []).map(async (p: any) => {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr'}/api/emails/group-activated`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: p.id,
+              group_id,
+              venue_name: venueName,
+              other_member_names: allNames.filter((n: string) => n !== p.display_name),
+            }),
+          });
+        } catch (e) { console.error('Activation email failed:', e); }
+      })).catch((e) => console.error(e));
+
       return NextResponse.json({
         ok: true,
         activated: true,
