@@ -206,11 +206,10 @@ export default function MatchesPage() {
     if (reqs) setRequests(reqs as MatchRequest[]);
 
     // Matches
-    const { data: memberships } = await supabase
+       const { data: memberships } = await supabase
       .from('group_members')
-      .select('group_id, last_read_at')
-      .eq('user_id', user!.id)
-      .is('left_at', null);
+      .select('group_id, last_read_at, left_at, accepted_at')
+      .eq('user_id', user!.id);
 
     if (!memberships || memberships.length === 0) {
       setMatches([]);
@@ -1278,6 +1277,41 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, resp
         </div>
       )}
 
+      {/* Check-in button — shows when quest is scheduled and we're in the check-in window */}
+      {!isHistory && !match.is_pending_invites && match.quest_scheduled_at && (() => {
+        const scheduled = new Date(match.quest_scheduled_at).getTime();
+        const now = Date.now();
+        const windowStart = scheduled - 40 * 60 * 1000;
+        const windowEnd = scheduled + 120 * 60 * 1000;
+        const inWindow = now >= windowStart && now <= windowEnd;
+        const beforeWindow = now < windowStart;
+
+        if (inWindow) {
+          return (
+            <a href={`/matches/${match.group_id}/check-in`} className="checkin-btn active">
+              📍 {lang === 'ko' ? '지금 체크인' : 'Check in now'}
+              <span className="checkin-live">● {lang === 'ko' ? '진행 중' : 'Open'}</span>
+            </a>
+          );
+        }
+
+        if (beforeWindow) {
+          const minsUntil = Math.ceil((windowStart - now) / 60000);
+          const hoursLeft = Math.floor(minsUntil / 60);
+          const minsLeft = minsUntil % 60;
+          const timeStr = hoursLeft > 0
+            ? (lang === 'ko' ? `${hoursLeft}시간 ${minsLeft}분 후` : `in ${hoursLeft}h ${minsLeft}m`)
+            : (lang === 'ko' ? `${minsLeft}분 후` : `in ${minsLeft} min`);
+          return (
+            <div className="checkin-btn upcoming">
+              ⏳ {lang === 'ko' ? `체크인 ${timeStr} 열림` : `Check-in opens ${timeStr}`}
+            </div>
+          );
+        }
+
+        return null;
+      })()}
+
       {/* Availability button — only if match is active (not pending) and quest not scheduled */}
       {!isHistory && !match.is_pending_invites && !match.quest_scheduled_at && (
         <a
@@ -1360,6 +1394,15 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, resp
         .btn-decline { background: transparent; border: 2px solid var(--ink-12); color: var(--ink-60); padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
         .btn-decline:hover:not(:disabled) { border-color: var(--persimmon); color: var(--persimmon); }
         .btn-decline:disabled { opacity: 0.5; cursor: not-allowed; }
+        .checkin-btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+        .checkin-btn.active { background: var(--persimmon); color: #fff; box-shadow: 0 6px 18px rgba(255, 106, 61, 0.35); animation: pulse-glow 2s ease-in-out infinite; }
+        .checkin-btn.active:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(255, 106, 61, 0.4); }
+        .checkin-btn.upcoming { background: rgba(255, 106, 61, 0.08); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); }
+        .checkin-live { background: rgba(255, 255, 255, 0.25); padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.05em; }
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 6px 18px rgba(255, 106, 61, 0.35); }
+          50% { box-shadow: 0 8px 28px rgba(255, 106, 61, 0.5); }
+        }
 
       `}</style>
     </div>

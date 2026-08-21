@@ -210,10 +210,10 @@ export default function MyVenuesPage() {
                             ? `승인일: ${venue.claim_verified_at ? new Date(venue.claim_verified_at).toLocaleDateString('ko-KR') : '—'}`
                             : `Approved on ${venue.claim_verified_at ? new Date(venue.claim_verified_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}`}
                         </div>
-                        <div className="v-preview-note">
-                          {lang === 'ko'
-                            ? '💡 매칭 시스템이 곧 오픈됩니다. 곧 그룹 방문이 시작될 예정입니다.'
-                            : '💡 The matching system is launching soon.'}
+                        <div className="v-actions">
+                          <a href={`/venues/my/${venue.id}/qr`} className="v-action-qr">
+                            🔲 {lang === 'ko' ? '오늘의 QR 코드' : "Today's QR code"}
+                          </a>
                         </div>
                       </div>
                     ) : (
@@ -287,6 +287,9 @@ export default function MyVenuesPage() {
         .stat-value.dim { color: var(--ink-60); font-size: 13px; font-weight: 500; font-family: var(--body); }
         .v-approved-note { font-size: 12px; color: var(--ink-60); font-weight: 500; margin-bottom: 8px; }
         .v-preview-note { font-size: 13px; color: var(--jade); background: rgba(15, 157, 119, 0.08); padding: 8px 12px; border-radius: 8px; }
+        .v-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+        .v-action-qr { display: inline-flex; align-items: center; gap: 8px; background: var(--persimmon); color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; transition: transform 0.15s; }
+        .v-action-qr:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
         .v-pending-section { padding: 16px 20px 20px; border-top: 1px solid var(--ink-12); background: rgba(255, 165, 0, 0.03); }
         .v-pending-section p { color: var(--ink-60); font-size: 14px; line-height: 1.5; margin: 0 0 8px; }
         .submitted-time { font-size: 12px; color: var(--ink-60); }
