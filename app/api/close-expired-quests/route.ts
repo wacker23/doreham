@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/close-expired-quests
+ * GET  /api/close-expired-quests  (Vercel Cron uses GET)
  *
  * Called via daily cron. Finds all quests where:
  *   - status = 'scheduled'
@@ -20,6 +21,11 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const CHECK_IN_WINDOW_AFTER_MIN = 120;
 const MIN_CHECK_INS_TO_COMPLETE = 2;
+
+// Vercel Cron sends GET — forward to the same logic
+export async function GET() {
+  return POST();
+}
 
 export async function POST() {
   try {
