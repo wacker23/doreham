@@ -132,6 +132,7 @@ export default function MatchesPage() {
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [isMatchable, setIsMatchable] = useState(true);
+  const [pendingReviews, setPendingReviews] = useState<any[]>([]);
   const [savingMatchable, setSavingMatchable] = useState(false);
 
   // Freeze
@@ -319,6 +320,16 @@ export default function MatchesPage() {
 
     built.sort((a, b) => new Date(a.quest.expires_at).getTime() - new Date(b.quest.expires_at).getTime());
     setMatches(built);
+
+    // Load pending reviews
+    try {
+      const prResp = await fetch(`/api/pending-reviews?user_id=${user!.id}`);
+      const prData = await prResp.json();
+      setPendingReviews(prData.pending ?? []);
+    } catch (e) {
+      console.error('Load pending reviews failed:', e);
+    }
+
     setLoadingData(false);
   }
 
@@ -567,6 +578,28 @@ export default function MatchesPage() {
         {/* ============ PENDING TAB ============ */}
         {activeTab === 'pending' && (
           <>
+            {/* Pending reviews banner */}
+            {pendingReviews.length > 0 && (
+              <div className="review-banner-list">
+                {pendingReviews.map((pr: any) => (
+                  <a key={pr.quest_id} href={`/matches/review/${pr.quest_id}`} className="review-banner">
+                    <div className="rb-icon">🌸</div>
+                    <div className="rb-content">
+                      <div className="rb-title">
+                        {lang === 'ko' ? '리뷰를 남겨주세요' : 'Leave a review'}
+                      </div>
+                      <div className="rb-sub">
+                        {lang === 'ko'
+                          ? `${pr.venue_name}에서의 만남을 리뷰해주세요 · ${pr.unreviewed_members.length}명 대기 중`
+                          : `Your meetup at ${pr.venue_name} · ${pr.unreviewed_members.length} to review`}
+                      </div>
+                    </div>
+                    <div className="rb-arrow">→</div>
+                  </a>
+                ))}
+              </div>
+            )}
+
             {/* Searching requests */}
             {activeRequests.length > 0 && (
               <div className="active-requests">
@@ -1093,6 +1126,15 @@ export default function MatchesPage() {
         .history-body { flex: 1; text-align: right; }
         .history-title { font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
         .history-date { font-size: 12px; color: var(--ink-60); }
+
+        .review-banner-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .review-banner { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, rgba(255, 106, 61, 0.08), rgba(122, 88, 168, 0.06)); border: 1.5px solid rgba(255, 106, 61, 0.2); border-radius: 14px; padding: 14px 18px; text-decoration: none; color: var(--ink); transition: all 0.15s; }
+        .review-banner:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255, 106, 61, 0.15); border-color: var(--persimmon); }
+        .rb-icon { font-size: 28px; flex-shrink: 0; }
+        .rb-content { flex: 1; min-width: 0; }
+        .rb-title { font-family: var(--display); font-weight: 800; font-size: 15px; margin-bottom: 2px; color: var(--ink); }
+        .rb-sub { font-size: 12px; color: var(--ink-60); line-height: 1.4; }
+        .rb-arrow { font-size: 20px; color: var(--persimmon); flex-shrink: 0; }
       `}</style>
     </>
   );

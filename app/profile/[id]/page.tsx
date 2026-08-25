@@ -209,6 +209,9 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [canView, setCanView] = useState(false);
   const [openModal, setOpenModal] = useState<ModalKind>(null);
+  const [trustStats, setTrustStats] = useState<{ compliment_counts: Record<string, number>; vibe_counts: Record<string, number>; total_reviews_received: number } | null>(null);
+  const [complimentTagsMap, setComplimentTagsMap] = useState<Record<string, any>>({});
+  const [vibeTagsMap, setVibeTagsMap] = useState<Record<string, any>>({});
 
   const targetId = params?.id as string;
 
@@ -285,6 +288,25 @@ export default function ProfilePage() {
     }
 
     setProfile(data as Profile);
+
+    // Load trust stats + tag catalogs
+    const [statsRes, comptRes, vibeRes] = await Promise.all([
+      supabase.from('user_trust_stats').select('*').eq('user_id', targetId).maybeSingle(),
+      supabase.from('review_compliment_tags').select('*').order('display_order'),
+      supabase.from('review_vibe_tags').select('*').order('display_order'),
+    ]);
+
+    if (statsRes.data) setTrustStats(statsRes.data as any);
+    else setTrustStats(null);
+
+    const cmap: Record<string, any> = {};
+    (comptRes.data ?? []).forEach((t: any) => { cmap[t.id] = t; });
+    setComplimentTagsMap(cmap);
+
+    const vmap: Record<string, any> = {};
+    (vibeRes.data ?? []).forEach((t: any) => { vmap[t.id] = t; });
+    setVibeTagsMap(vmap);
+
     setLoading(false);
   }
 
@@ -659,6 +681,76 @@ export default function ProfilePage() {
             )}
           </div>
         ) : null}
+
+        {/* Reviews / Trust section */}
+        {trustStats && trustStats.total_reviews_received > 0 && (
+          <div className="section">
+            <div className="section-header">
+              <h3>{lang === 'ko' ? '리뷰' : 'Reviews'}</h3>
+              <span className="review-count-badge">
+                {trustStats.total_reviews_received} {lang === 'ko' ? '개' : (trustStats.total_reviews_received === 1 ? 'review' : 'reviews')}
+              </span>
+            </div>
+
+            {/* Compliments */}
+            {Object.keys(trustStats.compliment_counts ?? {}).length > 0 && (
+              <div className="review-block">
+                <div className="review-block-title">
+                  {lang === 'ko' ? '🌟 칭찬' : '🌟 Compliments'}
+                </div>
+                <div className="review-tags">
+                  {Object.entries(trustStats.compliment_counts)
+                    .sort(([, a]: any, [, b]: any) => b - a)
+                    .map(([tagId, count]: any) => {
+                      const tag = complimentTagsMap[tagId];
+                      if (!tag) return null;
+                      return (
+                        <span key={tagId} className="review-tag compliment">
+                          {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                          <span className="tag-count">×{count}</span>
+                        </span>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Vibe stickers */}
+            {Object.keys(trustStats.vibe_counts ?? {}).length > 0 && (
+              <div className="review-block">
+                <div className="review-block-title">
+                  {lang === 'ko' ? '✨ 분위기 스티커' : '✨ Vibe stickers'}
+                </div>
+                <div className="review-tags">
+                  {Object.entries(trustStats.vibe_counts)
+                    .sort(([, a]: any, [, b]: any) => b - a)
+                    .map(([tagId, count]: any) => {
+                      const tag = vibeTagsMap[tagId];
+                      if (!tag) return null;
+                      return (
+                        <span key={tagId} className="review-tag vibe">
+                          {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                          <span className="tag-count">×{count}</span>
+                        </span>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* "New member" state when no reviews yet */}
+        {trustStats && trustStats.total_reviews_received === 0 && !isOwn && (
+          <div className="section">
+            <div className="section-header">
+              <h3>{lang === 'ko' ? '리뷰' : 'Reviews'}</h3>
+            </div>
+            <p className="placeholder-text">
+              {lang === 'ko' ? '아직 리뷰가 없어요.' : 'No reviews yet.'}
+            </p>
+          </div>
+        )}
       </main>
 
       {/* Modals */}
@@ -762,6 +854,15 @@ export default function ProfilePage() {
         .languages-list { display: flex; gap: 8px; flex-wrap: wrap; }
         .lang-pill { background: var(--paper-2); padding: 8px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--ink); display: flex; flex-direction: column; align-items: flex-start; }
         .lang-sub { font-size: 11px; color: var(--ink-60); font-weight: 500; }
+        .review-count-badge { background: var(--persimmon); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+        .review-block { margin-bottom: 16px; }
+        .review-block:last-child { margin-bottom: 0; }
+        .review-block-title { font-size: 12px; font-weight: 700; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .review-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .review-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-2); border: 1px solid var(--ink-12); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); }
+        .review-tag.compliment { background: rgba(255, 106, 61, 0.08); border-color: rgba(255, 106, 61, 0.2); color: var(--persimmon); }
+        .review-tag.vibe { background: rgba(122, 88, 168, 0.08); border-color: rgba(122, 88, 168, 0.2); color: #7A58A8; }
+        .tag-count { background: rgba(0,0,0,0.05); padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; }
         @media (max-width: 640px) {
           .profile-hero { flex-direction: column; text-align: center; padding-top: 60px; }
           .hero-info h1 { justify-content: center; }
