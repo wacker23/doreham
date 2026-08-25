@@ -144,7 +144,10 @@ function cityMatch(district: string | null, requestedCity: string): boolean {
 
 // -------------------- Main handler --------------------
 
-export async function POST(request: Request) {
+// Vercel Cron sends GET — forward to POST logic with empty body
+export async function GET() {
+  return POST(new Request('http://internal', { method: 'POST', body: '{}' }));
+}
   try {
     const body = await request.json().catch(() => ({}));
     const specificRequestId = body?.request_id ?? null;
