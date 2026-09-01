@@ -158,7 +158,7 @@ export default function HomePage() {
         <section className="venue-cta">
           <div className="wrap venue-cta-in">
             <div className="cta-content">
-              <div className="cta-emoji">🏪</div>
+              <img src="/categories/venue.png" alt="" className="cta-icon" />
               <h2><span className="en">Own a business?</span><span className="ko lang-ko">사업자이신가요?</span></h2>
               <p>
                 <span className="en">Join Doreham as a venue partner and welcome friendly groups of internationals to your space.</span>
@@ -174,7 +174,7 @@ export default function HomePage() {
           <style jsx>{`
             .venue-cta { background: linear-gradient(135deg, rgba(255, 106, 61, 0.06), rgba(15, 157, 119, 0.04)); padding: 80px 0; border-top: 1px solid var(--ink-12); border-bottom: 1px solid var(--ink-12); }
             .venue-cta-in { text-align: center; max-width: 640px; margin: 0 auto; padding: 0 24px; }
-            .cta-emoji { font-size: 56px; margin-bottom: 16px; }
+            .cta-icon { width: 88px; height: 88px; object-fit: contain; margin: 0 auto 16px; display: block; } .scene-ic { width: 56px; height: 56px; object-fit: contain; margin-bottom: 8px; display: block; }
             .venue-cta h2 { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--ink); }
             .venue-cta p { color: var(--ink-60); font-size: 16px; line-height: 1.6; margin: 0 0 32px; }
             .cta-btn { display: inline-block; background: var(--persimmon); color: #fff; padding: 16px 36px; border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px; transition: transform 0.12s, box-shadow 0.12s; }
@@ -258,42 +258,42 @@ export default function HomePage() {
             </div>
             <div className="scenes">
               <div className="scene s1 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>☕</span>
+                <img src="/categories/coffee.png" alt="" className="scene-ic" />
                 <h3><span className="en">Coffee &amp; talk</span><span className="ko lang-ko">커피와 대화</span></h3>
                 <p><span className="en">Cafés, quiet hangouts, deep talks.</span><span className="ko lang-ko">카페, 편안한 만남, 깊은 이야기.</span></p>
               </div>
               <div className="scene s2 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>🏺</span>
+                <img src="/categories/makethings.png" alt="" className="scene-ic" />
                 <h3><span className="en">Make something</span><span className="ko lang-ko">함께 만들기</span></h3>
                 <p><span className="en">Pottery, baking, craft workshops.</span><span className="ko lang-ko">도자기, 베이킹, 공예 클래스.</span></p>
               </div>
               <div className="scene s3 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>🥾</span>
+                <img src="/categories/adventure.png" alt="" className="scene-ic" />
                 <h3><span className="en">Outdoors</span><span className="ko lang-ko">바깥으로</span></h3>
                 <p><span className="en">Hikes, walks, easy trails together.</span><span className="ko lang-ko">등산, 산책, 가벼운 트레킹.</span></p>
               </div>
               <div className="scene s4 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>📚</span>
+                <img src="/categories/books.png" alt="" className="scene-ic" />
                 <h3><span className="en">Hidden bookshops</span><span className="ko lang-ko">숨은 서점</span></h3>
                 <p><span className="en">Pick a book, share why, discover a place.</span><span className="ko lang-ko">책 한 권 고르고, 이유를 나누기.</span></p>
               </div>
               <div className="scene s5 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>🎲</span>
+                <img src="/categories/game.png" alt="" className="scene-ic" />
                 <h3><span className="en">Games &amp; fun</span><span className="ko lang-ko">보드게임 · 놀이</span></h3>
                 <p><span className="en">Board game cafés, mafia nights, casual play.</span><span className="ko lang-ko">보드게임 카페, 마피아, 가벼운 게임.</span></p>
               </div>
               <div className="scene s6 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>🍜</span>
+                <img src="/categories/food.png" alt="" className="scene-ic" />
                 <h3><span className="en">Food &amp; dining</span><span className="ko lang-ko">맛집 · 식사</span></h3>
                 <p><span className="en">Local restaurants, food tours, shared tables.</span><span className="ko lang-ko">동네 맛집, 푸드 투어, 함께하는 식탁.</span></p>
               </div>
               <div className="scene s7 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>🌿</span>
+                <img src="/categories/nature.png" alt="" className="scene-ic" />
                 <h3><span className="en">Nature &amp; calm</span><span className="ko lang-ko">자연 · 산책</span></h3>
                 <p><span className="en">Parks, gardens, slow walks, picnics.</span><span className="ko lang-ko">공원, 정원, 느긋한 산책, 소풍.</span></p>
               </div>
               <div className="scene s8 reveal">
-                <span className="ic" style={{ fontSize: 32 }}>🧩</span>
+                <img src="/categories/puzzle.png" alt="" className="scene-ic" />
                 <h3><span className="en">Escape &amp; puzzles</span><span className="ko lang-ko">방탈출 · 퍼즐</span></h3>
                 <p><span className="en">Escape rooms, puzzle cafés, mystery games.</span><span className="ko lang-ko">방탈출, 퍼즐 카페, 미스터리 게임.</span></p>
               </div>
