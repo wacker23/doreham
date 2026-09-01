@@ -174,7 +174,7 @@ export default function HomePage() {
           <style jsx>{`
             .venue-cta { background: linear-gradient(135deg, rgba(255, 106, 61, 0.06), rgba(15, 157, 119, 0.04)); padding: 80px 0; border-top: 1px solid var(--ink-12); border-bottom: 1px solid var(--ink-12); }
             .venue-cta-in { text-align: center; max-width: 640px; margin: 0 auto; padding: 0 24px; }
-            .cta-icon { width: 340px; height: 340px; object-fit: contain; margin: 0 auto 16px; display: block; } .scene-ic { width: 56px; height: 56px; object-fit: contain; margin-bottom: 8px; display: block; }
+            .cta-icon { width: 340px; height: 340px; object-fit: contain; margin: 0 auto 4px; display: block; } .scene-ic { width: 56px; height: 56px; object-fit: contain; margin-bottom: 8px; display: block; }
             .venue-cta h2 { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--ink); }
             .venue-cta p { color: var(--ink-60); font-size: 16px; line-height: 1.6; margin: 0 0 32px; }
             .cta-btn { display: inline-block; background: var(--persimmon); color: #fff; padding: 16px 36px; border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 15px; transition: transform 0.12s, box-shadow 0.12s; }
