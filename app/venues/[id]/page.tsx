@@ -68,6 +68,9 @@ export default function VenueDetailPage() {
   const router = useRouter();
   const [lang, setLang] = useState<'en' | 'ko'>('en');
   const [venue, setVenue] = useState<Venue | null>(null);
+  const [venueStats, setVenueStats] = useState<any | null>(null);
+  const [complimentTagsMap, setComplimentTagsMap] = useState<Record<string, any>>({});
+  const [showAllTextReviews, setShowAllTextReviews] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +87,20 @@ export default function VenueDetailPage() {
     loadVenue();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venueId]);
+
+  useEffect(() => {
+    if (!venue?.id) return;
+    (async () => {
+      const [statsRes, tagsRes] = await Promise.all([
+        fetch(`/api/venue-stats/${venue.id}`).then((r) => r.json()),
+        supabase.from('venue_compliment_tags').select('*').order('display_order'),
+      ]);
+      setVenueStats(statsRes);
+      const map: Record<string, any> = {};
+      (tagsRes.data ?? []).forEach((t: any) => { map[t.id] = t; });
+      setComplimentTagsMap(map);
+    })();
+  }, [venue?.id]);
 
   async function loadVenue() {
     setLoading(true);
@@ -322,6 +339,74 @@ export default function VenueDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Reviews section */}
+        {venueStats && venueStats.review_count > 0 && (
+          <div className="section">
+            <div className="section-header-row">
+              <h3>{lang === 'ko' ? '리뷰' : 'Reviews'}</h3>
+              <span className="review-count-badge">
+                {venueStats.review_count} {lang === 'ko' ? '개' : (venueStats.review_count === 1 ? 'review' : 'reviews')}
+              </span>
+            </div>
+
+            {/* Compliment tags aggregate */}
+            {Object.keys(venueStats.compliment_counts ?? {}).length > 0 && (
+              <div className="review-block">
+                <div className="review-block-title">
+                  {lang === 'ko' ? '👍 좋았던 점' : '👍 What people loved'}
+                </div>
+                <div className="review-tags">
+                  {Object.entries(venueStats.compliment_counts)
+                    .sort(([, a]: any, [, b]: any) => b - a)
+                    .map(([tagId, count]: any) => {
+                      const tag = complimentTagsMap[tagId];
+                      if (!tag) return null;
+                      return (
+                        <span key={tagId} className="review-tag compliment">
+                          {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                          <span className="tag-count">×{count}</span>
+                        </span>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Text reviews */}
+            {venueStats.recent_text_reviews.length > 0 && (
+              <div className="review-block">
+                <div className="review-block-title">
+                  {lang === 'ko' ? '💬 후기' : '💬 What visitors said'}
+                </div>
+                <div className="text-reviews">
+                  {venueStats.recent_text_reviews
+                    .slice(0, showAllTextReviews ? undefined : 3)
+                    .map((r: any, idx: number) => (
+                      <div key={idx} className="text-review">
+                        <p className="tr-text">&quot;{r.text}&quot;</p>
+                        <div className="tr-date">
+                          {new Date(r.submitted_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                {venueStats.recent_text_reviews.length > 3 && !showAllTextReviews && (
+                  <button
+                    className="show-more-btn"
+                    onClick={() => setShowAllTextReviews(true)}
+                  >
+                    {lang === 'ko'
+                      ? `+${venueStats.recent_text_reviews.length - 3}개 더 보기`
+                      : `Show ${venueStats.recent_text_reviews.length - 3} more`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <style jsx>{`
@@ -373,6 +458,22 @@ export default function VenueDetailPage() {
         .menu-name-en { color: var(--ink-60); font-size: 12px; margin-top: 2px; }
         .menu-desc { color: var(--ink-60); font-size: 12px; margin: 4px 0; line-height: 1.4; }
         .menu-price { color: var(--jade); font-weight: 700; font-size: 13px; margin-top: 4px; }
+        .section-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .section-header-row h3 { margin: 0; }
+        .review-count-badge { background: var(--persimmon); color: #fff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 999px; }
+        .review-block { margin-bottom: 20px; }
+        .review-block:last-child { margin-bottom: 0; }
+        .review-block-title { font-size: 12px; font-weight: 700; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+        .review-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .review-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-2); border: 1px solid var(--ink-12); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); }
+        .review-tag.compliment { background: rgba(255, 106, 61, 0.08); border-color: rgba(255, 106, 61, 0.2); color: var(--persimmon); }
+        .tag-count { background: rgba(0,0,0,0.05); padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+        .text-reviews { display: flex; flex-direction: column; gap: 10px; }
+        .text-review { background: var(--paper-2); border-left: 3px solid var(--persimmon); border-radius: 8px; padding: 12px 14px; }
+        .tr-text { margin: 0 0 6px; font-size: 14px; color: var(--ink); line-height: 1.5; font-style: italic; }
+        .tr-date { font-size: 11px; color: var(--ink-60); font-weight: 500; }
+        .show-more-btn { margin-top: 12px; background: transparent; border: 1px solid var(--ink-12); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-60); cursor: pointer; font-family: var(--body); }
+        .show-more-btn:hover { border-color: var(--persimmon); color: var(--persimmon); }
         @media (max-width: 640px) {
           .header-main h1 { font-size: 28px; }
         }

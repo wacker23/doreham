@@ -41,6 +41,8 @@ export default function MyVenuesPage() {
   const { user, loading } = useUser();
   const [lang, setLang] = useState<'en' | 'ko'>('en');
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [venueStats, setVenueStats] = useState<Record<string, any>>({});
+  const [complimentTagsMap, setComplimentTagsMap] = useState<Record<string, any>>({});
   const [loadingVenues, setLoadingVenues] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +78,29 @@ export default function MyVenuesPage() {
     setVenues(data ?? []);
     setLoadingVenues(false);
   }
+
+  useEffect(() => {
+    if (venues.length === 0) return;
+    (async () => {
+      const { data: tags } = await supabase.from('venue_compliment_tags').select('*').order('display_order');
+      const tagMap: Record<string, any> = {};
+      (tags ?? []).forEach((t: any) => { tagMap[t.id] = t; });
+      setComplimentTagsMap(tagMap);
+
+      const statsResults: Record<string, any> = {};
+      await Promise.all(
+        venues.filter((v) => v.is_active).map(async (v) => {
+          try {
+            const resp = await fetch(`/api/venue-stats/${v.id}`);
+            statsResults[v.id] = await resp.json();
+          } catch (e) {
+            console.error('Failed to load stats for', v.id, e);
+          }
+        })
+      );
+      setVenueStats(statsResults);
+    })();
+  }, [venues]);
 
   if (loading || loadingVenues) {
     return (
@@ -190,15 +215,21 @@ export default function MyVenuesPage() {
                         <div className="v-stats-grid">
                           <div className="v-stat">
                             <div className="stat-label">{lang === 'ko' ? '이번 주 방문' : 'Visits this week'}</div>
-                            <div className="stat-value dim">{lang === 'ko' ? '준비 중' : 'Coming soon'}</div>
+                            <div className="stat-value">
+                              {venueStats[venue.id]?.visits_this_week ?? '—'}
+                            </div>
                           </div>
                           <div className="v-stat">
                             <div className="stat-label">{lang === 'ko' ? '예정된 그룹' : 'Upcoming groups'}</div>
-                            <div className="stat-value dim">{lang === 'ko' ? '준비 중' : 'Coming soon'}</div>
+                            <div className="stat-value">
+                              {venueStats[venue.id]?.upcoming_groups ?? '—'}
+                            </div>
                           </div>
                           <div className="v-stat">
                             <div className="stat-label">{lang === 'ko' ? '총 방문자' : 'Total visitors'}</div>
-                            <div className="stat-value dim">{lang === 'ko' ? '준비 중' : 'Coming soon'}</div>
+                            <div className="stat-value">
+                              {venueStats[venue.id]?.total_visitors ?? '—'}
+                            </div>
                           </div>
                           <div className="v-stat">
                             <div className="stat-label">{lang === 'ko' ? '평균 평점' : 'Average rating'}</div>
@@ -215,6 +246,60 @@ export default function MyVenuesPage() {
                             🔲 {lang === 'ko' ? '오늘의 QR 코드' : "Today's QR code"}
                           </a>
                         </div>
+                        {venueStats[venue.id] && venueStats[venue.id].review_count > 0 && (
+                          <div className="v-reviews-section">
+                            <div className="v-reviews-header">
+                              {lang === 'ko' ? '💬 리뷰' : '💬 Reviews'}
+                              <span className="v-review-count">
+                                {venueStats[venue.id].review_count}
+                              </span>
+                            </div>
+
+                            {/* Compliment tags */}
+                            {Object.keys(venueStats[venue.id].compliment_counts ?? {}).length > 0 && (
+                              <div className="v-review-tags">
+                                {Object.entries(venueStats[venue.id].compliment_counts)
+                                  .sort(([, a]: any, [, b]: any) => b - a)
+                                  .slice(0, 6)
+                                  .map(([tagId, count]: any) => {
+                                    const tag = complimentTagsMap[tagId];
+                                    if (!tag) return null;
+                                    return (
+                                      <span key={tagId} className="v-review-tag">
+                                        {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                                        <span className="v-tag-count">×{count}</span>
+                                      </span>
+                                    );
+                                  })}
+                              </div>
+                            )}
+
+                            {/* Private concerns count (owner only) */}
+                            {Object.keys(venueStats[venue.id].concern_counts ?? {}).length > 0 && (
+                              <div className="v-concerns-note">
+                                ⚠️ {lang === 'ko'
+                                  ? `${Object.values(venueStats[venue.id].concern_counts).reduce((a: any, b: any) => a + b, 0)}건의 개선 제안 (비공개)`
+                                  : `${Object.values(venueStats[venue.id].concern_counts).reduce((a: any, b: any) => a + b, 0)} improvement suggestions (private)`}
+                              </div>
+                            )}
+
+                            {/* Recent text reviews */}
+                            {venueStats[venue.id].recent_text_reviews.length > 0 && (
+                              <div className="v-text-reviews">
+                                {venueStats[venue.id].recent_text_reviews.slice(0, 3).map((r: any, i: number) => (
+                                  <div key={i} className="v-text-review">
+                                    <p>&quot;{r.text}&quot;</p>
+                                    <div className="v-text-date">
+                                      {new Date(r.submitted_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+                                        month: 'short', day: 'numeric',
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="v-pending-section">
@@ -290,6 +375,17 @@ export default function MyVenuesPage() {
         .v-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
         .v-action-qr { display: inline-flex; align-items: center; gap: 8px; background: var(--persimmon); color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; transition: transform 0.15s; }
         .v-action-qr:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
+        .v-reviews-section { background: #fff; border: 1px solid var(--ink-12); border-radius: 12px; padding: 16px; margin-top: 12px; }
+        .v-reviews-header { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 12px; }
+        .v-review-count { background: var(--persimmon); color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+        .v-review-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .v-review-tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(255, 106, 61, 0.08); border: 1px solid rgba(255, 106, 61, 0.2); color: var(--persimmon); padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .v-tag-count { background: rgba(255, 106, 61, 0.15); padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+        .v-concerns-note { font-size: 12px; color: #a86720; background: rgba(232, 169, 63, 0.1); padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; }
+        .v-text-reviews { display: flex; flex-direction: column; gap: 8px; }
+        .v-text-review { background: var(--paper-2); border-left: 2px solid var(--persimmon); padding: 8px 12px; border-radius: 6px; }
+        .v-text-review p { margin: 0 0 4px; font-size: 13px; color: var(--ink); font-style: italic; line-height: 1.4; }
+        .v-text-date { font-size: 10px; color: var(--ink-60); font-weight: 500; }
         .v-pending-section { padding: 16px 20px 20px; border-top: 1px solid var(--ink-12); background: rgba(255, 165, 0, 0.03); }
         .v-pending-section p { color: var(--ink-60); font-size: 14px; line-height: 1.5; margin: 0 0 8px; }
         .submitted-time { font-size: 12px; color: var(--ink-60); }
