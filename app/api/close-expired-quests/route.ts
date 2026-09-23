@@ -127,6 +127,30 @@ async function closeGroup(admin: any, groupId: string) {
         freeze_until: freezeUntil,
         notes: `No-show for quest ${quest.id} (group ${groupId})`,
       });
+
+      // Fire-and-forget: notification + email
+      const APP_URL_INT = process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr';
+      fetch(`${APP_URL_INT}/api/create-strike-notification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: absent.user_id,
+          reason: 'no_show',
+          strike_number: nextStrike,
+          freeze_until: freezeUntil,
+        }),
+      }).catch((e) => console.error('Strike notification failed (non-fatal):', e));
+
+      fetch(`${APP_URL_INT}/api/emails/strike-issued`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: absent.user_id,
+          reason: 'no_show',
+          strike_number: nextStrike,
+          freeze_until: freezeUntil,
+        }),
+      }).catch((e) => console.error('Strike email failed (non-fatal):', e));
     }
 
     // Free all members

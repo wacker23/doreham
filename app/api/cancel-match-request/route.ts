@@ -84,6 +84,30 @@ export async function POST(request: Request) {
           notes: `Cancelled match request after ${group.phase} phase started (group ${groupId})`,
         });
 
+        // Fire-and-forget: notification + email
+        const APP_URL_INT = process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr';
+        fetch(`${APP_URL_INT}/api/create-strike-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id,
+            reason: 'cancelled_match',
+            strike_number: nextStrike,
+            freeze_until: freezeUntil,
+          }),
+        }).catch((e) => console.error('Strike notification failed (non-fatal):', e));
+
+        fetch(`${APP_URL_INT}/api/emails/strike-issued`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id,
+            reason: 'cancelled_match',
+            strike_number: nextStrike,
+            freeze_until: freezeUntil,
+          }),
+        }).catch((e) => console.error('Strike email failed (non-fatal):', e));
+
         return NextResponse.json({
           ok: true,
           cancelled_group: true,
