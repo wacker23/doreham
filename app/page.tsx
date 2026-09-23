@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
 import { UserMenu } from '@/components/UserMenu';
+import { NotificationBell } from '@/components/NotificationBell';
 
 type Lang = 'en' | 'ko';
 type Status = { kind: 'idle' } | { kind: 'ok' } | { kind: 'err'; msg: string };
@@ -96,6 +97,7 @@ export default function HomePage() {
               <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
               <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
             </div>
+            <NotificationBell lang={lang} />
             <UserMenu lang={lang} />
           </div>
         </div>

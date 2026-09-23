@@ -56,6 +56,17 @@ export async function submitVenue(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'not_signed_in' };
 
+  // Check venue limit: max 2 venues per user (approved or pending)
+  const { data: existingVenues, count } = await supabase
+    .from('venues')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', user.id)
+    .is('deactivated_at', null);
+
+  if ((count ?? 0) >= 2) {
+    return { ok: false, error: 'venue_limit_reached' };
+  }
+
   const { data: venue, error: venueError } = await supabase
     .from('venues')
     .insert({

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { UserMenu } from '@/components/UserMenu';
+import { NotificationBell } from '@/components/NotificationBell';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
 
 type Lang = 'en' | 'ko';
@@ -74,6 +75,7 @@ export default function HomePage() {
               <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
               <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
             </div>
+            <NotificationBell lang={lang} />
             <UserMenu lang={lang} />
           </div>
         </div>

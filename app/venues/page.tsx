@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { supabase } from '@/lib/supabase/client';
 import { BasicInfoStep } from './steps/BasicInfoStep';
 import { LocationStep } from './steps/LocationStep';
 import { HoursStep } from './steps/HoursStep';
@@ -26,6 +27,7 @@ export default function VenueRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successVenueId, setSuccessVenueId] = useState<string | null>(null);
+  const [atLimit, setAtLimit] = useState(false);
 
   useEffect(() => {
     document.body.setAttribute('data-lang', lang);
@@ -39,6 +41,18 @@ export default function VenueRegisterPage() {
       router.push('/sign-in?return=/venues');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { count } = await supabase
+        .from('venues')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', user.id)
+        .is('deactivated_at', null);
+      if ((count ?? 0) >= 2) setAtLimit(true);
+    })();
+  }, [user]);
 
   function advanceTo(nextStep: VenueStep, updates: Partial<VenueFormData>) {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -103,11 +117,14 @@ export default function VenueRegisterPage() {
       setSubmitting(false);
 
       if (!result.ok) {
-        setSubmitError(
-          lang === 'ko'
-            ? `제출 중 오류가 발생했습니다: ${result.error}`
-            : `Submission failed: ${result.error}`
-        );
+        const errorMsg = result.error === 'venue_limit_reached'
+          ? (lang === 'ko'
+              ? '한 사용자당 최대 2개의 매장만 등록할 수 있습니다.'
+              : 'You can register up to 2 venues per account.')
+          : (lang === 'ko'
+              ? `제출 중 오류가 발생했습니다: ${result.error}`
+              : `Submission failed: ${result.error}`);
+        setSubmitError(errorMsg);
         return;
       }
 
@@ -143,6 +160,44 @@ export default function VenueRegisterPage() {
   }
 
   if (!user) return null;
+
+  if (atLimit) {
+    return (
+      <>
+        <header className="v-nav">
+          <div className="wrap v-nav-in">
+            <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span></a>
+          </div>
+        </header>
+        <main className="limit-wrap">
+          <div className="limit-card">
+            <div className="limit-icon">🏪</div>
+            <h1>{lang === 'ko' ? '등록 한도에 도달했어요' : 'Venue limit reached'}</h1>
+            <p>
+              {lang === 'ko'
+                ? '한 계정당 최대 2개의 매장을 등록할 수 있습니다. 이미 등록된 매장을 확인하려면 아래를 클릭하세요.'
+                : 'You can register up to 2 venues per account. Check your existing venues below.'}
+            </p>
+            <a href="/venues/my" className="btn-primary">
+              {lang === 'ko' ? '내 매장 보기' : 'View my venues'}
+            </a>
+          </div>
+        </main>
+        <style jsx>{`
+          .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); }
+          .v-nav-in { display: flex; align-items: center; height: 68px; }
+          .brand { display: flex; align-items: baseline; gap: 9px; font-family: var(--display); font-weight: 800; font-size: 20px; text-decoration: none; color: var(--ink); }
+          .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 17px; }
+          .limit-wrap { min-height: calc(100vh - 68px); display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+          .limit-card { max-width: 480px; text-align: center; background: var(--paper-2); border-radius: 24px; padding: 48px 32px; border: 1px solid var(--ink-12); }
+          .limit-icon { font-size: 56px; margin-bottom: 16px; }
+          h1 { font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0 0 12px; }
+          p { color: var(--ink-60); font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+          .btn-primary { display: inline-block; background: var(--persimmon); color: #fff; padding: 12px 28px; border-radius: 999px; font-weight: 700; text-decoration: none; }
+        `}</style>
+      </>
+    );
+  }
 
   // Success screen
   if (successVenueId) {
