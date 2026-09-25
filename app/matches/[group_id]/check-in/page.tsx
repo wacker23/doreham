@@ -293,6 +293,9 @@ export default function CheckInPage() {
             📍 {lang === 'ko' ? '위치 확인됨' : 'Location verified'}
           </p>
         )}
+        <a href={`/matches/${groupId}/questions`} className="btn-ice">
+          🧊 {lang === 'ko' ? '얼음 깨기 · 대화 시작' : 'Break the Ice · Start conversation'}
+        </a>
         <a href="/matches" className="btn-back">{lang === 'ko' ? '매칭으로 돌아가기' : 'Back to matches'}</a>
         <style jsx>{`
           .success-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; background: linear-gradient(180deg, rgba(15, 157, 119, 0.06), transparent); }
@@ -301,6 +304,8 @@ export default function CheckInPage() {
           .success-desc { font-size: 16px; color: var(--ink); margin: 0 0 16px; max-width: 320px; line-height: 1.5; }
           .verified-line { font-size: 13px; color: var(--jade); margin: 0 0 32px; }
           .btn-back { background: var(--jade); color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 999px; font-weight: 700; }
+          .btn-ice { background: linear-gradient(135deg, #7c9df0, #a78bfa); color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 999px; font-weight: 700; font-size: 15px; margin-bottom: 12px; display: inline-block; }
+          .btn-ice:hover { opacity: 0.92; }
         `}</style>
       </main>
     );
@@ -317,6 +322,9 @@ export default function CheckInPage() {
             ? `${quest.check_in_count} / ${quest.total_members}명 도착`
             : `${quest.check_in_count} of ${quest.total_members} checked in`}
         </p>
+        <a href={`/matches/${groupId}/questions`} className="btn-ice">
+          🧊 {lang === 'ko' ? '얼음 깨기 · 대화 시작' : 'Break the Ice · Start conversation'}
+        </a>
         <a href="/matches" className="btn-back">{lang === 'ko' ? '매칭으로 돌아가기' : 'Back to matches'}</a>
         <style jsx>{`
           .checked-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
@@ -324,6 +332,8 @@ export default function CheckInPage() {
           h1 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 8px; }
           p { color: var(--ink-60); margin: 0 0 24px; }
           .btn-back { background: var(--ink); color: var(--paper); text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; }
+          .btn-ice { background: linear-gradient(135deg, #7c9df0, #a78bfa); color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 999px; font-weight: 700; font-size: 15px; margin-bottom: 12px; display: inline-block; }
+          .btn-ice:hover { opacity: 0.92; }
         `}</style>
       </main>
     );

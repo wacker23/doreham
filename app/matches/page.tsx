@@ -1376,6 +1376,13 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, resp
         </a>
       )}
 
+      {!isHistory && !match.is_pending_invites && (
+        <a href={`/matches/${match.group_id}/questions`} className="ice-btn">
+          🧊 {lang === 'ko' ? '얼음 깨기' : 'Break the Ice'}
+          <span className="ice-badge">{lang === 'ko' ? '대화 질문' : 'Conversation'}</span>
+        </a>
+      )}
+
       <style jsx>{`
         .match-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 28px; }
         .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -1419,6 +1426,9 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, resp
         .avail-progress { background: rgba(255, 255, 255, 0.25); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
         .avail-btn.submitted .avail-progress { background: rgba(15, 157, 119, 0.15); }
         .chat-open-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--persimmon); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+        .ice-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #7c9df0, #a78bfa); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+        .ice-btn:hover { opacity: 0.92; }
+        .ice-badge { background: rgba(255, 255, 255, 0.25); color: #fff; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; }
         .unread-badge { background: #fff; color: var(--persimmon); font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 999px; min-width: 24px; text-align: center; }
         .invite-banner { background: linear-gradient(135deg, rgba(255, 106, 61, 0.08), rgba(15, 157, 119, 0.05)); border: 1px solid rgba(255, 106, 61, 0.25); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
         .invite-banner.accepted { background: linear-gradient(135deg, rgba(15, 157, 119, 0.06), rgba(255, 106, 61, 0.02)); border-color: rgba(15, 157, 119, 0.25); }
