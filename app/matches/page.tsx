@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { MATCH_CATEGORIES } from '@/lib/matchCategories';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -126,6 +127,7 @@ export default function MatchesPage() {
 
   // Request form state
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [randomCity, setRandomCity] = useState(false);
   const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
   const [randomSize, setRandomSize] = useState(false);
@@ -359,6 +361,7 @@ export default function MatchesPage() {
       user_id: user!.id,
       city: randomCity ? null : selectedCity,
       group_size: randomSize ? null : selectedGroupSize,
+      preferred_categories: selectedCategories.length > 0 ? selectedCategories : null,
       status: 'searching',
     }).select('id').single();
 
@@ -388,6 +391,7 @@ export default function MatchesPage() {
     setRandomCity(false);
     setSelectedGroupSize(3);
     setRandomSize(false);
+    setSelectedCategories([]);
     await loadAll();
     setTimeout(() => setActiveTab('pending'), 800);
   }
@@ -780,6 +784,41 @@ export default function MatchesPage() {
                   </div>
                 </div>
 
+                {/* Categories */}
+                <div className="form-section">
+                  <label className="form-label">
+                    {lang === 'ko' ? '🎯 카테고리 선택 (선택 사항)' : '🎯 Pick categories (optional)'}
+                  </label>
+                  <p className="form-hint">
+                    {lang === 'ko'
+                      ? '아무것도 선택하지 않으면 모든 카테고리에서 매칭됩니다'
+                      : 'Leave empty to match with any category'}
+                  </p>
+                  <div className="cat-grid">
+                    {MATCH_CATEGORIES.map((c) => {
+                      const isSelected = selectedCategories.includes(c.slug);
+                      return (
+                        <button
+                          key={c.slug}
+                          className={`cat-card ${isSelected ? 'selected' : ''} ${c.coming_soon ? 'disabled' : ''}`}
+                          onClick={() => {
+                            if (c.coming_soon) return;
+                            setSelectedCategories((prev) =>
+                              isSelected ? prev.filter((x) => x !== c.slug) : [...prev, c.slug]
+                            );
+                          }}
+                          disabled={c.coming_soon}
+                          title={c.coming_soon ? (lang === 'ko' ? '곧 출시' : 'Coming soon') : ''}
+                        >
+                          <img src={`/categories/${c.icon}.png`} alt="" className="cat-icon" />
+                          <div className="cat-name">{lang === 'ko' ? c.label_ko : c.label_en}</div>
+                          {c.coming_soon && <div className="cat-soon">{lang === 'ko' ? '준비 중' : 'Soon'}</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Group size */}
                 <div className="form-section">
                   <label className="form-label">
@@ -1035,6 +1074,15 @@ export default function MatchesPage() {
         .city-emoji { font-size: 32px; }
         .city-name { font-weight: 700; font-size: 13px; color: var(--ink); }
         .city-soon { font-size: 10px; color: var(--ink-60); font-weight: 600; }
+        .form-hint { font-size: 12px; color: var(--ink-60); margin: 0 0 12px; }
+        .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+        .cat-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; background: #fff; border: 2px solid var(--ink-12); border-radius: 12px; cursor: pointer; transition: all 0.15s; position: relative; }
+        .cat-card:hover:not(.disabled) { transform: translateY(-2px); border-color: var(--persimmon); }
+        .cat-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); }
+        .cat-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .cat-icon { width: 36px; height: 36px; object-fit: contain; }
+        .cat-name { font-weight: 700; font-size: 11px; color: var(--ink); text-align: center; line-height: 1.2; }
+        .cat-soon { font-size: 9px; color: var(--ink-60); font-weight: 600; }
 
         .size-options { display: flex; gap: 8px; flex-wrap: wrap; }
         .size-btn {

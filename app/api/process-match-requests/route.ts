@@ -261,10 +261,21 @@ const ageMinutes = Math.max(0, Math.floor((Date.now() - new Date(req.created_at)
   }
 
   // Get users currently in active/pending groups (exclude them)
-  const { data: activeMembers } = await admin
-    .from('group_members')
-    .select('user_id, group_id, invite_state, left_at, accepted_at')
-    .is('left_at', null);
+  // Only count memberships in groups that are still active — cancelled/completed groups should not lock users out
+  const { data: activeGroups } = await admin
+    .from('groups')
+    .select('id')
+    .in('phase', ['availability', 'scheduled']);
+
+  const activeGroupIds = (activeGroups ?? []).map((g: any) => g.id);
+
+  const { data: activeMembers } = activeGroupIds.length > 0
+    ? await admin
+        .from('group_members')
+        .select('user_id, group_id, invite_state, left_at, accepted_at')
+        .is('left_at', null)
+        .in('group_id', activeGroupIds)
+    : { data: [] };
 
   const busyUserIds = new Set<string>();
   for (const m of activeMembers ?? []) {
