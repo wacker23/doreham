@@ -40,6 +40,7 @@ type Match = {
   my_availability_submitted: boolean;
   quest_scheduled_at: string | null;
   phase: string;
+  i_left: boolean;
   quest: {
     id: string;
     title: string;
@@ -229,7 +230,7 @@ export default function MatchesPage() {
 
     const { data: allMembers } = await supabase
       .from('group_members')
-      .select('group_id, user_id, invite_state, accepted_at, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
+      .select('group_id, user_id, invite_state, accepted_at, left_at, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
       .in('group_id', groupIds)
       .is('left_at', null);
 
@@ -276,7 +277,12 @@ export default function MatchesPage() {
 
     const built: Match[] = (groups ?? []).map((g: any) => {
       const membersRaw = ((allMembers ?? []).filter((m: any) => m.group_id === g.id) as any[]);
-      const members: GroupMember[] = membersRaw.map((m: any) => ({
+      const groupIsActive = ['availability', 'voting', 'scheduled'].includes(g.phase ?? 'availability');
+      // Hide people who declined / let the invite expire, and (while the group is running) people who left.
+      const visibleMembers = membersRaw.filter((m: any) =>
+        m.invite_state !== 'declined' && m.invite_state !== 'expired' && !(groupIsActive && m.left_at)
+      );
+      const members: GroupMember[] = visibleMembers.map((m: any) => ({
         user_id: m.user_id,
         display_name: m.profiles.display_name,
         photo_url: m.profiles.photo_url,
@@ -303,6 +309,8 @@ export default function MatchesPage() {
         my_availability_submitted: mySubmitted[g.id] ?? false,
         quest_scheduled_at: g.quest_scheduled_at ?? null,
         phase: g.phase ?? 'availability',
+        // I left (or declined) a group that is still running for others → show it in history.
+        i_left: groupIsActive && !!(memberships.find((mm: any) => mm.group_id === g.id)?.left_at),
         is_pending_invites: g.is_pending_invites ?? false,
         my_invite_state: myMember?.invite_state ?? null,
         my_invite_expires_at: null,
@@ -452,12 +460,11 @@ export default function MatchesPage() {
   }
 
   // Split
-  const pendingMatches = matches.filter((m) =>
-    m.quest.status !== 'completed' && m.quest.status !== 'cancelled' && m.phase !== 'cancelled'
-  );
-  const historyMatches = matches.filter((m) =>
-    m.quest.status === 'completed' || m.quest.status === 'cancelled' || m.phase === 'cancelled'
-  );
+  const isClosed = (m: Match) =>
+    m.quest.status === 'completed' || m.quest.status === 'cancelled' ||
+    m.phase === 'cancelled' || m.phase === 'completed' || m.i_left;
+  const pendingMatches = matches.filter((m) => !isClosed(m));
+  const historyMatches = matches.filter((m) => isClosed(m));
   const activeRequests = requests.filter((r) => r.status === 'searching');
   const pastRequests = requests.filter((r) => r.status !== 'searching');
   const totalPending = pendingMatches.length + activeRequests.length;
