@@ -1,25 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const REVIEW_WINDOW_DAYS = 14;
 
 /**
- * GET /api/pending-reviews?user_id=xxx
+ * GET /api/pending-reviews  (signed-in user)
  *
  * Returns list of quests the user completed but hasn't reviewed yet.
  * For each: quest info, other members to review, venue info.
  */
 
-export async function GET(request: Request) {
+export async function GET() {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const userId = auth.user.id;
   try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('user_id');
-    if (!userId) return NextResponse.json({ error: 'user_id required' }, { status: 400 });
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     // Find groups this user was a member of with completed quests within the review window
     const cutoff = new Date(Date.now() - REVIEW_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -27,7 +26,8 @@ export async function GET(request: Request) {
     const { data: memberships } = await admin
       .from('group_members')
       .select('group_id')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .not('accepted_at', 'is', null);
 
     if (!memberships || memberships.length === 0) {
       return NextResponse.json({ pending: [] });
@@ -55,6 +55,7 @@ export async function GET(request: Request) {
         .from('group_members')
         .select('user_id, profiles:profiles!inner(id, display_name, photo_url)')
         .eq('group_id', quest.group_id)
+        .not('accepted_at', 'is', null)
         .neq('user_id', userId);
 
       // Reviews this user has already submitted

@@ -2,9 +2,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { requireAdmin } from '@/lib/server/auth';
 import { venueApprovedEmail } from '@/lib/emails/templates';
 
 export async function POST(request: NextRequest) {
+  // Admin-only: this endpoint sends mail to an arbitrary address.
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
   try {
     const { to, venueName, venueId } = await request.json();
 

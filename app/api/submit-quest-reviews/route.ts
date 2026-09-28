@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const REVIEW_WINDOW_DAYS = 14;
 
@@ -10,7 +9,6 @@ const REVIEW_WINDOW_DAYS = 14;
  * POST /api/submit-quest-reviews
  * body: {
  *   quest_id: string,
- *   reviewer_id: string,
  *   person_reviews: [
  *     { reviewed_user_id, compliment_tags: [], vibe_tags: [], concern_tags: [] }
  *   ],
@@ -20,23 +18,27 @@ const REVIEW_WINDOW_DAYS = 14;
  * Validates:
  *   - Quest is completed
  *   - Within 14-day window
- *   - Reviewer was a member of the group
- *   - Reviewed users were group members
+ *   - Reviewer is the signed-in user, an accepted member, and checked in (if anyone checked in)
+ *   - Reviewed users were accepted group members
+ *   - Tags exist in the tag catalogs
  *   - No duplicate submission
  *
  * On success: inserts reviews + recalculates trust stats for reviewed users
  */
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const reviewer_id = auth.user.id;
   try {
-    const body = await request.json();
-    const { quest_id, reviewer_id, person_reviews, venue_review } = body;
+    const body = await readJson<Record<string, any>>(request);
+    const { quest_id, person_reviews, venue_review } = body;
 
-    if (!quest_id || !reviewer_id) {
-      return NextResponse.json({ error: 'quest_id and reviewer_id required' }, { status: 400 });
+    if (!isUuid(quest_id)) {
+      return NextResponse.json({ error: 'quest_id required' }, { status: 400 });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     // Fetch quest + group
     const { data: quest } = await admin
@@ -64,18 +66,43 @@ export async function POST(request: Request) {
       .select('user_id')
       .eq('group_id', quest.group_id)
       .eq('user_id', reviewer_id)
+      .not('accepted_at', 'is', null)
       .maybeSingle();
 
     if (!reviewerMembership) {
       return NextResponse.json({ error: 'You were not a member of this quest' }, { status: 403 });
     }
 
-    // Get all group members (to validate reviewed users)
+    // If the quest was verified by QR, only people who actually showed up can review.
+    const { data: questCheckIns } = await admin
+      .from('quest_check_ins')
+      .select('user_id')
+      .eq('quest_id', quest_id);
+    if ((questCheckIns ?? []).length > 0 && !(questCheckIns ?? []).some((c: any) => c.user_id === reviewer_id)) {
+      return NextResponse.json({ error: 'Only members who checked in can leave reviews' }, { status: 403 });
+    }
+
+    // Accepted group members (to validate reviewed users)
     const { data: allMembers } = await admin
       .from('group_members')
       .select('user_id')
-      .eq('group_id', quest.group_id);
+      .eq('group_id', quest.group_id)
+      .not('accepted_at', 'is', null);
     const validMemberIds = new Set((allMembers ?? []).map((m: any) => m.user_id));
+
+    // Tag catalogs — reject anything that isn't a real tag id
+    const [compCat, vibeCat, concernCat, venueCompCat, venueConcernCat] = await Promise.all([
+      admin.from('review_compliment_tags').select('id'),
+      admin.from('review_vibe_tags').select('id'),
+      admin.from('review_concern_tags').select('id'),
+      admin.from('venue_compliment_tags').select('id'),
+      admin.from('venue_concern_tags').select('id'),
+    ]);
+    const ids = (r: { data: { id: string }[] | null }) => new Set((r.data ?? []).map((x) => x.id));
+    const validComp = ids(compCat), validVibe = ids(vibeCat), validConcern = ids(concernCat);
+    const validVenueComp = ids(venueCompCat), validVenueConcern = ids(venueConcernCat);
+    const clean = (arr: unknown, valid: Set<string>): string[] =>
+      Array.isArray(arr) ? [...new Set(arr.filter((t): t is string => typeof t === 'string' && valid.has(t)))] : [];
 
     // Insert person reviews
     const insertedPersonReviews: any[] = [];
@@ -85,10 +112,13 @@ export async function POST(request: Request) {
         if (!validMemberIds.has(pr.reviewed_user_id)) continue;
 
         // Skip if no tags at all
-        const hasAny = 
-          (pr.compliment_tags?.length ?? 0) > 0 ||
-          (pr.vibe_tags?.length ?? 0) > 0 ||
-          (pr.concern_tags?.length ?? 0) > 0;
+        pr.compliment_tags = clean(pr.compliment_tags, validComp);
+        pr.vibe_tags = clean(pr.vibe_tags, validVibe);
+        pr.concern_tags = clean(pr.concern_tags, validConcern);
+        const hasAny =
+          pr.compliment_tags.length > 0 ||
+          pr.vibe_tags.length > 0 ||
+          pr.concern_tags.length > 0;
         if (!hasAny) continue;
 
         const { data: inserted, error: prErr } = await admin
@@ -119,6 +149,8 @@ export async function POST(request: Request) {
     // Insert venue review
     let insertedVenueReview: any = null;
     if (venue_review && quest.venue_id) {
+      venue_review.compliment_tags = clean(venue_review.compliment_tags, validVenueComp);
+      venue_review.concern_tags = clean(venue_review.concern_tags, validVenueConcern);
       const hasVenueContent = 
         (venue_review.compliment_tags?.length ?? 0) > 0 ||
         (venue_review.concern_tags?.length ?? 0) > 0 ||

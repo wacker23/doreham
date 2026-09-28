@@ -40,6 +40,7 @@ type Match = {
   my_availability_submitted: boolean;
   quest_scheduled_at: string | null;
   phase: string;
+  i_left: boolean;
   quest: {
     id: string;
     title: string;
@@ -229,7 +230,7 @@ export default function MatchesPage() {
 
     const { data: allMembers } = await supabase
       .from('group_members')
-      .select('group_id, user_id, invite_state, accepted_at, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
+      .select('group_id, user_id, invite_state, accepted_at, left_at, profiles:profiles!inner(id, display_name, photo_url, mbti_type, zodiac_sign, activity_preferences)')
       .in('group_id', groupIds)
       .is('left_at', null);
 
@@ -276,7 +277,12 @@ export default function MatchesPage() {
 
     const built: Match[] = (groups ?? []).map((g: any) => {
       const membersRaw = ((allMembers ?? []).filter((m: any) => m.group_id === g.id) as any[]);
-      const members: GroupMember[] = membersRaw.map((m: any) => ({
+      const groupIsActive = ['availability', 'voting', 'scheduled'].includes(g.phase ?? 'availability');
+      // Hide people who declined / let the invite expire, and (while the group is running) people who left.
+      const visibleMembers = membersRaw.filter((m: any) =>
+        m.invite_state !== 'declined' && m.invite_state !== 'expired' && !(groupIsActive && m.left_at)
+      );
+      const members: GroupMember[] = visibleMembers.map((m: any) => ({
         user_id: m.user_id,
         display_name: m.profiles.display_name,
         photo_url: m.profiles.photo_url,
@@ -303,6 +309,8 @@ export default function MatchesPage() {
         my_availability_submitted: mySubmitted[g.id] ?? false,
         quest_scheduled_at: g.quest_scheduled_at ?? null,
         phase: g.phase ?? 'availability',
+        // I left (or declined) a group that is still running for others → show it in history.
+        i_left: groupIsActive && !!(memberships.find((mm: any) => mm.group_id === g.id)?.left_at),
         is_pending_invites: g.is_pending_invites ?? false,
         my_invite_state: myMember?.invite_state ?? null,
         my_invite_expires_at: null,
@@ -325,7 +333,7 @@ export default function MatchesPage() {
 
     // Load pending reviews
     try {
-      const prResp = await fetch(`/api/pending-reviews?user_id=${user!.id}`);
+      const prResp = await fetch('/api/pending-reviews');
       const prData = await prResp.json();
       setPendingReviews(prData.pending ?? []);
     } catch (e) {
@@ -366,23 +374,28 @@ export default function MatchesPage() {
     }).select('id').single();
 
     if (err) {
-      setError(err.message);
+      // The database enforces these rules too (see guard_match_request_insert).
+      if (err.message.includes('already_searching')) {
+        setError(lang === 'ko' ? '이미 매칭을 찾고 있어요. 진행 중 탭을 확인해 주세요.' : "You're already searching for a match — check the Pending tab.");
+      } else if (err.message.includes('account_frozen')) {
+        setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
+      } else {
+        setError(err.message);
+      }
       setSubmittingRequest(false);
       return;
     }
 
-    // Trigger the algorithm immediately
-    console.log('DEBUG: about to trigger algorithm for request', insertedRequest?.id);
+    // Try to match right away (the server only processes the caller's own request).
+    // If nobody fits yet, the 10-minute cron keeps searching.
     try {
-      const resp = await fetch('/api/process-match-requests', {
+      await fetch('/api/process-match-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request_id: insertedRequest?.id }),
       });
-      const respData = await resp.json();
-      console.log('DEBUG: algorithm response:', respData);
     } catch (e) {
-      console.error('DEBUG: immediate trigger failed', e);
+      console.error('Immediate match attempt failed (cron will retry):', e);
     }
 
     setSubmittingRequest(false);
@@ -424,7 +437,7 @@ export default function MatchesPage() {
       const resp = await fetch('/api/cancel-match-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: requestId, user_id: user!.id }),
+        body: JSON.stringify({ request_id: requestId }),
       });
       const result = await resp.json();
       if (result.error) throw new Error(result.error);
@@ -447,12 +460,11 @@ export default function MatchesPage() {
   }
 
   // Split
-  const pendingMatches = matches.filter((m) =>
-    m.quest.status !== 'completed' && m.quest.status !== 'cancelled' && m.phase !== 'cancelled'
-  );
-  const historyMatches = matches.filter((m) =>
-    m.quest.status === 'completed' || m.quest.status === 'cancelled' || m.phase === 'cancelled'
-  );
+  const isClosed = (m: Match) =>
+    m.quest.status === 'completed' || m.quest.status === 'cancelled' ||
+    m.phase === 'cancelled' || m.phase === 'completed' || m.i_left;
+  const pendingMatches = matches.filter((m) => !isClosed(m));
+  const historyMatches = matches.filter((m) => isClosed(m));
   const activeRequests = requests.filter((r) => r.status === 'searching');
   const pastRequests = requests.filter((r) => r.status !== 'searching');
   const totalPending = pendingMatches.length + activeRequests.length;
@@ -483,14 +495,13 @@ export default function MatchesPage() {
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
 
   async function acceptInvite(groupId: string) {
-    console.log('DEBUG accept — group:', groupId, 'user:', user!.id);
     setRespondingTo(groupId);
     setError(null);
     try {
       const resp = await fetch('/api/accept-match-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: groupId, user_id: user!.id }),
+        body: JSON.stringify({ group_id: groupId }),
       });
       const result = await resp.json();
       if (result.error) throw new Error(result.error);
@@ -509,13 +520,44 @@ export default function MatchesPage() {
       const resp = await fetch('/api/decline-match-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: groupId, user_id: user!.id }),
+        body: JSON.stringify({ group_id: groupId }),
       });
       const result = await resp.json();
       if (result.error) throw new Error(result.error);
       await loadAll();
     } catch (e: any) {
       setError(e.message ?? 'Decline failed');
+    }
+    setRespondingTo(null);
+  }
+
+  async function leaveGroup(groupId: string, isConfirmed: boolean) {
+    const msg = isConfirmed
+      ? (lang === 'ko'
+          ? '정말 이 그룹을 나가시겠습니까?\n\n확정된 그룹을 나가면 경고 1회가 부과돼요 (3회: 48시간 정지, 4회 이상: 1주일 정지). 남은 멤버가 2명 이상이면 그룹은 계속 진행돼요.'
+          : 'Leave this group?\n\nLeaving a confirmed group gives you a strike (3rd strike: 48h freeze, 4th+: 1 week). If 2 or more people remain, the group continues without you.')
+      : (lang === 'ko'
+          ? '이 그룹을 나가시겠습니까? 아직 확정 전이라 경고는 없어요.'
+          : "Leave this group? It isn't confirmed yet, so there's no strike.");
+    if (!confirm(msg)) return;
+    setRespondingTo(groupId);
+    setError(null);
+    try {
+      const resp = await fetch('/api/leave-group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId }),
+      });
+      const result = await resp.json();
+      if (result.error) {
+        if (result.error === 'meetup_already_started') {
+          throw new Error(lang === 'ko' ? '만남이 이미 시작되어 나갈 수 없어요.' : 'The meetup has already started, so you can no longer leave.');
+        }
+        throw new Error(result.error);
+      }
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message ?? 'Leave failed');
     }
     setRespondingTo(null);
   }
@@ -658,6 +700,7 @@ export default function MatchesPage() {
                     user={user}
                     onAccept={acceptInvite}
                     onDecline={declineInvite}
+                    onLeave={leaveGroup}
                     respondingTo={respondingTo}
                   />
                 ))}
@@ -1189,13 +1232,14 @@ export default function MatchesPage() {
 }
 
 // Full match card (same design as old /matches page)
-function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, respondingTo }: { 
-  match: Match; 
-  lang: 'en' | 'ko'; 
-  user: any; 
+function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLeave, respondingTo }: {
+  match: Match;
+  lang: 'en' | 'ko';
+  user: any;
   isHistory?: boolean;
   onAccept?: (groupId: string) => void;
   onDecline?: (groupId: string) => void;
+  onLeave?: (groupId: string, isConfirmed: boolean) => void;
   respondingTo?: string | null;
 }) {
   const cat = CATEGORY_LABELS[match.quest.venue.category];
@@ -1431,6 +1475,19 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, resp
         </a>
       )}
 
+      {/* Leave group — accepted members, until the meetup starts */}
+      {!isHistory && onLeave && match.my_invite_state === 'accepted' &&
+        !(match.quest_scheduled_at && Date.now() >= new Date(match.quest_scheduled_at).getTime()) && (
+        <button
+          type="button"
+          className="leave-btn"
+          onClick={() => onLeave(match.group_id, !match.is_pending_invites)}
+          disabled={respondingTo === match.group_id}
+        >
+          {lang === 'ko' ? '그룹 나가기' : 'Leave group'}
+        </button>
+      )}
+
       <style jsx>{`
         .match-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 28px; }
         .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -1474,6 +1531,9 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, resp
         .avail-progress { background: rgba(255, 255, 255, 0.25); padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
         .avail-btn.submitted .avail-progress { background: rgba(15, 157, 119, 0.15); }
         .chat-open-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--persimmon); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+        .leave-btn { display: block; width: 100%; margin-top: 14px; padding: 10px 16px; background: transparent; border: none; color: var(--ink-60); font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+        .leave-btn:hover { color: #d64545; }
+        .leave-btn:disabled { opacity: 0.5; cursor: default; }
         .ice-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #7c9df0, #a78bfa); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 8px; text-decoration: none; }
         .ice-btn:hover { opacity: 0.92; }
         .ice-badge { background: rgba(255, 255, 255, 0.25); color: #fff; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; }

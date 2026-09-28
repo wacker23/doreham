@@ -5,8 +5,12 @@
 // Add DATA_GO_KR_API_KEY to your environment variables.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireUser } from '@/lib/server/auth';
 
 export async function POST(request: NextRequest) {
+  // Signed-in users only, so the government API quota can't be burned by strangers.
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
   try {
     const { brn } = await request.json();
 

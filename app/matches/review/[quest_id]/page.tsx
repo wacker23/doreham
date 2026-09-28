@@ -84,7 +84,7 @@ export default function ReviewQuestPage() {
 
     try {
       const [pendingRes, tagsRes] = await Promise.all([
-        fetch(`/api/pending-reviews?user_id=${user!.id}`),
+        fetch('/api/pending-reviews'),
         Promise.all([
           supabase.from('review_compliment_tags').select('*').order('display_order'),
           supabase.from('review_vibe_tags').select('*').order('display_order'),
@@ -178,7 +178,6 @@ export default function ReviewQuestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           quest_id: pending.quest_id,
-          reviewer_id: user!.id,
           person_reviews: personReviews,
           venue_review: venueReviewPayload,
         }),

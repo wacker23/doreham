@@ -1,25 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { kstDateString } from '@/lib/server/time';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
  * POST /api/quest-check-in
  * body: {
- *   user_id: string,
  *   group_id: string,
  *   qr_code: string,        // Scanned or entered code (e.g. "ABCD-1234")
- *   latitude?: number,       // From navigator.geolocation
- *   longitude?: number,
+ *   latitude: number,        // From navigator.geolocation (required)
+ *   longitude: number,
  * }
  *
  * Validates:
  *   1. User is an active member of the group
  *   2. QR code is valid for the venue tied to this group's quest
- *   3. QR is for TODAY
+ *   3. QR is for TODAY (Korean date)
  *   4. Current time is within check-in window (40 min before to 2h after quest_scheduled_at)
- *   5. If GPS provided: user is within 200m of venue
+ *   5. GPS is required: user is within 200m of the venue (if the venue has coordinates)
  *   6. User hasn't already checked in for this quest
  *
  * On success: creates quest_check_ins row + evaluates if quest should complete.
@@ -45,13 +44,25 @@ function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) 
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const user_id = auth.user.id;
   try {
-    const { user_id, group_id, qr_code, latitude, longitude } = await request.json();
-    if (!user_id || !group_id || !qr_code) {
-      return NextResponse.json({ error: 'user_id, group_id, qr_code required' }, { status: 400 });
+    const { group_id, qr_code, latitude, longitude } = await readJson<Record<string, any>>(request);
+    if (!isUuid(group_id) || typeof qr_code !== 'string' || !qr_code.trim()) {
+      return NextResponse.json({ error: 'group_id, qr_code required' }, { status: 400 });
+    }
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (latitude == null || longitude == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return NextResponse.json({
+        error: 'location_required',
+        message_en: 'Turn on location so we can confirm you are at the venue.',
+        message_ko: '매장에 계신지 확인할 수 있도록 위치 권한을 켜 주세요.',
+      }, { status: 400 });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     // 1. Verify group membership
     const { data: membership } = await admin
@@ -106,7 +117,7 @@ export async function POST(request: Request) {
     }
 
     // Check QR is for today
-    const today = new Date().toISOString().split('T')[0];
+    const today = kstDateString();
     if (qrRecord.valid_date !== today) {
       return NextResponse.json({ error: 'This QR code has expired. Ask the venue for today\'s code.' }, { status: 400 });
     }
@@ -140,8 +151,8 @@ export async function POST(request: Request) {
     let locationVerified = false;
     const venue = quest.venue as any;
 
-    if (latitude != null && longitude != null && venue.latitude != null && venue.longitude != null) {
-      distance = distanceMeters(latitude, longitude, Number(venue.latitude), Number(venue.longitude));
+    if (venue.latitude != null && venue.longitude != null) {
+      distance = distanceMeters(lat, lng, Number(venue.latitude), Number(venue.longitude));
       if (distance > MAX_DISTANCE_M) {
         return NextResponse.json({
           error: `You seem to be ${Math.round(distance)}m from ${venue.business_name_display}. Get closer to the venue to check in.`,
@@ -149,7 +160,7 @@ export async function POST(request: Request) {
       }
       locationVerified = true;
     }
-    // If no GPS: allow but flag as unverified
+    // Venue has no coordinates on file: allow, but flag as unverified for admin review.
 
     // 6. Check for existing check-in
     const { data: existing } = await admin
@@ -171,8 +182,8 @@ export async function POST(request: Request) {
         user_id,
         venue_id: quest.venue_id,
         qr_code_id: qrRecord.id,
-        latitude,
-        longitude,
+        latitude: lat,
+        longitude: lng,
         distance_m: distance,
         location_verified: locationVerified,
       })

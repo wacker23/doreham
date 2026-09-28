@@ -367,14 +367,23 @@ export default function AdminMatchesPage() {
     const selectedProfilesArr = profiles.filter((p) => selectedUserIds.has(p.id));
 
     try {
-      const { data: group, error: groupError } = await supabase.from('groups').insert({ city: selectedCity, created_by: user!.id }).select('id').single();
+      const nowIso = new Date().toISOString();
+      const { data: group, error: groupError } = await supabase.from('groups').insert({
+        city: selectedCity,
+        created_by: user!.id,
+        phase: 'availability',
+        is_pending_invites: false,
+        activated_at: nowIso,
+        availability_phase_ends_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }).select('id').single();
       if (groupError || !group) throw new Error(`Group creation failed: ${groupError?.message}`);
 
       const memberRows = [...selectedUserIds].map((uid) => ({ 
         group_id: group.id, 
         user_id: uid,
-        invited_at: new Date().toISOString(),
-        accepted_at: new Date().toISOString(),
+        invited_at: nowIso,
+        accepted_at: nowIso,
+        invite_state: 'accepted' as const,
       }));
       const { error: membersError } = await supabase.from('group_members').insert(memberRows);
       if (membersError) throw new Error(`Members insert failed: ${membersError.message}`);
@@ -495,6 +504,12 @@ export default function AdminMatchesPage() {
       await supabase.from('group_members').update({
         left_at: new Date().toISOString(),
       }).eq('group_id', match.group_id).is('left_at', null);
+
+      // Close the group so it no longer counts as active anywhere
+      await supabase.from('groups').update({
+        phase: 'completed',
+        completed_at: new Date().toISOString(),
+      }).eq('id', match.group_id);
 
       setSuccess(`✓ Match completed: ${match.venue_name}`);
       await loadExistingMatches();

@@ -1,55 +1,52 @@
 // app/api/emails/venue-submitted/route.ts
-// Server-side email sender for venue submission confirmation.
+// Confirmation email after a venue owner submits a listing.
+//
+// POST { venue_id } — signed-in owner only. The recipient is the venue's own
+// contact_email from the database, never an address supplied by the browser
+// (this used to be an open relay: { to, venueName }).
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import { NextResponse } from 'next/server';
 import { venueSubmittedEmail } from '@/lib/emails/templates';
+import { isUuid, jsonError, readJson, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { EMAIL_FROM_PLAIN, getResend } from '@/lib/server/emails/common';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+
+  const { venue_id } = await readJson<{ venue_id: string }>(request);
+  if (!isUuid(venue_id)) return jsonError('venue_id required', 400);
+
+  const { data: venue } = await getAdmin()
+    .from('venues')
+    .select('owner_id, contact_email, business_name_display, created_at')
+    .eq('id', venue_id)
+    .maybeSingle();
+
+  if (!venue || venue.owner_id !== auth.user.id) return jsonError('not_found', 404);
+  if (!venue.contact_email) return NextResponse.json({ ok: true, skipped: 'no_contact_email' });
+  // Only right after submission — stops this from being replayed to spam the address.
+  if (Date.now() - new Date(venue.created_at).getTime() > 15 * 60 * 1000) {
+    return NextResponse.json({ ok: true, skipped: 'too_late' });
+  }
+
   try {
-    const { to, venueName } = await request.json();
-
-    if (!to || !venueName) {
-      return NextResponse.json(
-        { error: 'missing_fields' },
-        { status: 400 }
-      );
-    }
-
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.error('RESEND_API_KEY not set');
-      return NextResponse.json(
-        { error: 'email_not_configured' },
-        { status: 500 }
-      );
-    }
-
-    const resend = new Resend(apiKey);
-    const { subject, html } = venueSubmittedEmail(venueName);
-
-    const result = await resend.emails.send({
-      from: 'Doreham <noreply@doreham.co.kr>',
+    const { subject, html } = venueSubmittedEmail(venue.business_name_display);
+    const result = await getResend().emails.send({
+      from: EMAIL_FROM_PLAIN,
       replyTo: 'info@doreham.co.kr',
-      to: [to],
+      to: [venue.contact_email],
       subject,
       html,
     });
-
     if (result.error) {
       console.error('Resend error:', result.error);
-      return NextResponse.json(
-        { error: 'send_failed', details: result.error.message },
-        { status: 500 }
-      );
+      return jsonError('send_failed', 500);
     }
-
     return NextResponse.json({ ok: true, id: result.data?.id });
   } catch (error) {
     console.error('Email send error:', error);
-    return NextResponse.json(
-      { error: 'server_error' },
-      { status: 500 }
-    );
+    return jsonError('server_error', 500);
   }
 }

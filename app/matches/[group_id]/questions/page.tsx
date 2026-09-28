@@ -61,7 +61,7 @@ export default function QuestionsPage() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`/api/quest-questions/${groupId}?user_id=${user.id}`);
+      const resp = await fetch(`/api/quest-questions/${groupId}`);
       const data = await resp.json();
       if (!data.ok) {
         setError(data.error ?? 'Failed to load');
@@ -92,7 +92,7 @@ export default function QuestionsPage() {
       const resp = await fetch('/api/mark-question-set-complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: groupId, user_id: user.id, set: setNum }),
+        body: JSON.stringify({ group_id: groupId, set: setNum }),
       });
       const data = await resp.json();
       if (data.ok) {
@@ -114,7 +114,7 @@ export default function QuestionsPage() {
       const resp = await fetch('/api/acknowledge-depths-warning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: groupId, user_id: user.id }),
+        body: JSON.stringify({ group_id: groupId }),
       });
       const data = await resp.json();
       if (data.ok) {

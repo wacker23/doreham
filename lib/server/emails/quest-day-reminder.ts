@@ -1,25 +1,21 @@
-import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
-
-const resend = new Resend(process.env.RESEND_API_KEY!);
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr';
+// Server-only. Moved from app/api/emails/quest-day-reminder/route.ts (Sep 28 2026) so it is
+// called directly instead of via an unauthenticated internal HTTP endpoint.
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
 
 /**
- * POST /api/emails/quest-day-reminder
+ * Server helper (formerly POST /api/emails/quest-day-reminder)
  * body: { user_id, venue_name, scheduled_at }
  */
 
-export async function POST(request: Request) {
+export async function sendQuestDayReminderEmail(params: { user_id: string; venue_name: string; scheduled_at: string }): Promise<EmailResult> {
   try {
-    const { user_id, venue_name, scheduled_at } = await request.json();
+    const { user_id, venue_name, scheduled_at } = params;
     if (!user_id || !venue_name || !scheduled_at) {
-      return NextResponse.json({ error: 'user_id, venue_name, scheduled_at required' }, { status: 400 });
+      return emailResult({ error: 'user_id, venue_name, scheduled_at required' }, { status: 400 });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     const { data: profile } = await admin
       .from('profiles')
@@ -30,7 +26,7 @@ export async function POST(request: Request) {
     const { data: userData } = await admin.auth.admin.getUserById(user_id);
     const email = userData?.user?.email;
 
-    if (!profile || !email) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!profile || !email) return emailResult({ error: 'User not found' }, { status: 404 });
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
     const name = profile.display_name || (lang === 'ko' ? '친구' : 'friend');
@@ -93,16 +89,17 @@ export async function POST(request: Request) {
   </p>
 </div>`;
 
-    await resend.emails.send({
-      from: 'Doreham / 도레함 <noreply@doreham.co.kr>',
+    const sent = await getResend().emails.send({
+      from: EMAIL_FROM_BRANDED,
       to: email,
       subject,
       html,
     });
+    if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });
 
-    return NextResponse.json({ ok: true });
+    return emailResult({ ok: true });
   } catch (e: any) {
     console.error('Quest-day email failed:', e);
-    return NextResponse.json({ error: e.message ?? 'Unknown' }, { status: 500 });
+    return emailResult({ error: e.message ?? 'Unknown' }, { status: 500 });
   }
 }

@@ -1,127 +1,53 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { isUuid, jsonError, readJson, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { leaveGroup } from '@/lib/server/groupLifecycle';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
+/**
+ * POST { request_id } — the signed-in user cancels their own match request.
+ *  - still searching             → cancelled, nothing else
+ *  - matched, invites pending    → group withdrawn for everyone, no strike
+ *  - matched, group confirmed    → same as leaving the group (strike; group continues if ≥2 remain)
+ */
 export async function POST(request: Request) {
-  try {
-    const { request_id, user_id } = await request.json();
-    if (!request_id || !user_id) {
-      return NextResponse.json({ error: 'request_id and user_id required' }, { status: 400 });
-    }
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const userId = auth.user.id;
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const { request_id } = await readJson<{ request_id: string }>(request);
+  if (!isUuid(request_id)) return jsonError('request_id required', 400);
 
-    const { data: req } = await admin
+  const admin = getAdmin();
+  const { data: req } = await admin
+    .from('match_requests')
+    .select('id, user_id, status, matched_group_id')
+    .eq('id', request_id)
+    .maybeSingle();
+
+  if (!req) return jsonError('Request not found', 404);
+  if (req.user_id !== userId) return jsonError('Not your request', 403);
+
+  const now = new Date().toISOString();
+
+  if (req.status === 'searching' || !req.matched_group_id) {
+    await admin
       .from('match_requests')
-      .select('user_id, status, matched_group_id')
+      .update({ status: 'cancelled_by_user', resolved_at: now })
       .eq('id', request_id)
-      .maybeSingle();
-
-    if (!req) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
-    if (req.user_id !== user_id) return NextResponse.json({ error: 'Not your request' }, { status: 403 });
-
-    // Mark request cancelled
-    await admin.from('match_requests').update({
-      status: 'cancelled_by_user',
-      resolved_at: new Date().toISOString(),
-    }).eq('id', request_id);
-
-    // If a group was matched → clean it up
-    if (req.matched_group_id) {
-      const groupId = req.matched_group_id;
-
-      // Check if group is still pending invites (not yet activated)
-      const { data: group } = await admin
-        .from('groups')
-        .select('is_pending_invites, phase')
-        .eq('id', groupId)
-        .maybeSingle();
-
-      // Mark all members as left
-      await admin.from('group_members').update({
-        left_at: new Date().toISOString(),
-      }).eq('group_id', groupId).is('left_at', null);
-
-      // Mark group cleanly closed
-      await admin.from('groups').update({
-        is_pending_invites: false,
-        phase: 'cancelled',
-      }).eq('id', groupId);
-
-      // Cancel the quest
-      await admin.from('quests').update({
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-      }).eq('group_id', groupId);
-
-      // If the requester cancelled AFTER availability phase started → count as strike
-      if (group?.phase === 'availability' || group?.phase === 'voting') {
-        // Count current strikes
-        const { data: currentPenalties } = await admin
-          .from('user_penalties')
-          .select('strike_number')
-          .eq('user_id', user_id)
-          .order('strike_number', { ascending: false })
-          .limit(1);
-
-        const nextStrike = (currentPenalties?.[0]?.strike_number ?? 0) + 1;
-
-        // Freeze duration based on strike count
-        let freezeUntil: string | null = null;
-        if (nextStrike >= 4) {
-          freezeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 1 week
-        } else if (nextStrike === 3) {
-          freezeUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
-        }
-
-        await admin.from('user_penalties').insert({
-          user_id,
-          reason: 'cancelled_match',
-          strike_number: nextStrike,
-          freeze_until: freezeUntil,
-          notes: `Cancelled match request after ${group.phase} phase started (group ${groupId})`,
-        });
-
-        // Fire-and-forget: notification + email
-        const APP_URL_INT = process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr';
-        fetch(`${APP_URL_INT}/api/create-strike-notification`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id,
-            reason: 'cancelled_match',
-            strike_number: nextStrike,
-            freeze_until: freezeUntil,
-          }),
-        }).catch((e) => console.error('Strike notification failed (non-fatal):', e));
-
-        fetch(`${APP_URL_INT}/api/emails/strike-issued`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id,
-            reason: 'cancelled_match',
-            strike_number: nextStrike,
-            freeze_until: freezeUntil,
-          }),
-        }).catch((e) => console.error('Strike email failed (non-fatal):', e));
-
-        return NextResponse.json({
-          ok: true,
-          cancelled_group: true,
-          strike_issued: true,
-          strike_number: nextStrike,
-          frozen_until: freezeUntil,
-        });
-      }
-
-      return NextResponse.json({ ok: true, cancelled_group: true, strike_issued: false });
-    }
-
-    return NextResponse.json({ ok: true, cancelled_group: false });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown error' }, { status: 500 });
+      .in('status', ['searching', 'matched']);
+    return NextResponse.json({ ok: true, cancelled_group: false, strike_issued: false });
   }
+
+  const result = await leaveGroup(userId, req.matched_group_id);
+  if (!result.ok && result.error !== 'not_a_member') return jsonError(result.error, result.status);
+
+  await admin.from('match_requests').update({ status: 'cancelled_by_user', resolved_at: now }).eq('id', request_id);
+
+  return NextResponse.json({
+    ok: true,
+    cancelled_group: result.ok ? !result.group_continues : false,
+    strike_issued: result.ok ? result.strike_issued : false,
+    strike_number: result.ok ? result.strike_number : undefined,
+    frozen_until: result.ok ? result.freeze_until : undefined,
+  });
 }

@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
  * POST /api/acknowledge-depths-warning
- * body: { group_id, user_id }
+ * body: { group_id }  (signed-in user)
  *
  * Records that the group has acknowledged the Set 4 (depths) warning.
  * Set 4 questions are only visible after this is set.
@@ -14,13 +13,16 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
  */
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const user_id = auth.user.id;
   try {
-    const { group_id, user_id } = await request.json();
-    if (!group_id || !user_id) {
+    const { group_id } = await readJson<Record<string, any>>(request);
+    if (!isUuid(group_id)) {
       return NextResponse.json({ error: 'group_id, user_id required' }, { status: 400 });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     // Verify member
     const { data: membership } = await admin
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
       .eq('group_id', group_id)
       .eq('user_id', user_id)
       .is('left_at', null)
+      .not('accepted_at', 'is', null)
       .maybeSingle();
 
     if (!membership) return NextResponse.json({ error: 'Not a member' }, { status: 403 });

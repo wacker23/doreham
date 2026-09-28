@@ -1,28 +1,30 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
  * POST /api/mark-question-set-complete
- * body: { group_id, user_id, set: 1 | 2 | 3 | 4 }
+ * body: { group_id, set: 1 | 2 | 3 | 4 }  (signed-in user)
  *
  * Marks a set complete for the group. Enforces progressive unlock:
  * you can only complete a set if all previous sets are complete.
  */
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const user_id = auth.user.id;
   try {
-    const { group_id, user_id, set } = await request.json();
-    if (!group_id || !user_id || !set) {
+    const { group_id, set } = await readJson<Record<string, any>>(request);
+    if (!isUuid(group_id) || !set) {
       return NextResponse.json({ error: 'group_id, user_id, set required' }, { status: 400 });
     }
     if (![1, 2, 3, 4].includes(set)) {
       return NextResponse.json({ error: 'set must be 1, 2, 3, or 4' }, { status: 400 });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     // Verify member
     const { data: membership } = await admin
@@ -31,6 +33,7 @@ export async function POST(request: Request) {
       .eq('group_id', group_id)
       .eq('user_id', user_id)
       .is('left_at', null)
+      .not('accepted_at', 'is', null)
       .maybeSingle();
 
     if (!membership) return NextResponse.json({ error: 'Not a member' }, { status: 403 });
