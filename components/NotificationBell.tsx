@@ -67,13 +67,25 @@ export function NotificationBell({ lang }: Props) {
     if (!userId) return;
     loadNotifications();
 
-    // Subscribe to real-time inserts for this user
+    // Real-time: new notifications, and read/dismiss changes made in another tab or device
     const channel = supabase
       .channel(`notifications:${userId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          loadNotifications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${userId}`,
@@ -137,12 +149,21 @@ export function NotificationBell({ lang }: Props) {
 
   async function handleDismiss(e: React.MouseEvent, notificationId: string) {
     e.stopPropagation();
-    await fetch('/api/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'dismiss', notification_id: notificationId }),
-    });
+    // Deleting an unread notification must also take it off the badge.
+    const wasUnread = notifications.some((n) => n.id === notificationId && !n.read_at);
     setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      const resp = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'dismiss', notification_id: notificationId }),
+      });
+      if (!resp.ok) throw new Error(`dismiss failed: ${resp.status}`);
+    } catch (err) {
+      console.error(err);
+      loadNotifications(); // re-sync list + badge with the server
+    }
   }
 
   function timeAgo(dateStr: string): string {
