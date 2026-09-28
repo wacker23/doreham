@@ -1,29 +1,27 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
- * GET /api/quest-questions/[group_id]?user_id=xxx
+ * GET /api/quest-questions/[group_id]  (signed-in user)
  *
  * Returns the group's conversation questions with progress state.
  * On first call for a group, randomly selects 5 questions per set and stores them.
- * User must be a member of the group.
+ * User must be an accepted member of the group.
  */
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ group_id: string }> }
 ) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const user_id = auth.user.id;
   try {
     const { group_id } = await params;
-    const url = new URL(request.url);
-    const user_id = url.searchParams.get('user_id');
 
-    if (!user_id) return NextResponse.json({ error: 'user_id required' }, { status: 400 });
-
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     // Verify user is a member of this group
     const { data: membership } = await admin
@@ -32,6 +30,7 @@ export async function GET(
       .eq('group_id', group_id)
       .eq('user_id', user_id)
       .is('left_at', null)
+      .not('accepted_at', 'is', null)
       .maybeSingle();
 
     if (!membership) return NextResponse.json({ error: 'Not a member' }, { status: 403 });
@@ -66,13 +65,17 @@ export async function GET(
         set_4_question_ids: pickRandom(depths.data, 5),
       };
 
-      const { data: inserted } = await admin
+      // Two members can open the page at the same moment — first insert wins, both read it back.
+      await admin
         .from('group_question_progress')
-        .insert(newProgress)
+        .upsert(newProgress, { onConflict: 'group_id', ignoreDuplicates: true });
+      const { data: stored } = await admin
+        .from('group_question_progress')
         .select('*')
-        .single();
-
-      progress = inserted;
+        .eq('group_id', group_id)
+        .maybeSingle();
+      progress = stored;
+      if (!progress) return NextResponse.json({ error: 'Could not initialise questions' }, { status: 500 });
     }
 
     // Fetch full question texts for all 4 sets

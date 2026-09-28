@@ -1,27 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
+import 'server-only';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
 /**
- * Server-side helper to create notifications.
- * Called from other API routes (accept-match-invite, process-match-requests, etc.)
- * to create in-app notifications alongside emails.
- *
- * Usage:
- *   await createNotification({
- *     user_id: '...',
- *     type: 'match_invite',
- *     title_en: 'You have a new match!',
- *     title_ko: '새 매칭이 있어요!',
- *     body_en: 'A group is waiting for you to accept.',
- *     body_ko: '그룹에서 수락을 기다리고 있어요.',
- *     action_url: '/matches',
- *     is_important: true,
- *   });
+ * Server-side helper to create in-app notifications (service role).
+ * Every user-facing string is bilingual (KO + EN).
  */
 
 export type NotificationType =
   | 'match_invite'
+  | 'match_found'
   | 'match_activated'
   | 'match_cancelled'
+  | 'no_match_found'
+  | 'member_left'
+  | 'quest_scheduled'
   | 'availability_reminder'
   | 'check_in_reminder'
   | 'quest_day_reminder'
@@ -40,31 +32,35 @@ export type NotificationPayload = {
   is_important?: boolean;
 };
 
+function toRow(p: NotificationPayload) {
+  return {
+    user_id: p.user_id,
+    type: p.type,
+    title_en: p.title_en,
+    title_ko: p.title_ko,
+    body_en: p.body_en ?? null,
+    body_ko: p.body_ko ?? null,
+    action_url: p.action_url ?? null,
+    is_important: p.is_important ?? false,
+  };
+}
+
 export async function createNotification(payload: NotificationPayload): Promise<{ ok: boolean; error?: string }> {
+  return createNotifications([payload]);
+}
+
+export async function createNotifications(payloads: NotificationPayload[]): Promise<{ ok: boolean; error?: string }> {
+  if (payloads.length === 0) return { ok: true };
   try {
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { error } = await admin.from('notifications').insert({
-      user_id: payload.user_id,
-      type: payload.type,
-      title_en: payload.title_en,
-      title_ko: payload.title_ko,
-      body_en: payload.body_en ?? null,
-      body_ko: payload.body_ko ?? null,
-      action_url: payload.action_url ?? null,
-      is_important: payload.is_important ?? false,
-    });
-
+    const { error } = await getAdmin().from('notifications').insert(payloads.map(toRow));
     if (error) {
-      console.error('createNotification failed:', error);
+      console.error('createNotifications failed:', error);
       return { ok: false, error: error.message };
     }
     return { ok: true };
-  } catch (e: any) {
-    console.error('createNotification exception:', e);
-    return { ok: false, error: e.message ?? 'Unknown' };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown';
+    console.error('createNotifications exception:', msg);
+    return { ok: false, error: msg };
   }
 }

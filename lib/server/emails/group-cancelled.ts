@@ -1,21 +1,16 @@
-import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
+// Server-only. Moved from app/api/emails/group-cancelled/route.ts (Sep 28 2026) so it is
+// called directly instead of via an unauthenticated internal HTTP endpoint.
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://doreham.co.kr';
-
-export async function POST(request: Request) {
+export async function sendGroupCancelledEmail(params: { user_id: string; reason?: string; will_retry?: boolean }): Promise<EmailResult> {
   try {
-    const { user_id, reason, will_retry } = await request.json();
+    const { user_id, reason, will_retry } = params;
     if (!user_id) {
-      return NextResponse.json({ error: 'user_id required' }, { status: 400 });
+      return emailResult({ error: 'user_id required' }, { status: 400 });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     const { data: profile } = await admin
       .from('profiles')
@@ -26,7 +21,7 @@ export async function POST(request: Request) {
     const { data: userData } = await admin.auth.admin.getUserById(user_id);
     const email = userData?.user?.email;
 
-    if (!profile || !email) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!profile || !email) return emailResult({ error: 'User not found' }, { status: 404 });
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
 
@@ -76,16 +71,17 @@ export async function POST(request: Request) {
   </p>
 </div>`;
 
-    await resend.emails.send({
-      from: 'Doreham / 도레함 <noreply@doreham.co.kr>',
+    const sent = await getResend().emails.send({
+      from: EMAIL_FROM_BRANDED,
       to: email,
       subject,
       html,
     });
+    if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });
 
-    return NextResponse.json({ ok: true });
+    return emailResult({ ok: true });
   } catch (e: any) {
     console.error('Group cancelled email failed:', e);
-    return NextResponse.json({ error: e.message ?? 'Unknown' }, { status: 500 });
+    return emailResult({ error: e.message ?? 'Unknown' }, { status: 500 });
   }
 }

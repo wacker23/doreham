@@ -48,7 +48,7 @@ export function NotificationBell({ lang }: Props) {
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`/api/notifications?user_id=${userId}&limit=20`);
+      const resp = await fetch('/api/notifications?limit=20');
       const data = await resp.json();
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unread_count ?? 0);
@@ -108,7 +108,7 @@ export function NotificationBell({ lang }: Props) {
       await fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'mark_read', user_id: userId, notification_id: n.id }),
+        body: JSON.stringify({ action: 'mark_read', notification_id: n.id }),
       });
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
       setUnreadCount((c) => Math.max(0, c - 1));
@@ -124,7 +124,7 @@ export function NotificationBell({ lang }: Props) {
     await fetch('/api/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'mark_all_read', user_id: userId }),
+      body: JSON.stringify({ action: 'mark_all_read' }),
     });
     const now = new Date().toISOString();
     setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? now })));
@@ -136,7 +136,7 @@ export function NotificationBell({ lang }: Props) {
     await fetch('/api/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'dismiss', user_id: userId, notification_id: notificationId }),
+      body: JSON.stringify({ action: 'dismiss', notification_id: notificationId }),
     });
     setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
   }

@@ -1,37 +1,45 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { isAdminUser, isUuid, requireUser } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { kstDateString } from '@/lib/server/time';
+import { randomInt } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
  * GET /api/venue-qr/[venue_id]
  * Returns today's active QR code for a venue.
  * If none exists for today, creates a new one.
- * Anyone can call this (venue owner sees it in their dashboard,
- * users see it if they need to display QR for the venue).
+ * Only the venue's owner (or an admin) can see it — the code is what proves
+ * a user is physically at the venue, so it must never be public.
  */
 
 // Generate a short human-readable code (like "ABCD-1234")
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars (O, 0, I, 1)
   let letters = '';
-  for (let i = 0; i < 4; i++) letters += chars[Math.floor(Math.random() * chars.length)];
-  const nums = String(Math.floor(1000 + Math.random() * 9000));
+  for (let i = 0; i < 4; i++) letters += chars[randomInt(chars.length)];
+  const nums = String(randomInt(1000, 10000));
   return `${letters}-${nums}`;
 }
 
 function todayDate() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return kstDateString();
 }
 
-export async function GET(request: Request, { params }: { params: Promise<{ venue_id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ venue_id: string }> }) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
   try {
     const { venue_id } = await params;
-    if (!venue_id) return NextResponse.json({ error: 'venue_id required' }, { status: 400 });
+    if (!isUuid(venue_id)) return NextResponse.json({ error: 'venue_id required' }, { status: 400 });
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
+
+    const { data: venue } = await admin.from('venues').select('owner_id').eq('id', venue_id).maybeSingle();
+    if (!venue) return NextResponse.json({ error: 'Venue not found' }, { status: 404 });
+    if (venue.owner_id !== auth.user.id && !(await isAdminUser(auth.user.id))) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
     const today = todayDate();
 
     // Check for existing code today

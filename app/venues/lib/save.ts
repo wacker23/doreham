@@ -103,6 +103,7 @@ export async function submitVenue(
 
   if (venueError || !venue) {
     console.error('Venue insert error:', venueError);
+    if (venueError?.message?.includes('venue_limit_reached')) return { ok: false, error: 'venue_limit_reached' };
     return { ok: false, error: venueError?.message ?? 'unknown_error' };
   }
 
@@ -132,10 +133,8 @@ export async function submitVenue(
     fetch('/api/emails/venue-submitted', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: formData.contact_email,
-        venueName: formData.business_name_display,
-      }),
+      // Server looks up the owner's contact email itself (no client-supplied recipient).
+      body: JSON.stringify({ venue_id: venue.id }),
     }).catch((e) => {
       console.error('Email trigger failed (non-fatal):', e);
     });

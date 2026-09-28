@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSessionClient } from '@/lib/supabase/server';
+import { isAdminUser, isUuid } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
  * GET /api/venue-stats/[venue_id]
@@ -20,9 +20,9 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 export async function GET(request: Request, { params }: { params: Promise<{ venue_id: string }> }) {
   try {
     const { venue_id } = await params;
-    if (!venue_id) return NextResponse.json({ error: 'venue_id required' }, { status: 400 });
+    if (!isUuid(venue_id)) return NextResponse.json({ error: 'venue_id required' }, { status: 400 });
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const admin = getAdmin();
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
@@ -83,13 +83,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ venu
       }
     }
 
+    // Private concern tags are only for the venue owner (and admins).
+    let canSeePrivate = false;
+    try {
+      const session = await createSessionClient();
+      const { data: { user } } = await session.auth.getUser();
+      if (user) {
+        const { data: v } = await admin.from('venues').select('owner_id').eq('id', venue_id).maybeSingle();
+        canSeePrivate = v?.owner_id === user.id || (await isAdminUser(user.id));
+      }
+    } catch {
+      canSeePrivate = false;
+    }
+
     return NextResponse.json({
       visits_this_week: visitsRes.count ?? 0,
       upcoming_groups: upcomingRes.count ?? 0,
       total_visitors: totalVisitors,
       review_count: reviewsRes.data?.length ?? 0,
       compliment_counts: complimentCounts,
-      concern_counts: concernCounts,
+      concern_counts: canSeePrivate ? concernCounts : {},
       recent_text_reviews: recentTextReviews,
     });
   } catch (e: any) {

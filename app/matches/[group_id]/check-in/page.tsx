@@ -180,25 +180,48 @@ export default function CheckInPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanMode, quest?.already_checked_in]);
 
+  // Location is required to check in (it's what proves you're at the venue).
+  function getFreshPosition(): Promise<{ lat: number; lng: number } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
+      );
+    });
+  }
+
   async function submitCheckIn(code: string) {
     if (submitting || !quest || !user) return;
     setSubmitting(true);
     setError(null);
     try {
+      const coords = (await getFreshPosition()) ?? gpsCoords;
+      if (!coords) {
+        setGpsStatus('denied');
+        setError(lang === 'ko'
+          ? '체크인하려면 위치 권한이 필요해요. 브라우저 설정에서 위치 접근을 허용한 뒤 다시 시도해 주세요.'
+          : 'Location is required to check in. Allow location access in your browser settings, then try again.');
+        setSubmitting(false);
+        return;
+      }
+      setGpsCoords(coords);
+      setGpsStatus('granted');
+
       const resp = await fetch('/api/quest-check-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
           group_id: groupId,
           qr_code: code,
-          latitude: gpsCoords?.lat,
-          longitude: gpsCoords?.lng,
+          latitude: coords.lat,
+          longitude: coords.lng,
         }),
       });
       const result = await resp.json();
       if (result.error) {
-        setError(result.error);
+        setError((lang === 'ko' ? result.message_ko : result.message_en) ?? result.error);
         setSubmitting(false);
         return;
       }
@@ -376,8 +399,13 @@ export default function CheckInPage() {
             <div className={`gps-banner gps-${gpsStatus}`}>
               {gpsStatus === 'requesting' && `📡 ${lang === 'ko' ? '위치 확인 중...' : 'Getting your location...'}`}
               {gpsStatus === 'granted' && `✅ ${lang === 'ko' ? '위치 확인됨' : 'Location ready'}`}
-              {gpsStatus === 'denied' && `⚠️ ${lang === 'ko' ? '위치 없이 진행 (검증 안 됨)' : 'Continuing without location (unverified)'}`}
-              {gpsStatus === 'unavailable' && `⚠️ ${lang === 'ko' ? 'GPS 사용 불가' : 'GPS unavailable'}`}
+              {gpsStatus === 'denied' && `⚠️ ${lang === 'ko' ? '체크인하려면 위치 권한이 필요해요' : 'Location access is needed to check in'}`}
+              {gpsStatus === 'unavailable' && `⚠️ ${lang === 'ko' ? '이 기기에서 위치를 사용할 수 없어요' : 'Location is not available on this device'}`}
+              {gpsStatus === 'denied' && (
+                <button type="button" className="gps-retry" onClick={requestGPS}>
+                  {lang === 'ko' ? '다시 시도' : 'Try again'}
+                </button>
+              )}
             </div>
 
             {/* Mode toggle */}
@@ -447,6 +475,7 @@ export default function CheckInPage() {
         .checkin-progress { font-size: 13px; color: var(--jade); font-weight: 700; }
         .window-banner { background: rgba(255, 106, 61, 0.1); border: 1px solid rgba(255, 106, 61, 0.25); color: var(--persimmon); padding: 14px 18px; border-radius: 12px; font-weight: 600; text-align: center; margin-bottom: 16px; }
         .gps-banner { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; }
+        .gps-retry { margin-left: 10px; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
         .gps-requesting { background: #f5f2eb; color: var(--ink-60); }
         .gps-granted { background: rgba(15, 157, 119, 0.08); color: var(--jade); }
         .gps-denied, .gps-unavailable { background: rgba(232, 169, 63, 0.1); color: #a86720; }

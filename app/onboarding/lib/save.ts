@@ -48,27 +48,10 @@ export async function completeOnboarding(): Promise<
     return { ok: false, error: error.message };
   }
 
-  // Fire welcome email + notification (non-blocking — don't fail onboarding if these fail)
-  fetch('/api/emails/welcome', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: user.id }),
-  }).catch((e) => console.error('Welcome email failed (non-fatal):', e));
-
-  // Fetch language for notification
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  const displayName = profile?.display_name || '';
-
-  fetch('/api/create-welcome-notification', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: user.id, display_name: displayName }),
-  }).catch((e) => console.error('Welcome notification failed (non-fatal):', e));
+  // Welcome notification + email (server derives the user from the session; idempotent).
+  // Non-blocking — onboarding never fails because of this.
+  fetch('/api/emails/welcome', { method: 'POST' })
+    .catch((e) => console.error('Welcome email failed (non-fatal):', e));
 
   return { ok: true };
 }
