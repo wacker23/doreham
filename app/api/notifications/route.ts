@@ -73,6 +73,13 @@ export async function POST(request: Request) {
 
   if (action === 'dismiss') {
     if (!isUuid(notification_id)) return jsonError('notification_id required', 400);
+    // Deleting a notification also marks it read, so it never counts toward the badge.
+    await admin
+      .from('notifications')
+      .update({ read_at: now })
+      .eq('id', notification_id)
+      .eq('user_id', userId)
+      .is('read_at', null);
     await admin
       .from('notifications')
       .update({ dismissed_at: now })
