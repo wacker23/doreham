@@ -1,6 +1,7 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { kstDateString } from '@/lib/server/time';
+import type { VOLUNTEER_CITY_SLUGS } from '@/lib/volunteerCities';
 
 /**
  * Client for 행정안전부_봉사참여정보서비스 (1365 자원봉사포털) on data.go.kr.
@@ -55,7 +56,7 @@ export type VolunteerProgram = {
  * so it is matched by the 449xxxx prefix and searched by keyword until the exact codes are confirmed.
  */
 export const VOLUNTEER_CITIES: {
-  slug: string;
+  slug: (typeof VOLUNTEER_CITY_SLUGS)[number];
   keyword: string;
   sidoCode: string;
   gugunCode: string | null; // exact code for schSign1, when known

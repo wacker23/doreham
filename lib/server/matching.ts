@@ -5,6 +5,7 @@ import { createNotifications, createNotification, type NotificationPayload } fro
 import { expandCategoriesToVenueCategories } from '@/lib/matchCategories';
 import { expireOverdueInvites, ACTIVE_PHASES } from '@/lib/server/groupLifecycle';
 import { sendMatchInviteEmail } from '@/lib/server/emails/match-invite';
+import { VOLUNTEER_CITY_SET } from '@/lib/volunteerCities';
 
 /**
  * Matching algorithm.
@@ -220,7 +221,12 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
   const startedAt = new Date(req.search_started_at ?? req.created_at).getTime();
   const ageMinutes = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
 
-  if (ageMinutes >= GIVE_UP_MINUTES) return giveUp(req, `searching for ${ageMinutes} min`);
+  // A volunteer request in a supported city waits for the next 1365 sync instead of failing at once.
+  const waitingForPrograms = isVolunteer && (req.city ? !questCities.has(req.city.toLowerCase()) : questCities.size === 0);
+
+  if (ageMinutes >= GIVE_UP_MINUTES) {
+    return giveUp(req, `searching for ${ageMinutes} min`, waitingForPrograms ? NO_PROGRAMS_MESSAGE : undefined);
+  }
 
   const pass = PASSES.find((p) => ageMinutes >= p.minAgeMinutes && ageMinutes < p.maxAgeMinutes);
   if (!pass) return { action: 'skipped', reason: `no pass for age ${ageMinutes}` };
@@ -228,14 +234,17 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
   // ---- city
   let targetCity: string;
   if (req.city) {
-    if (!questCities.has(req.city.toLowerCase())) {
-      return giveUp(req, `city ${req.city} has no ${isVolunteer ? 'volunteer programs' : 'active venues'}`, isVolunteer ? NO_PROGRAMS_MESSAGE : undefined);
+    if (isVolunteer && !VOLUNTEER_CITY_SET.has(req.city.toLowerCase())) {
+      return giveUp(req, `city ${req.city} has no volunteer quests`, NO_PROGRAMS_MESSAGE);
     }
+    if (waitingForPrograms) return { action: 'skipped', reason: `waiting for 1365 programs in ${req.city}` };
+    if (!questCities.has(req.city.toLowerCase())) return giveUp(req, `city ${req.city} has no active venues`);
     targetCity = req.city;
   } else {
     const available = Array.from(questCities);
     if (available.length === 0) {
-      return giveUp(req, isVolunteer ? 'no cities with volunteer programs' : 'no cities with venues', isVolunteer ? NO_PROGRAMS_MESSAGE : undefined);
+      if (waitingForPrograms) return { action: 'skipped', reason: 'waiting for 1365 programs' };
+      return giveUp(req, 'no cities with venues');
     }
     targetCity = available[Math.floor(Math.random() * available.length)];
   }

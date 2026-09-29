@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { MATCH_CATEGORIES } from '@/lib/matchCategories';
+import { VOLUNTEER_CITY_SET } from '@/lib/volunteerCities';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -140,7 +141,8 @@ export default function MatchesPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   // 봉사 (help) turns the request into a volunteer quest; it can't be mixed with venue categories.
   const isVolunteerRequest = selectedCategories.includes('help');
-  const citiesForRequest = isVolunteerRequest ? volunteerCities : availableCities;
+  // Volunteer quests run in fixed cities; the 1365 cache only tells us whether activities are open right now.
+  const citiesForRequest = isVolunteerRequest ? VOLUNTEER_CITY_SET : availableCities;
   const [randomCity, setRandomCity] = useState(false);
   const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
   const [randomSize, setRandomSize] = useState(false);
@@ -880,7 +882,7 @@ export default function MatchesPage() {
                             });
                             // A city chosen for venues may have no volunteer activities (and vice versa)
                             const nextIsVolunteer = c.volunteer ? !isSelected : false;
-                            const nextCities = nextIsVolunteer ? volunteerCities : availableCities;
+                            const nextCities = nextIsVolunteer ? VOLUNTEER_CITY_SET : availableCities;
                             if (selectedCity && !nextCities.has(selectedCity)) setSelectedCity(null);
                           }}
                           disabled={c.coming_soon}
@@ -893,6 +895,13 @@ export default function MatchesPage() {
                       );
                     })}
                   </div>
+                  {isVolunteerRequest && selectedCity && !volunteerCities.has(selectedCity) && (
+                    <div className="volunteer-hint quiet">
+                      {lang === 'ko'
+                        ? '지금 이 도시에서 모집 중인 1365 봉사활동을 아직 찾지 못했어요. 그래도 신청할 수 있어요. 1365를 하루 두 번 확인하고, 48시간 안에 맞는 활동이 없으면 알려 드릴게요.'
+                        : "We haven't found open 1365 activities in this city yet. You can still request: we check 1365 twice a day and will let you know within 48 hours if nothing fits."}
+                    </div>
+                  )}
                   {isVolunteerRequest && (
                     <div className="volunteer-hint">
                       {lang === 'ko'
@@ -1163,6 +1172,7 @@ export default function MatchesPage() {
         .cat-card:hover:not(.disabled) { transform: translateY(-2px); border-color: var(--persimmon); }
         .cat-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); }
         .cat-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .volunteer-hint.quiet { background: rgba(255, 106, 61, 0.08); }
         .volunteer-hint { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 157, 119, 0.08); color: var(--ink); font-size: 13.5px; line-height: 1.6; }
         .cat-icon { width: 36px; height: 36px; object-fit: contain; }
         .cat-name { font-weight: 700; font-size: 11px; color: var(--ink); text-align: center; line-height: 1.2; }
