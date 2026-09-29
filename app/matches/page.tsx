@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { MATCH_CATEGORIES } from '@/lib/matchCategories';
 import { LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
+import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -63,8 +64,11 @@ type Match = {
     program: {
       id: string;
       title: string;
+      title_en: string | null;
       org_name: string | null;
+      org_name_en: string | null;
       place: string | null;
+      place_en: string | null;
       detail_url: string | null;
     } | null;
     menu_items: QuestMenuItem[];
@@ -129,7 +133,7 @@ const STATUS_LABELS: Record<string, { en: string; ko: string; color: string }> =
 export default function MatchesPage() {
   const router = useRouter();
   const { user, loading } = useUser();
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang, setLang] = useLang();
   const [activeTab, setActiveTab] = useState<Tab>('pending');
   const [matches, setMatches] = useState<Match[]>([]);
   const [requests, setRequests] = useState<MatchRequest[]>([]);
@@ -265,7 +269,7 @@ export default function MatchesPage() {
       .select(`
         id, group_id, title, title_en, quest_description, description_en, status, expires_at, quest_type,
         venue:venues(id, business_name_display, category, address, road_address, city, photo_urls),
-        program:volunteer_programs(id, title, org_name, place, detail_url)
+        program:volunteer_programs(id, title, title_en, org_name, org_name_en, place, place_en, detail_url)
       `)
       .in('group_id', groupIds);
 
@@ -1412,9 +1416,19 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
             <div className="venue-card volunteer-card">
               <div className="volunteer-emoji">🤝</div>
               <div className="venue-info">
-                <div className="venue-name">{match.quest.program.title}</div>
-                {match.quest.program.org_name && <div className="venue-category">{match.quest.program.org_name}</div>}
-                {match.quest.program.place && <div className="venue-address">📍 {match.quest.program.place}</div>}
+                <div className="venue-name">
+                  {lang === 'en' ? (match.quest.program.title_en || match.quest.program.title) : match.quest.program.title}
+                </div>
+                {match.quest.program.org_name && (
+                  <div className="venue-category">
+                    {lang === 'en' ? (match.quest.program.org_name_en || match.quest.program.org_name) : match.quest.program.org_name}
+                  </div>
+                )}
+                {match.quest.program.place && (
+                  <div className="venue-address">
+                    📍 {lang === 'en' ? (match.quest.program.place_en || match.quest.program.place) : match.quest.program.place}
+                  </div>
+                )}
               </div>
             </div>
           ) : (

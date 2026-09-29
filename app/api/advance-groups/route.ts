@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireCronOrAdmin } from '@/lib/server/auth';
 import { advanceDueGroups } from '@/lib/server/scheduling';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * Cron (every 15 min): moves groups forward when a deadline passes, even if

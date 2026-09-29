@@ -6,6 +6,7 @@ import { cancelActiveGroup, isAccepted } from '@/lib/server/groupLifecycle';
 import { issueStrike } from '@/lib/server/strikes';
 import { formatKst, hoursFromNow, kstDayHour } from '@/lib/server/time';
 import { sendQuestDayReminderEmail } from '@/lib/server/emails/quest-day-reminder';
+import { translateActivePrograms } from '@/lib/server/translatePrograms';
 import {
   closeExpiredVolunteerQuests,
   closeVolunteerSignups,
@@ -377,7 +378,21 @@ export async function advanceDueGroups() {
   const volunteerSignups = await closeVolunteerSignups();
   const closed = await closeExpiredQuests();
   const volunteerClosed = await closeExpiredVolunteerQuests();
-  return { ok: true as const, advanced: results, volunteer_signups: volunteerSignups, closed, volunteer_closed: volunteerClosed };
+  // English versions for any volunteer program a live group can see (best-effort).
+  let translations: unknown = null;
+  try {
+    translations = await translateActivePrograms(20);
+  } catch (e: unknown) {
+    translations = { error: e instanceof Error ? e.message : String(e) };
+  }
+  return {
+    ok: true as const,
+    advanced: results,
+    volunteer_signups: volunteerSignups,
+    closed,
+    volunteer_closed: volunteerClosed,
+    translations,
+  };
 }
 
 // ---------------------------------------------------------------------------

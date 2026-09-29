@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { useLang } from '@/lib/hooks/useLang';
 
 type Tag = {
   id: string;
@@ -24,6 +25,7 @@ type PendingQuest = {
   group_id: string;
   venue_id: string;
   venue_name: string;
+  venue_name_en?: string | null;
   completed_at: string;
   unreviewed_members: Member[];
   venue_reviewed: boolean;
@@ -47,7 +49,7 @@ export default function ReviewQuestPage() {
   const params = useParams();
   const questId = params?.quest_id as string;
 
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang] = useLang();
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -66,10 +68,6 @@ export default function ReviewQuestPage() {
     concern_tags: new Set(),
     short_text: '',
   });
-
-  useEffect(() => {
-    setLang((document.body.dataset.lang as 'en' | 'ko') ?? 'en');
-  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -277,7 +275,7 @@ export default function ReviewQuestPage() {
             <div className="quest-label">
               {lang === 'ko' ? '완료한 퀘스트' : 'Completed quest'}
             </div>
-            <div className="quest-venue">📍 {pending.venue_name}</div>
+            <div className="quest-venue">📍 {lang === 'en' ? (pending.venue_name_en || pending.venue_name) : pending.venue_name}</div>
             <div className="quest-date">
               {new Date(pending.completed_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
                 weekday: 'short', month: 'short', day: 'numeric',
@@ -295,7 +293,7 @@ export default function ReviewQuestPage() {
         {!pending.venue_reviewed && (
           <section className="review-section venue-section">
             <h2>
-              📍 {pending.venue_name}
+              📍 {lang === 'en' ? (pending.venue_name_en || pending.venue_name) : pending.venue_name}
               <span className="opt-tag">{lang === 'ko' ? '선택' : 'Optional'}</span>
             </h2>
 
