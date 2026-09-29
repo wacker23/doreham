@@ -32,6 +32,8 @@ type Program = {
   description: string | null;
   description_en: string | null;
   detail_url: string | null;
+  lat: number | null;
+  lng: number | null;
   contact_phone: string | null;
 };
 type Slot = { id: string; slot_time: string; volunteer_program_id: string | null };
@@ -304,10 +306,11 @@ export default function VolunteerQuestPage() {
           <div className="program-line">
             📍 {place}
             {english && p.place && p.place !== place && <div className="program-ko">{p.place}</div>}
-            {p.place && (
+            {p.lat != null && p.lng != null && (
+              // Exact spot from 1365's coordinates. No coordinates → no link (the 1365 page has a map).
               <a
                 className="program-map"
-                href={`https://map.naver.com/p/search/${encodeURIComponent(p.place)}`}
+                href={`https://map.kakao.com/link/map/${encodeURIComponent((p.org_name || p.place || '봉사활동').replace(/,/g, ' '))},${p.lat},${p.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

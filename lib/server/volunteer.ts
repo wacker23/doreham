@@ -645,7 +645,7 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
   const { data: programs } = programIds.length
     ? await admin
         .from('volunteer_programs')
-        .select('id, title, title_en, org_name, org_name_en, place, place_en, category, program_start, program_end, act_begin_hour, act_end_hour, recruit_count, applied_count, description, description_en, detail_url, contact_phone')
+        .select('id, title, title_en, org_name, org_name_en, place, place_en, category, program_start, program_end, act_begin_hour, act_end_hour, recruit_count, applied_count, description, description_en, detail_url, contact_phone, lalo:raw->>areaLalo1')
         .in('id', programIds)
     : { data: [] };
 
@@ -656,13 +656,21 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
     }),
   );
 
+  // 1365 gives the activity's exact spot as "lat,lng" (areaLalo1); only real Korean coordinates are passed on.
+  const withPoint = (programs ?? []).map((row) => {
+    const { lalo, ...p } = row as typeof row & { lalo: string | null };
+    const [lat, lng] = String(lalo ?? '').split(',').map((v) => Number(v.trim()));
+    const ok = Number.isFinite(lat) && Number.isFinite(lng) && lat > 33 && lat < 39 && lng > 124 && lng < 132;
+    return { ...p, lat: ok ? lat : null, lng: ok ? lng : null };
+  });
+
   return {
     ok: true as const,
     me: userId,
     me_left: meLeft,
     group,
     quest,
-    programs: programs ?? [],
+    programs: withPoint,
     slots: slots ?? [],
     votes: votes ?? [],
     proofs: signed,
