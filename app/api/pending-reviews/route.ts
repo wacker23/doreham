@@ -37,7 +37,7 @@ export async function GET() {
 
     const { data: quests } = await admin
       .from('quests')
-      .select('id, group_id, venue_id, completed_at, venue:venues!inner(id, business_name_display)')
+      .select('id, group_id, venue_id, quest_type, completed_at, venue:venues(id, business_name_display), program:volunteer_programs(title)')
       .in('group_id', groupIds)
       .eq('status', 'completed')
       .gte('completed_at', cutoff);
@@ -50,6 +50,20 @@ export async function GET() {
     const pending: any[] = [];
 
     for (const quest of quests) {
+      const isVolunteer = (quest as any).quest_type === 'volunteer';
+
+      // Volunteer quests: only people in the group selfie reviewed each other.
+      let attended: Set<string> | null = null;
+      if (isVolunteer) {
+        const { data: proofs } = await admin
+          .from('volunteer_proofs')
+          .select('tagged_user_ids')
+          .eq('quest_id', quest.id)
+          .eq('kind', 'group_selfie');
+        attended = new Set((proofs ?? []).flatMap((p: any) => p.tagged_user_ids ?? []));
+        if (!attended.has(userId)) continue;
+      }
+
       // Group members (excluding self)
       const { data: members } = await admin
         .from('group_members')
@@ -66,7 +80,9 @@ export async function GET() {
         .eq('reviewer_id', userId);
 
       const reviewedIds = new Set((existingReviews ?? []).map((r: any) => r.reviewed_user_id));
-      const unreviewedMembers = (members ?? []).filter((m: any) => !reviewedIds.has(m.user_id));
+      const unreviewedMembers = (members ?? []).filter(
+        (m: any) => !reviewedIds.has(m.user_id) && (!attended || attended.has(m.user_id)),
+      );
 
       // Existing venue review?
       const { data: existingVenue } = await admin
@@ -76,7 +92,8 @@ export async function GET() {
         .eq('reviewer_id', userId)
         .maybeSingle();
 
-      const venueReviewed = !!existingVenue;
+      // Volunteer quests have no venue to review.
+      const venueReviewed = isVolunteer || !quest.venue_id || !!existingVenue;
 
       // Skip if all reviews already done
       if (unreviewedMembers.length === 0 && venueReviewed) continue;
@@ -85,7 +102,9 @@ export async function GET() {
         quest_id: quest.id,
         group_id: quest.group_id,
         venue_id: quest.venue_id,
-        venue_name: (quest.venue as any)?.business_name_display ?? '?',
+        venue_name: isVolunteer
+          ? `🤝 ${(quest as any).program?.title ?? '봉사활동'}`
+          : ((quest.venue as any)?.business_name_display ?? '?'),
         completed_at: quest.completed_at,
         unreviewed_members: unreviewedMembers.map((m: any) => ({
           user_id: m.user_id,

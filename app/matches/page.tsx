@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { MATCH_CATEGORIES } from '@/lib/matchCategories';
+import { LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -49,6 +50,7 @@ type Match = {
     description_en: string | null;
     status: string;
     expires_at: string;
+    quest_type: 'venue' | 'volunteer';
     venue: {
       id: string;
       business_name_display: string;
@@ -57,7 +59,14 @@ type Match = {
       road_address: string | null;
       city: string;
       photo_urls: string[];
-    };
+    } | null;
+    program: {
+      id: string;
+      title: string;
+      org_name: string | null;
+      place: string | null;
+      detail_url: string | null;
+    } | null;
     menu_items: QuestMenuItem[];
   };
 };
@@ -65,6 +74,7 @@ type Match = {
 type MatchRequest = {
   id: string;
   city: string | null;
+  cities: string[] | null;
   group_size: number | null;
   status: string;
   created_at: string;
@@ -78,7 +88,10 @@ type KoreanCity = {
   emoji: string;
 };
 
+// Launch cities first (Asan, Cheonan, Seoul), then the rest.
 const KOREAN_CITIES: KoreanCity[] = [
+  { slug: 'asan', name_en: 'Asan', name_ko: '아산', emoji: '🍃' },
+  { slug: 'cheonan', name_en: 'Cheonan', name_ko: '천안', emoji: '🌸' },
   { slug: 'seoul', name_en: 'Seoul', name_ko: '서울', emoji: '🏙️' },
   { slug: 'busan', name_en: 'Busan', name_ko: '부산', emoji: '🌊' },
   { slug: 'incheon', name_en: 'Incheon', name_ko: '인천', emoji: '✈️' },
@@ -87,8 +100,6 @@ const KOREAN_CITIES: KoreanCity[] = [
   { slug: 'gwangju', name_en: 'Gwangju', name_ko: '광주', emoji: '🎨' },
   { slug: 'suwon', name_en: 'Suwon', name_ko: '수원', emoji: '🏯' },
   { slug: 'ulsan', name_en: 'Ulsan', name_ko: '울산', emoji: '🏭' },
-  { slug: 'cheonan', name_en: 'Cheonan', name_ko: '천안', emoji: '🌸' },
-  { slug: 'asan', name_en: 'Asan', name_ko: '아산', emoji: '🍃' },
   { slug: 'jeonju', name_en: 'Jeonju', name_ko: '전주', emoji: '🍚' },
   { slug: 'jeju', name_en: 'Jeju', name_ko: '제주', emoji: '🌴' },
 ];
@@ -123,12 +134,20 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [requests, setRequests] = useState<MatchRequest[]>([]);
   const [availableCities, setAvailableCities] = useState<Set<string>>(new Set());
+  const [volunteerCities, setVolunteerCities] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Request form state
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  // 봉사 (help) turns the request into a volunteer quest; it can't be mixed with venue categories.
+  const isVolunteerRequest = selectedCategories.includes('help');
+  // Pickable cities: volunteer quests run in fixed cities; venue quests in the launch cities plus any city
+  // that already has venues. Whether a city has venues / open 1365 activities right now is shown as a note.
+  const venueCities = new Set([...LAUNCH_CITY_SET, ...availableCities]);
+  const citiesForRequest: ReadonlySet<string> = isVolunteerRequest ? VOLUNTEER_CITY_SET : venueCities;
+  const citiesWithoutQuests = selectedCities.filter((c) => !(isVolunteerRequest ? volunteerCities : availableCities).has(c));
   const [randomCity, setRandomCity] = useState(false);
   const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
   const [randomSize, setRandomSize] = useState(false);
@@ -175,6 +194,13 @@ export default function MatchesPage() {
     const cities = new Set((venues ?? []).map((v: any) => (v.city ?? '').toLowerCase()));
     setAvailableCities(cities);
 
+    // Cities with upcoming 1365 volunteer activities (for volunteer quests)
+    const { data: programCities } = await supabase
+      .from('volunteer_programs')
+      .select('city')
+      .gte('program_end', new Date().toISOString().slice(0, 10));
+    setVolunteerCities(new Set((programCities ?? []).map((p: any) => (p.city ?? '').toLowerCase()).filter(Boolean)));
+
     // Penalties
     const { data: penalties } = await supabase
       .from('user_penalties')
@@ -204,7 +230,7 @@ export default function MatchesPage() {
     // Match requests
     const { data: reqs } = await supabase
       .from('match_requests')
-      .select('id, city, group_size, status, created_at, matched_group_id')
+      .select('id, city, cities, group_size, status, created_at, matched_group_id')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false });
     if (reqs) setRequests(reqs as MatchRequest[]);
@@ -237,8 +263,9 @@ export default function MatchesPage() {
     const { data: quests } = await supabase
       .from('quests')
       .select(`
-        id, group_id, title, title_en, quest_description, description_en, status, expires_at,
-        venue:venues!inner(id, business_name_display, category, address, road_address, city, photo_urls)
+        id, group_id, title, title_en, quest_description, description_en, status, expires_at, quest_type,
+        venue:venues(id, business_name_display, category, address, road_address, city, photo_urls),
+        program:volunteer_programs(id, title, org_name, place, detail_url)
       `)
       .in('group_id', groupIds);
 
@@ -322,7 +349,9 @@ export default function MatchesPage() {
           description_en: quest.description_en,
           status: quest.status,
           expires_at: quest.expires_at,
-          venue: quest.venue,
+          quest_type: quest.quest_type ?? 'venue',
+          venue: quest.venue ?? null,
+          program: quest.program ?? null,
           menu_items: menuItems,
         },
       } as Match;
@@ -348,16 +377,16 @@ export default function MatchesPage() {
       setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
       return;
     }
-    if (!randomCity && !selectedCity) {
-      setError(lang === 'ko' ? '도시를 선택해주세요.' : 'Please select a city.');
+    if (!randomCity && selectedCities.length === 0) {
+      setError(lang === 'ko' ? '도시를 하나 이상 선택해주세요.' : 'Please pick at least one city.');
       return;
     }
 
-    // Server-side city validation — check the city has venues
-    if (!randomCity && selectedCity && !availableCities.has(selectedCity)) {
+    // A venue quest needs at least one chosen city with partner venues.
+    if (!isVolunteerRequest && !randomCity && !selectedCities.some((c) => availableCities.has(c))) {
       setError(lang === 'ko'
-        ? '이 도시에는 아직 매장이 없습니다. 다른 도시를 선택해주세요.'
-        : 'No venues in this city yet. Please pick another city.');
+        ? '선택한 도시에는 아직 제휴 장소가 없어요. 아산이나 천안을 추가하거나 봉사 퀘스트를 선택해 주세요.'
+        : 'The cities you picked have no partner venues yet. Add Asan or Cheonan, or pick a 봉사 (volunteer) quest.');
       return;
     }
 
@@ -367,9 +396,11 @@ export default function MatchesPage() {
 
     const { data: insertedRequest, error: err } = await supabase.from('match_requests').insert({
       user_id: user!.id,
-      city: randomCity ? null : selectedCity,
+      city: randomCity ? null : selectedCities[0],
+      cities: randomCity ? null : selectedCities,
       group_size: randomSize ? null : selectedGroupSize,
       preferred_categories: selectedCategories.length > 0 ? selectedCategories : null,
+      quest_type: isVolunteerRequest ? 'volunteer' : 'venue',
       status: 'searching',
     }).select('id').single();
 
@@ -400,7 +431,7 @@ export default function MatchesPage() {
 
     setSubmittingRequest(false);
     setRequestSuccess(true);
-    setSelectedCity(null);
+    setSelectedCities([]);
     setRandomCity(false);
     setSelectedGroupSize(3);
     setRandomSize(false);
@@ -453,6 +484,8 @@ export default function MatchesPage() {
     if (!c) return slug;
     return lang === 'ko' ? c.name_ko : c.name_en;
   };
+  const requestCitiesLabel = (req: MatchRequest): string =>
+    req.cities && req.cities.length > 0 ? req.cities.map(cityDisplayName).join(', ') : cityDisplayName(req.city);
 
   function daysRemaining(expiresAt: string): number {
     const ms = new Date(expiresAt).getTime() - Date.now();
@@ -660,7 +693,7 @@ export default function MatchesPage() {
                           {lang === 'ko' ? '매칭 찾는 중…' : 'Searching for your match…'}
                         </div>
                         <div className="searching-meta">
-                          {cityDisplayName(req.city)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                          {requestCitiesLabel(req)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
                         </div>
                         <div className="searching-est">
                           {lang === 'ko' ? '⏱ 예상 시간: 몇 시간 정도 걸릴 수 있어요' : '⏱ Est. wait: could be a few hours'}
@@ -785,21 +818,26 @@ export default function MatchesPage() {
                 {/* City */}
                 <div className="form-section">
                   <label className="form-label">
-                    {lang === 'ko' ? '🗺 도시 선택' : '🗺 Pick a city'}
+                    {lang === 'ko' ? `🗺 도시 선택 (최대 ${MAX_REQUEST_CITIES}곳)` : `🗺 Pick cities (up to ${MAX_REQUEST_CITIES})`}
                   </label>
+                  <p className="form-hint">
+                    {lang === 'ko'
+                      ? '여러 도시를 고르면 더 빨리 매칭될 수 있어요.'
+                      : 'Pick more than one city to get matched faster.'}
+                  </p>
                   <div className="cities-grid">
                     <button
                       className={`city-card random ${randomCity ? 'selected' : ''}`}
-                      onClick={() => { setRandomCity(!randomCity); if (!randomCity) setSelectedCity(null); }}
+                      onClick={() => { setRandomCity(!randomCity); if (!randomCity) setSelectedCities([]); }}
                     >
                       <div className="city-emoji">🎲</div>
                       <div className="city-name">
-                        {lang === 'ko' ? '랜덤' : 'Random'}
+                        {lang === 'ko' ? '어디든' : 'Anywhere'}
                       </div>
                     </button>
                     {KOREAN_CITIES.map((c) => {
-                      const hasVenues = availableCities.has(c.slug);
-                      const isSelected = selectedCity === c.slug && !randomCity;
+                      const hasVenues = citiesForRequest.has(c.slug);
+                      const isSelected = selectedCities.includes(c.slug) && !randomCity;
                       return (
                         <button
                           key={c.slug}
@@ -807,7 +845,16 @@ export default function MatchesPage() {
                           onClick={() => {
                             if (!hasVenues) return;
                             setRandomCity(false);
-                            setSelectedCity(isSelected ? null : c.slug);
+                            setError(null);
+                            if (isSelected) {
+                              setSelectedCities((prev) => prev.filter((x) => x !== c.slug));
+                            } else if (selectedCities.length >= MAX_REQUEST_CITIES) {
+                              setError(lang === 'ko'
+                                ? `도시는 최대 ${MAX_REQUEST_CITIES}곳까지 고를 수 있어요.`
+                                : `You can pick up to ${MAX_REQUEST_CITIES} cities.`);
+                            } else {
+                              setSelectedCities((prev) => [...prev, c.slug]);
+                            }
                           }}
                           disabled={!hasVenues}
                           title={!hasVenues ? (lang === 'ko' ? '아직 준비 중' : 'Coming soon') : ''}
@@ -825,6 +872,17 @@ export default function MatchesPage() {
                       );
                     })}
                   </div>
+                  {!randomCity && citiesWithoutQuests.length > 0 && (
+                    <div className="volunteer-hint quiet">
+                      {isVolunteerRequest
+                        ? (lang === 'ko'
+                            ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 지금 모집 중인 1365 봉사활동을 아직 찾지 못했어요. 그래도 신청할 수 있어요. 1365를 하루 두 번 확인하고, 48시간 안에 맞는 활동이 없으면 알려 드릴게요.`
+                            : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no open 1365 activities found yet. You can still request: we check 1365 twice a day and will let you know within 48 hours if nothing fits.`)
+                        : (lang === 'ko'
+                            ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 아직 제휴 장소가 없어요. 이 도시에서는 봉사 퀘스트만 가능하고, 장소가 등록되면 다른 퀘스트도 열려요.`
+                            : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no partner venues yet. Only 봉사 (volunteer) quests run there until venues join.`)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Categories */}
@@ -846,9 +904,15 @@ export default function MatchesPage() {
                           className={`cat-card ${isSelected ? 'selected' : ''} ${c.coming_soon ? 'disabled' : ''}`}
                           onClick={() => {
                             if (c.coming_soon) return;
-                            setSelectedCategories((prev) =>
-                              isSelected ? prev.filter((x) => x !== c.slug) : [...prev, c.slug]
-                            );
+                            setSelectedCategories((prev) => {
+                              if (isSelected) return prev.filter((x) => x !== c.slug);
+                              if (c.volunteer) return [c.slug];                 // 봉사 alone
+                              return [...prev.filter((x) => x !== 'help'), c.slug];
+                            });
+                            // A city chosen for venues may have no volunteer activities (and vice versa)
+                            const nextIsVolunteer = c.volunteer ? !isSelected : false;
+                            const nextCities: ReadonlySet<string> = nextIsVolunteer ? VOLUNTEER_CITY_SET : venueCities;
+                            setSelectedCities((prev) => prev.filter((x) => nextCities.has(x)));
                           }}
                           disabled={c.coming_soon}
                           title={c.coming_soon ? (lang === 'ko' ? '곧 출시' : 'Coming soon') : ''}
@@ -860,6 +924,13 @@ export default function MatchesPage() {
                       );
                     })}
                   </div>
+                  {isVolunteerRequest && (
+                    <div className="volunteer-hint">
+                      {lang === 'ko'
+                        ? '🤝 봉사 퀘스트: 그룹이 함께할 1365 봉사활동을 찾아드려요. 각자 1365에서 무료로 신청하고, 당일에 단체 사진 한 장만 찍으면 끝! 봉사시간은 1365에 그대로 인정돼요.'
+                        : "🤝 Volunteer quest: we'll find a 1365 volunteer activity for your group. Each of you signs up on 1365 (free), and on the day you just take one group selfie. Your hours count on 1365 as usual."}
+                    </div>
+                  )}
                 </div>
 
                 {/* Group size */}
@@ -945,7 +1016,7 @@ export default function MatchesPage() {
                     </div>
                     <div className="history-body">
                       <div className="history-title">
-                        {cityDisplayName(req.city)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                        {requestCitiesLabel(req)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
                       </div>
                       <div className="history-date">
                         {new Date(req.created_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
@@ -1123,6 +1194,8 @@ export default function MatchesPage() {
         .cat-card:hover:not(.disabled) { transform: translateY(-2px); border-color: var(--persimmon); }
         .cat-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); }
         .cat-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .volunteer-hint.quiet { background: rgba(255, 106, 61, 0.08); }
+        .volunteer-hint { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 157, 119, 0.08); color: var(--ink); font-size: 13.5px; line-height: 1.6; }
         .cat-icon { width: 36px; height: 36px; object-fit: contain; }
         .cat-name { font-weight: 700; font-size: 11px; color: var(--ink); text-align: center; line-height: 1.2; }
         .cat-soon { font-size: 9px; color: var(--ink-60); font-weight: 600; }
@@ -1242,7 +1315,8 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
   onLeave?: (groupId: string, isConfirmed: boolean) => void;
   respondingTo?: string | null;
 }) {
-  const cat = CATEGORY_LABELS[match.quest.venue.category];
+  const isVolunteer = match.quest.quest_type === 'volunteer';
+  const cat = match.quest.venue ? CATEGORY_LABELS[match.quest.venue.category] : undefined;
   const status = STATUS_LABELS[match.quest.status] ?? STATUS_LABELS.proposed;
 
   function daysRemaining(iso: string) {
@@ -1331,6 +1405,47 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         </div>
       </div>
 
+      {isVolunteer && (
+        <div className="venue-section">
+          <h3>{lang === 'ko' ? '함께할 봉사활동' : 'Volunteer activity'}</h3>
+          {match.quest.program ? (
+            <div className="venue-card volunteer-card">
+              <div className="volunteer-emoji">🤝</div>
+              <div className="venue-info">
+                <div className="venue-name">{match.quest.program.title}</div>
+                {match.quest.program.org_name && <div className="venue-category">{match.quest.program.org_name}</div>}
+                {match.quest.program.place && <div className="venue-address">📍 {match.quest.program.place}</div>}
+              </div>
+            </div>
+          ) : (
+            <div className="venue-card volunteer-card">
+              <div className="volunteer-emoji">🗳️</div>
+              <div className="venue-info">
+                <div className="venue-name">
+                  {lang === 'ko' ? '함께 고를 1365 봉사활동' : 'A 1365 activity you choose together'}
+                </div>
+                <div className="venue-address">
+                  {lang === 'ko'
+                    ? '모두 수락하면 우리 도시의 봉사활동 중에서 투표로 골라요.'
+                    : "Once everyone accepts, you'll vote on volunteer activities in your city."}
+                </div>
+              </div>
+            </div>
+          )}
+          {match.quest_scheduled_at && (
+            <div className="scheduled-info">
+              <div className="scheduled-label">{lang === 'ko' ? '📅 봉사 시간' : '📅 Volunteering time'}</div>
+              <div className="scheduled-time">
+                {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                {' · '}
+                {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {match.quest.venue && (
       <div className="venue-section">
         <h3>{lang === 'ko' ? '만날 장소' : 'Where to meet'}</h3>
         <div className="venue-card">
@@ -1365,6 +1480,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
           </div>
         )}
       </div>
+      )}
 
       {match.quest.menu_items.length > 0 && (
         <div className="menu-section">
@@ -1412,7 +1528,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       )}
 
       {/* Check-in button — shows when quest is scheduled and we're in the check-in window */}
-      {!isHistory && !match.is_pending_invites && match.quest_scheduled_at && (() => {
+      {!isHistory && !isVolunteer && !match.is_pending_invites && match.quest_scheduled_at && (() => {
         const scheduled = new Date(match.quest_scheduled_at).getTime();
         const now = Date.now();
         const windowStart = scheduled - 40 * 60 * 1000;
@@ -1447,7 +1563,18 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       })()}
 
       {/* Availability button — only if match is active (not pending) and quest not scheduled */}
-      {!isHistory && !match.is_pending_invites && !match.quest_scheduled_at && (
+      {/* Volunteer quest: one page for voting, 1365 signup and the group selfie */}
+      {!isHistory && isVolunteer && !match.is_pending_invites && (
+        <a href={`/matches/${match.group_id}/volunteer`} className="volunteer-btn">
+          {match.phase === 'voting'
+            ? (lang === 'ko' ? '🗳️ 봉사활동 투표하기' : '🗳️ Vote on an activity')
+            : match.phase === 'scheduled'
+              ? (lang === 'ko' ? '🤝 1365 신청 · 단체 사진' : '🤝 1365 signup · group selfie')
+              : (lang === 'ko' ? '🤝 봉사 퀘스트 열기' : '🤝 Open volunteer quest')}
+        </a>
+      )}
+
+      {!isHistory && !isVolunteer && !match.is_pending_invites && !match.quest_scheduled_at && (
         <a
           href={`/matches/${match.group_id}/availability`}
           className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
@@ -1512,6 +1639,9 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         .member-tags { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
         .mini-tag { font-size: 10px; font-weight: 600; color: var(--ink-60); background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ink-12); }
         .venue-card { display: flex; gap: 14px; background: var(--paper-2); border-radius: 12px; padding: 12px; }
+        .volunteer-card { align-items: center; }
+        .volunteer-emoji { width: 64px; height: 64px; border-radius: 12px; background: rgba(15, 157, 119, 0.12); display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; }
+        .volunteer-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #0f9d77, #34c39a); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 16px; text-decoration: none; }
         .venue-photo { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
         .venue-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
         .venue-name { font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }

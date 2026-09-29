@@ -244,7 +244,7 @@ export default function AdminMatchesPage() {
 
     const [membersRes, questsRes] = await Promise.all([
       supabase.from('group_members').select('group_id, user_id, profiles:profiles!inner(id, display_name, photo_url)').in('group_id', groupIds),
-      supabase.from('quests').select('id, group_id, venue_id, title, title_en, quest_description, status, expires_at, completed_at, cancelled_at, venue:venues!inner(id, business_name_display, category)').in('group_id', groupIds),
+      supabase.from('quests').select('id, group_id, venue_id, title, title_en, quest_description, status, expires_at, completed_at, cancelled_at, quest_type, venue:venues(id, business_name_display, category), program:volunteer_programs(title)').in('group_id', groupIds),
     ]);
 
     const members = (membersRes.data ?? []) as any[];
@@ -271,8 +271,8 @@ export default function AdminMatchesPage() {
         completed_at: quest.completed_at,
         cancelled_at: quest.cancelled_at,
         venue_id: quest.venue_id,
-        venue_name: quest.venue.business_name_display,
-        venue_category: quest.venue.category,
+        venue_name: quest.venue?.business_name_display ?? `🤝 ${quest.program?.title ?? 'Volunteer quest'}`,
+        venue_category: quest.venue?.category ?? 'other',
         members: groupMembers,
       } as ExistingMatch;
     }).filter(Boolean) as ExistingMatch[];

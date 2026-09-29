@@ -6,6 +6,12 @@ import { cancelActiveGroup, isAccepted } from '@/lib/server/groupLifecycle';
 import { issueStrike } from '@/lib/server/strikes';
 import { formatKst, hoursFromNow, kstDayHour } from '@/lib/server/time';
 import { sendQuestDayReminderEmail } from '@/lib/server/emails/quest-day-reminder';
+import {
+  closeExpiredVolunteerQuests,
+  closeVolunteerSignups,
+  onVolunteerSlotLocked,
+  startVolunteerVoting,
+} from '@/lib/server/volunteer';
 
 /**
  * Scheduling pipeline for an active group:
@@ -155,7 +161,7 @@ export async function lockQuestDate(groupId: string) {
   const admin = getAdmin();
   const { data: group } = await admin
     .from('groups')
-    .select('id, phase, voting_phase_ends_at')
+    .select('id, phase, voting_phase_ends_at, quest_type')
     .eq('id', groupId)
     .maybeSingle();
 
@@ -222,6 +228,12 @@ export async function lockQuestDate(groupId: string) {
     .in('status', ['proposed', 'scheduled']);
   if (questErr) console.error('lockQuestDate quest update failed:', questErr);
 
+  if (group.quest_type === 'volunteer') {
+    // Volunteer groups now get a 1365 signup window (it sends its own notification).
+    await onVolunteerSlotLocked(groupId, { id: winning.id, slot_time: winning.slot_time });
+    return { ok: true as const, phase: 'scheduled', scheduled_at: winning.slot_time, winning_slot_id: winning.id };
+  }
+
   after(async () => {
     await createNotifications(
       members.map((uid) => ({
@@ -251,6 +263,7 @@ export async function closeExpiredQuests() {
     .from('groups')
     .select('id')
     .eq('phase', 'scheduled')
+    .eq('quest_type', 'venue')
     .lt('quest_scheduled_at', cutoff);
 
   const results: Record<string, unknown>[] = [];
@@ -329,11 +342,12 @@ export async function advanceDueGroups() {
   const admin = getAdmin();
   const now = new Date().toISOString();
 
-  const [{ data: availabilityDue }, { data: availabilityLegacy }, { data: votingDue }] = await Promise.all([
+  const [{ data: availabilityDue }, { data: availabilityLegacy }, { data: votingDue }, { data: volunteerStuck }] = await Promise.all([
     admin
       .from('groups')
       .select('id')
       .eq('phase', 'availability')
+      .eq('quest_type', 'venue')
       .eq('is_pending_invites', false)
       .lt('availability_phase_ends_at', now),
     // Groups activated before availability_phase_ends_at was being set.
@@ -341,10 +355,13 @@ export async function advanceDueGroups() {
       .from('groups')
       .select('id')
       .eq('phase', 'availability')
+      .eq('quest_type', 'venue')
       .eq('is_pending_invites', false)
       .is('availability_phase_ends_at', null)
       .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
     admin.from('groups').select('id').eq('phase', 'voting').lt('voting_phase_ends_at', now),
+    // Volunteer groups that were activated but never got their program vote (e.g. a transient failure).
+    admin.from('groups').select('id').eq('phase', 'availability').eq('quest_type', 'volunteer').eq('is_pending_invites', false),
   ]);
 
   const results: Record<string, unknown>[] = [];
@@ -354,8 +371,13 @@ export async function advanceDueGroups() {
   for (const g of votingDue ?? []) {
     results.push({ group_id: g.id, step: 'voting', ...(await lockQuestDate(g.id as string)) });
   }
+  for (const g of volunteerStuck ?? []) {
+    results.push({ group_id: g.id, step: 'volunteer_voting', result: await startVolunteerVoting(g.id as string) });
+  }
+  const volunteerSignups = await closeVolunteerSignups();
   const closed = await closeExpiredQuests();
-  return { ok: true as const, advanced: results, closed };
+  const volunteerClosed = await closeExpiredVolunteerQuests();
+  return { ok: true as const, advanced: results, volunteer_signups: volunteerSignups, closed, volunteer_closed: volunteerClosed };
 }
 
 // ---------------------------------------------------------------------------
@@ -369,7 +391,7 @@ export async function sendCheckInReminders() {
   const to = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   const { data: groups } = await admin
     .from('groups')
-    .select('id, quest_scheduled_at')
+    .select('id, quest_scheduled_at, quest_type')
     .eq('phase', 'scheduled')
     .gte('quest_scheduled_at', from)
     .lt('quest_scheduled_at', to)
@@ -386,15 +408,20 @@ export async function sendCheckInReminders() {
     if (!won || won.length === 0) continue;
 
     const members = await activeMemberIds(g.id as string);
+    const volunteer = g.quest_type === 'volunteer';
     await createNotifications(
       members.map((uid) => ({
         user_id: uid,
         type: 'check_in_reminder' as const,
-        title_en: '📍 Your meetup starts soon',
-        title_ko: '📍 곧 만남이 시작돼요',
-        body_en: `Starts ${formatKst(g.quest_scheduled_at as string, 'en')}. Check in with the venue QR when you arrive.`,
-        body_ko: `${formatKst(g.quest_scheduled_at as string, 'ko')} 시작. 도착하면 매장 QR로 체크인하세요.`,
-        action_url: `/matches/${g.id}/check-in`,
+        title_en: volunteer ? '🤝 Volunteering starts soon' : '📍 Your meetup starts soon',
+        title_ko: volunteer ? '🤝 곧 봉사활동이 시작돼요' : '📍 곧 만남이 시작돼요',
+        body_en: volunteer
+          ? `Starts ${formatKst(g.quest_scheduled_at as string, 'en')}. When you're together, take one group selfie in the app.`
+          : `Starts ${formatKst(g.quest_scheduled_at as string, 'en')}. Check in with the venue QR when you arrive.`,
+        body_ko: volunteer
+          ? `${formatKst(g.quest_scheduled_at as string, 'ko')} 시작. 모이면 앱에서 단체 사진을 한 장 찍어 주세요.`
+          : `${formatKst(g.quest_scheduled_at as string, 'ko')} 시작. 도착하면 매장 QR로 체크인하세요.`,
+        action_url: volunteer ? `/matches/${g.id}/volunteer` : `/matches/${g.id}/check-in`,
         is_important: true,
       })),
     );
@@ -427,11 +454,18 @@ export async function sendQuestDayReminders() {
 
     const { data: quest } = await admin
       .from('quests')
-      .select('venue:venues(business_name_display)')
+      .select('quest_type, venue:venues(business_name_display), program:volunteer_programs(title, place)')
       .eq('group_id', g.id)
       .maybeSingle();
+    const q = quest as {
+      quest_type?: string;
+      venue?: { business_name_display?: string } | null;
+      program?: { title?: string; place?: string | null } | null;
+    } | null;
     const venueName =
-      ((quest as { venue?: { business_name_display?: string } | null } | null)?.venue?.business_name_display) ?? 'the venue';
+      q?.quest_type === 'volunteer'
+        ? (q?.program?.place || q?.program?.title || '봉사 장소')
+        : (q?.venue?.business_name_display ?? 'the venue');
     const members = await activeMemberIds(g.id as string);
 
     await createNotifications(
@@ -440,8 +474,12 @@ export async function sendQuestDayReminders() {
         type: 'quest_day_reminder' as const,
         title_en: `🗓️ Your meetup at ${venueName} is coming up!`,
         title_ko: `🗓️ 곧 ${venueName}에서 만나요!`,
-        body_en: `${formatKst(g.quest_scheduled_at as string, 'en')} — scan the QR at ${venueName} to check in when you arrive.`,
-        body_ko: `${formatKst(g.quest_scheduled_at as string, 'ko')} — ${venueName}에 도착하면 QR 코드를 스캔해서 체크인하세요.`,
+        body_en: q?.quest_type === 'volunteer'
+          ? `${formatKst(g.quest_scheduled_at as string, 'en')} — volunteering at ${venueName}. Take one group selfie in the app when you're together.`
+          : `${formatKst(g.quest_scheduled_at as string, 'en')} — scan the QR at ${venueName} to check in when you arrive.`,
+        body_ko: q?.quest_type === 'volunteer'
+          ? `${formatKst(g.quest_scheduled_at as string, 'ko')} — ${venueName}에서 봉사해요. 모이면 앱에서 단체 사진을 한 장 찍어 주세요.`
+          : `${formatKst(g.quest_scheduled_at as string, 'ko')} — ${venueName}에 도착하면 QR 코드를 스캔해서 체크인하세요.`,
         action_url: '/matches',
         is_important: true,
       })),

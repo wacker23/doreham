@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     // Fetch quest + group
     const { data: quest } = await admin
       .from('quests')
-      .select('id, group_id, venue_id, status, completed_at')
+      .select('id, group_id, venue_id, quest_type, status, completed_at')
       .eq('id', quest_id)
       .maybeSingle();
 
@@ -73,13 +73,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You were not a member of this quest' }, { status: 403 });
     }
 
-    // If the quest was verified by QR, only people who actually showed up can review.
-    const { data: questCheckIns } = await admin
-      .from('quest_check_ins')
-      .select('user_id')
-      .eq('quest_id', quest_id);
-    if ((questCheckIns ?? []).length > 0 && !(questCheckIns ?? []).some((c: any) => c.user_id === reviewer_id)) {
-      return NextResponse.json({ error: 'Only members who checked in can leave reviews' }, { status: 403 });
+    // Only people who actually showed up can review:
+    //  venue quests → QR check-ins (if any were made), volunteer quests → tagged in the group selfie.
+    let attendedIds: Set<string> | null = null;
+    if ((quest as any).quest_type === 'volunteer') {
+      const { data: proofs } = await admin
+        .from('volunteer_proofs')
+        .select('tagged_user_ids')
+        .eq('quest_id', quest_id)
+        .eq('kind', 'group_selfie');
+      attendedIds = new Set((proofs ?? []).flatMap((p: any) => p.tagged_user_ids ?? []));
+    } else {
+      const { data: questCheckIns } = await admin
+        .from('quest_check_ins')
+        .select('user_id')
+        .eq('quest_id', quest_id);
+      if ((questCheckIns ?? []).length > 0) attendedIds = new Set((questCheckIns ?? []).map((c: any) => c.user_id));
+    }
+    if (attendedIds && !attendedIds.has(reviewer_id)) {
+      return NextResponse.json({ error: 'Only members who attended can leave reviews' }, { status: 403 });
     }
 
     // Accepted group members (to validate reviewed users)

@@ -17,6 +17,7 @@ export type MatchCategory = {
   // active_sports, cultural_venue, nature_outdoor, music_movie, other
   venue_categories: string[];
   coming_soon?: boolean;
+  volunteer?: boolean;
 };
 
 export const MATCH_CATEGORIES: MatchCategory[] = [
@@ -31,7 +32,8 @@ export const MATCH_CATEGORIES: MatchCategory[] = [
   { slug: 'puzzle', label_en: 'Puzzle', label_ko: '퍼즐', icon: 'puzzle', venue_categories: ['escape_room', 'board_game_cafe'] },
   { slug: 'makethings', label_en: 'Craft', label_ko: '공예', icon: 'makethings', venue_categories: ['workshop_creative'] },
   { slug: 'network', label_en: 'Network', label_ko: '네트워킹', icon: 'network', venue_categories: ['cultural_venue', 'cafe'] },
-  { slug: 'help', label_en: 'Volunteer', label_ko: '봉사', icon: 'help', venue_categories: [], coming_soon: true },
+  // 'help' = volunteer quest (1365 봉사활동). Exclusive: it can't be combined with venue categories.
+  { slug: 'help', label_en: 'Volunteer', label_ko: '봉사', icon: 'help', venue_categories: [], volunteer: true },
 ];
 
 /**
