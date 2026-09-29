@@ -160,7 +160,7 @@ export default function ChatPage() {
 
     const { data: questData } = await supabase
       .from('quests')
-      .select('venue_id, quest_type, venue:venues(business_name_display), program:volunteer_programs(title)')
+      .select('venue_id, quest_type, venue:venues(business_name_display), program:volunteer_programs(title, title_en)')
       .eq('group_id', groupId)
       .maybeSingle();
 
@@ -168,7 +168,7 @@ export default function ChatPage() {
       setGroupInfo({
         venue_id: questData.venue_id,
         venue_name: (questData as any).quest_type === 'volunteer'
-          ? `🤝 ${(questData as any).program?.title ?? (lang === 'ko' ? '봉사활동' : 'Volunteering')}`
+          ? `🤝 ${(lang === 'en' ? (questData as any).program?.title_en : null) ?? (questData as any).program?.title ?? (lang === 'ko' ? '봉사활동' : 'Volunteering')}`
           : ((questData as any).venue?.business_name_display ?? ''),
       });
     }

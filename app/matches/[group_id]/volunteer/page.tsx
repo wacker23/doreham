@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
+import { volunteerCategoryLabel } from '@/lib/volunteerCategories';
 
 /**
  * Volunteer quest page (봉사 퀘스트):
@@ -15,8 +17,12 @@ import { supabase } from '@/lib/supabase/client';
 type Program = {
   id: string;
   title: string;
+  title_en: string | null;
   org_name: string | null;
+  org_name_en: string | null;
   place: string | null;
+  place_en: string | null;
+  category: string | null;
   program_start: string | null;
   program_end: string | null;
   act_begin_hour: number | null;
@@ -24,7 +30,10 @@ type Program = {
   recruit_count: number | null;
   applied_count: number | null;
   description: string | null;
+  description_en: string | null;
   detail_url: string | null;
+  lat: number | null;
+  lng: number | null;
   contact_phone: string | null;
 };
 type Slot = { id: string; slot_time: string; volunteer_program_id: string | null };
@@ -74,7 +83,7 @@ export default function VolunteerQuestPage() {
   const params = useParams();
   const groupId = params?.group_id as string;
 
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang, setLang] = useLang();
   const [view, setView] = useState<View | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +91,14 @@ export default function VolunteerQuestPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [tagged, setTagged] = useState<Set<string>>(new Set());
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [showKorean, setShowKorean] = useState<Set<string>>(new Set()); // programs shown in the original Korean
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());     // programs with the full description open
+  const toggleIn = (setter: typeof setShowKorean, id: string) =>
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   const [now, setNow] = useState(() => Date.now());
   const selfieInput = useRef<HTMLInputElement>(null);
   const certInput = useRef<HTMLInputElement>(null);
@@ -91,10 +108,6 @@ export default function VolunteerQuestPage() {
     (code: string) => (ERRORS[code] ? (lang === 'ko' ? ERRORS[code].ko : ERRORS[code].en) : code),
     [lang],
   );
-
-  useEffect(() => {
-    setLang((document.body.dataset.lang as 'en' | 'ko') ?? 'en');
-  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -271,22 +284,69 @@ export default function VolunteerQuestPage() {
 
   // Plain render helper (not a component) so it doesn't remount on every render.
   // Its classes are styled via `.vq-wrap :global(...)` below because styled-jsx only scopes the main tree.
+  // 1365 is Korean-only: in English mode we show the cached English version (when there is one) and keep
+  // the Korean place name visible, since that is what people type into a map or show a taxi driver.
   function programBlock(p: Program, slotTime?: string | null) {
     const spots = p.recruit_count != null && p.applied_count != null ? p.recruit_count - p.applied_count : null;
+    const hasEnglish = !!p.title_en;
+    const english = lang === 'en' && hasEnglish && !showKorean.has(p.id);
+    const title = english ? p.title_en! : p.title;
+    const org = english ? (p.org_name_en || p.org_name) : p.org_name;
+    const place = english ? (p.place_en || p.place) : p.place;
+    const description = english ? (p.description_en || p.description) : p.description;
+    const category = volunteerCategoryLabel(p.category, lang === 'en' && !showKorean.has(p.id) ? 'en' : 'ko');
+    const isOpen = expanded.has(p.id);
+    const LIMIT = 260;
     return (
       <div className="program">
-        <div className="program-title">{p.title}</div>
+        {category && <div className="program-cat">{category}</div>}
+        <div className="program-title">{title}</div>
         {slotTime && <div className="program-when">📅 {fmt(slotTime, lang, DAY_TIME)}{p.act_end_hour != null ? ` – ${p.act_end_hour}:00` : ''}</div>}
-        {p.place && <div className="program-line">📍 {p.place}</div>}
-        {p.org_name && <div className="program-line">🏢 {p.org_name}</div>}
+        {place && (
+          <div className="program-line">
+            📍 {place}
+            {english && p.place && p.place !== place && <div className="program-ko">{p.place}</div>}
+            {p.lat != null && p.lng != null && (
+              // Exact spot from 1365's coordinates. No coordinates → no link (the 1365 page has a map).
+              <a
+                className="program-map"
+                href={`https://map.kakao.com/link/map/${encodeURIComponent((p.org_name || p.place || '봉사활동').replace(/,/g, ' '))},${p.lat},${p.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('Map ↗', '지도 ↗')}
+              </a>
+            )}
+          </div>
+        )}
+        {org && <div className="program-line">🏢 {org}</div>}
         {spots != null && (
           <div className="program-line">👥 {t(`${spots} spots left on 1365`, `1365 잔여 ${spots}자리`)}</div>
         )}
-        {p.description && <div className="program-desc">{p.description.slice(0, 220)}{p.description.length > 220 ? '…' : ''}</div>}
-        {p.detail_url && (
-          <a href={p.detail_url} target="_blank" rel="noopener noreferrer" className="link-1365">
-            {t('View on 1365 ↗', '1365에서 보기 ↗')}
-          </a>
+        {description && (
+          <div className="program-desc">
+            {isOpen || description.length <= LIMIT ? description : `${description.slice(0, LIMIT)}…`}
+            {description.length > LIMIT && (
+              <button className="program-more" onClick={() => toggleIn(setExpanded, p.id)}>
+                {isOpen ? t('Show less', '접기') : t('Read more', '더 보기')}
+              </button>
+            )}
+          </div>
+        )}
+        <div className="program-links">
+          {p.detail_url && (
+            <a href={p.detail_url} target="_blank" rel="noopener noreferrer" className="link-1365">
+              {t('View on 1365 ↗', '1365에서 보기 ↗')}
+            </a>
+          )}
+          {lang === 'en' && hasEnglish && (
+            <button className="program-orig" onClick={() => toggleIn(setShowKorean, p.id)}>
+              {showKorean.has(p.id) ? 'Show English' : 'Show original (Korean)'}
+            </button>
+          )}
+        </div>
+        {lang === 'en' && !hasEnglish && (
+          <div className="program-note">English version is on its way. This listing comes from 1365 in Korean.</div>
         )}
       </div>
     );
@@ -297,6 +357,10 @@ export default function VolunteerQuestPage() {
       <header className="vq-header">
         <a href="/matches" className="back-btn">←</a>
         <div className="header-title">🤝 {t('Volunteer quest', '봉사 퀘스트')}</div>
+        <div className="lang-toggle">
+          <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
+          <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>EN</button>
+        </div>
       </header>
 
       <div className="content">
@@ -376,6 +440,20 @@ export default function VolunteerQuestPage() {
                   <a href={chosenProgram.detail_url} target="_blank" rel="noopener noreferrer" className="btn btn-jade block">
                     {t('Open 1365 signup ↗', '1365 신청 페이지 열기 ↗')}
                   </a>
+                )}
+                {lang === 'en' && (
+                  <details className="howto">
+                    <summary>How to sign up on 1365 (the site is in Korean)</summary>
+                    <ol>
+                      <li>Tap <b>로그인</b> (Log in). No account yet? Tap <b>회원가입</b> (Sign up). Foreign residents can join with their Residence Card (외국인등록증).</li>
+                      <li>On the activity page, tap <b>신청하기</b> (Apply).</li>
+                      {group.quest_scheduled_at && (
+                        <li>Pick <b>{fmt(group.quest_scheduled_at, 'ko', { month: 'long', day: 'numeric', weekday: 'short' })}</b> ({fmt(group.quest_scheduled_at, 'en', { month: 'short', day: 'numeric', weekday: 'short' })}), the same day as your group, and submit.</li>
+                      )}
+                      <li>Some organizations approve each application. If the listing asks you to, call them to confirm before you go.</li>
+                      <li>Come back here and tap <b>I&apos;m registered</b>.</li>
+                    </ol>
+                  </details>
                 )}
                 {me.signed_up ? (
                   <div className="done">✅ {t("You're registered", '신청 완료')}</div>
@@ -478,7 +556,9 @@ export default function VolunteerQuestPage() {
             <div className="card center">
               <div className="big-emoji">🌟</div>
               <h2>{t('You volunteered together!', '함께 봉사했어요!')}</h2>
-              {chosenProgram && <p className="hint">{chosenProgram.title}</p>}
+              {chosenProgram && (
+                <p className="hint">{lang === 'en' && chosenProgram.title_en ? chosenProgram.title_en : chosenProgram.title}</p>
+              )}
             </div>
             {selfies.map((s) => s.url && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -541,7 +621,10 @@ export default function VolunteerQuestPage() {
         .vq-wrap { min-height: 100vh; background: var(--paper); }
         .vq-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
         .back-btn { text-decoration: none; color: var(--ink); font-size: 20px; }
-        .header-title { font-family: var(--display); font-weight: 800; font-size: 17px; }
+        .header-title { font-family: var(--display); font-weight: 800; font-size: 17px; flex: 1; }
+        .lang-toggle { display: flex; gap: 4px; }
+        .lang-toggle button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--ink-60); }
+        .lang-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
         .content { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
         .section-title { font-family: var(--display); font-weight: 800; font-size: 20px; margin: 4px 0 4px; }
         h2 { font-family: var(--display); font-weight: 800; font-size: 20px; margin: 8px 0; }
@@ -557,7 +640,18 @@ export default function VolunteerQuestPage() {
         .vq-wrap :global(.program-when) { font-weight: 700; color: var(--jade); font-size: 14px; margin-bottom: 6px; }
         .vq-wrap :global(.program-line) { color: var(--ink-60); font-size: 13.5px; margin-bottom: 3px; }
         .vq-wrap :global(.program-desc) { color: var(--ink-60); font-size: 13px; line-height: 1.55; margin-top: 8px; white-space: pre-line; }
-        .vq-wrap :global(.link-1365) { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--jade); text-decoration: none; }
+        .vq-wrap :global(.program-cat) { display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--jade); background: rgba(15, 157, 119, 0.08); border-radius: 999px; padding: 3px 10px; margin-bottom: 8px; }
+        .vq-wrap :global(.program-ko) { font-size: 12.5px; color: var(--ink-60); margin: 2px 0 0 20px; }
+        .vq-wrap :global(.program-map) { display: inline-block; margin-left: 20px; font-size: 12.5px; font-weight: 700; color: var(--jade); text-decoration: none; }
+        .vq-wrap :global(.program-more) { display: block; margin-top: 6px; background: none; border: 0; padding: 0; color: var(--jade); font-weight: 700; font-size: 13px; cursor: pointer; }
+        .vq-wrap :global(.program-links) { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 10px; }
+        .vq-wrap :global(.program-orig) { background: none; border: 0; padding: 0; color: var(--ink-60); font-size: 13px; text-decoration: underline; cursor: pointer; }
+        .vq-wrap :global(.program-note) { margin-top: 8px; font-size: 12.5px; color: var(--ink-60); }
+        .howto { margin-top: 12px; font-size: 13.5px; color: var(--ink); background: var(--paper-2); border-radius: 12px; padding: 10px 14px; }
+        .howto summary { cursor: pointer; font-weight: 700; }
+        .howto ol { margin: 10px 0 2px; padding-left: 20px; line-height: 1.6; }
+        .howto li { margin-bottom: 6px; }
+        .vq-wrap :global(.link-1365) { display: inline-block; font-size: 13px; font-weight: 700; color: var(--jade); text-decoration: none; }
         .option-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
         .votes { font-weight: 700; color: var(--ink-60); }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; text-decoration: none; }

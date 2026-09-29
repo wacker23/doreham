@@ -5,6 +5,7 @@ import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { createNotifications, type NotificationPayload } from '@/lib/notifications';
 import { cancelActiveGroup, isAccepted, MIN_GROUP_SIZE } from '@/lib/server/groupLifecycle';
 import { formatKst, hoursFromNow, kstDateString } from '@/lib/server/time';
+import { ensureProgramTranslations } from '@/lib/server/translatePrograms';
 
 /**
  * Volunteer quests (봉사활동 퀘스트).
@@ -192,6 +193,14 @@ export async function startVolunteerVoting(groupId: string): Promise<'voting' | 
     return 'skipped';
   }
 
+  // English versions of the options (1365 is Korean-only). Bounded so activation never hangs;
+  // anything missed is picked up by the advance-groups cron sweep.
+  try {
+    await ensureProgramTranslations(options.map((o) => o.program.id), { timeoutMs: 8000 });
+  } catch (e) {
+    console.error('Volunteer option translation failed:', e);
+  }
+
   after(async () => {
     await createNotifications(
       members.map((uid) => ({
@@ -221,9 +230,10 @@ export async function onVolunteerSlotLocked(groupId: string, slot: { id: string;
 
   const { data: program } = await admin
     .from('volunteer_programs')
-    .select('id, title, place, org_name, detail_url')
+    .select('id, title, title_en, place, place_en, org_name, org_name_en, detail_url')
     .eq('id', programId)
     .maybeSingle();
+  const titleEn = program?.title_en || program?.title || '';
 
   const deadlineMs = Math.min(Date.now() + SIGNUP_WINDOW_HOURS * 3600_000, new Date(slot.slot_time).getTime() - 12 * 3600_000);
   const deadline = new Date(Math.max(deadlineMs, Date.now() + 2 * 3600_000)).toISOString();
@@ -234,9 +244,10 @@ export async function onVolunteerSlotLocked(groupId: string, slot: { id: string;
       .update({
         volunteer_program_id: programId,
         title: `🤝 ${program?.title ?? '봉사활동'}`,
-        title_en: `🤝 Volunteer: ${program?.title ?? ''}`.trim(),
+        title_en: `🤝 Volunteer: ${titleEn}`.trim(),
         quest_description: [program?.org_name, program?.place].filter(Boolean).join(' · ') || null,
-        description_en: [program?.org_name, program?.place].filter(Boolean).join(' · ') || null,
+        description_en:
+          [program?.org_name_en || program?.org_name, program?.place_en || program?.place].filter(Boolean).join(' · ') || null,
       })
       .eq('group_id', groupId),
     admin.from('groups').update({ volunteer_signup_deadline: deadline }).eq('id', groupId),
@@ -250,7 +261,7 @@ export async function onVolunteerSlotLocked(groupId: string, slot: { id: string;
         type: 'quest_scheduled' as const,
         title_en: `📝 Sign up on 1365: ${formatKst(slot.slot_time, 'en')}`,
         title_ko: `📝 1365에서 신청하세요: ${formatKst(slot.slot_time, 'ko')}`,
-        body_en: `Your group chose "${program?.title ?? 'a volunteer activity'}". Sign up on 1365, then tap "I'm registered" by ${formatKst(deadline, 'en')}.`,
+        body_en: `Your group chose "${titleEn || 'a volunteer activity'}". Sign up on 1365, then tap "I'm registered" by ${formatKst(deadline, 'en')}.`,
         body_ko: `그룹이 "${program?.title ?? '봉사활동'}"을(를) 선택했어요. 1365에서 신청한 뒤 ${formatKst(deadline, 'ko')}까지 "신청 완료"를 눌러 주세요.`,
         action_url: `/matches/${groupId}/volunteer`,
         is_important: true,
@@ -634,7 +645,7 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
   const { data: programs } = programIds.length
     ? await admin
         .from('volunteer_programs')
-        .select('id, title, org_name, place, program_start, program_end, act_begin_hour, act_end_hour, recruit_count, applied_count, description, detail_url, contact_phone')
+        .select('id, title, title_en, org_name, org_name_en, place, place_en, category, program_start, program_end, act_begin_hour, act_end_hour, recruit_count, applied_count, description, description_en, detail_url, contact_phone, lalo:raw->>areaLalo1')
         .in('id', programIds)
     : { data: [] };
 
@@ -645,13 +656,21 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
     }),
   );
 
+  // 1365 gives the activity's exact spot as "lat,lng" (areaLalo1); only real Korean coordinates are passed on.
+  const withPoint = (programs ?? []).map((row) => {
+    const { lalo, ...p } = row as typeof row & { lalo: string | null };
+    const [lat, lng] = String(lalo ?? '').split(',').map((v) => Number(v.trim()));
+    const ok = Number.isFinite(lat) && Number.isFinite(lng) && lat > 33 && lat < 39 && lng > 124 && lng < 132;
+    return { ...p, lat: ok ? lat : null, lng: ok ? lng : null };
+  });
+
   return {
     ok: true as const,
     me: userId,
     me_left: meLeft,
     group,
     quest,
-    programs: programs ?? [],
+    programs: withPoint,
     slots: slots ?? [],
     votes: votes ?? [],
     proofs: signed,

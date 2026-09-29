@@ -37,7 +37,7 @@ export async function GET() {
 
     const { data: quests } = await admin
       .from('quests')
-      .select('id, group_id, venue_id, quest_type, completed_at, venue:venues(id, business_name_display), program:volunteer_programs(title)')
+      .select('id, group_id, venue_id, quest_type, completed_at, venue:venues(id, business_name_display), program:volunteer_programs(title, title_en)')
       .in('group_id', groupIds)
       .eq('status', 'completed')
       .gte('completed_at', cutoff);
@@ -105,6 +105,8 @@ export async function GET() {
         venue_name: isVolunteer
           ? `🤝 ${(quest as any).program?.title ?? '봉사활동'}`
           : ((quest.venue as any)?.business_name_display ?? '?'),
+        // English title for volunteer quests (1365 is Korean-only); null means "use venue_name".
+        venue_name_en: isVolunteer && (quest as any).program?.title_en ? `🤝 ${(quest as any).program.title_en}` : null,
         completed_at: quest.completed_at,
         unreviewed_members: unreviewedMembers.map((m: any) => ({
           user_id: m.user_id,
