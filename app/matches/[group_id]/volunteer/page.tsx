@@ -345,9 +345,6 @@ export default function VolunteerQuestPage() {
             </button>
           )}
         </div>
-        {lang === 'en' && !hasEnglish && (
-          <div className="program-note">English version is on its way. This listing comes from 1365 in Korean.</div>
-        )}
       </div>
     );
   }
@@ -646,7 +643,6 @@ export default function VolunteerQuestPage() {
         .vq-wrap :global(.program-more) { display: block; margin-top: 6px; background: none; border: 0; padding: 0; color: var(--jade); font-weight: 700; font-size: 13px; cursor: pointer; }
         .vq-wrap :global(.program-links) { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 10px; }
         .vq-wrap :global(.program-orig) { background: none; border: 0; padding: 0; color: var(--ink-60); font-size: 13px; text-decoration: underline; cursor: pointer; }
-        .vq-wrap :global(.program-note) { margin-top: 8px; font-size: 12.5px; color: var(--ink-60); }
         .howto { margin-top: 12px; font-size: 13.5px; color: var(--ink); background: var(--paper-2); border-radius: 12px; padding: 10px 14px; }
         .howto summary { cursor: pointer; font-weight: 700; }
         .howto ol { margin: 10px 0 2px; padding-left: 20px; line-height: 1.6; }
