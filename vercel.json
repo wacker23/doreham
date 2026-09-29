@@ -8,6 +8,7 @@
     { "path": "/api/send-availability-nudges", "schedule": "40 * * * *" },
     { "path": "/api/send-quest-day-reminders", "schedule": "0 0 * * *" },
     { "path": "/api/volunteer/sync", "schedule": "10 19,3 * * *" },
-    { "path": "/api/volunteer/cleanup", "schedule": "30 18 * * *" }
+    { "path": "/api/volunteer/cleanup", "schedule": "30 18 * * *" },
+    { "path": "/api/events/reminders", "schedule": "5 0 * * *" }
   ]
 }

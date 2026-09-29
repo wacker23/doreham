@@ -111,6 +111,14 @@ export default function TermsPage() {
               <li>경고 3회는 48시간, 4회 이상은 1주일 동안 매칭이 정지돼요.</li>
             </ul>
 
+            <h3>이벤트</h3>
+            <ul>
+              <li>회원과 파트너 가게가 올린 이벤트는 주최자가 기획하고 책임져요. 도레함은 &apos;도레함 공식&apos; 표시가 있는 이벤트만 직접 주최해요.</li>
+              <li>이벤트는 공개된 장소에서 열어야 해요. 판매, 다단계, 종교·정치 모집, 이성 만남 목적의 이벤트는 올릴 수 없어요.</li>
+              <li>미리 돈을 보내 달라고 요구하면 안 돼요. 비용이 있다면 이벤트에 적고 현장에서 받아요. 도레함은 이벤트 참여에 돈을 받지 않아요.</li>
+              <li>규칙에 맞지 않거나 여러 회원이 신고한 이벤트와 댓글은 숨기거나 삭제할 수 있고, 반복되면 계정 이용을 제한할 수 있어요.</li>
+            </ul>
+
             <h2>6. 파트너 가게</h2>
             <p>도레함은 파트너 가게에서의 퀘스트를 제안하지만, 가게에서 제공하는 상품과 서비스에 대한 책임은 지지 않습니다. 문제 발생 시 가게에 직접 문의하시거나 도레함에 알려주세요.</p>
 
@@ -199,6 +207,14 @@ export default function TermsPage() {
               <li>When the check-in window ends, if someone else in your group showed up and you did not check in (or are not in any group selfie), you get a no-show strike. If nobody showed up, nobody gets a strike.</li>
               <li>Leaving a confirmed group gives you a strike. Leaving a volunteer group because you couldn&apos;t get a 1365 spot does not.</li>
               <li>3 strikes: matching is paused for 48 hours. 4 or more: 1 week.</li>
+            </ul>
+
+            <h3>Events</h3>
+            <ul>
+              <li>Events posted by members and partner venues are organized by, and the responsibility of, their host. Doreham hosts only the events marked &quot;Official&quot;.</li>
+              <li>Events must be in public places. No selling, MLM, religious or political recruiting, and no dating events.</li>
+              <li>Hosts must not ask for money in advance. If there is a cost, write it on the event and collect it on the spot. Doreham never charges to join an event.</li>
+              <li>We may hide or remove events and comments that break these rules or that several members report, and limit accounts that do it repeatedly.</li>
             </ul>
 
             <h2>6. Partner Venues</h2>

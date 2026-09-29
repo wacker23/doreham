@@ -36,6 +36,11 @@ const TYPE_ICONS: Record<string, string> = {
   review_reminder: '🌸',
   strike_issued: '⚠️',
   welcome: '👋',
+  event_joined: '🙋',
+  event_comment: '💬',
+  event_updated: '📅',
+  event_cancelled: '❌',
+  event_reminder: '⏰',
 };
 
 export function NotificationBell({ lang }: Props) {

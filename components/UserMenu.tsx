@@ -157,7 +157,19 @@ export function UserMenu({ lang }: Props) {
             <span className="menu-icon">🌸</span>
             <span>
               <span className="en">My matches</span>
-              <span className="ko lang-ko">내 성냥</span>
+              <span className="ko lang-ko">내 매칭</span>
+            </span>
+          </a>
+          <a
+            href="/events"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">🎉</span>
+            <span>
+              <span className="en">Events</span>
+              <span className="ko lang-ko">이벤트</span>
             </span>
           </a>
 
@@ -217,6 +229,15 @@ export function UserMenu({ lang }: Props) {
               >
                 <span className="menu-icon">✨</span>
                 <span>Admin · Matches</span>
+              </a>
+              <a
+                href="/admin/events"
+                className="user-menu-item user-menu-item-admin"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="menu-icon">🎉</span>
+                <span>Admin · Events</span>
               </a>
             </>
           )}

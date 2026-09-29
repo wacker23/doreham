@@ -126,6 +126,7 @@ function English() {
           ['Lifestyle', 'Exercise, education, drinking, smoking, children', 'Optional'],
           ['Matching and quests', 'Match requests (cities, group size, categories), groups, availability and votes, check-ins (time, distance from the venue, whether you were within 200 m), quest results, strikes, blocks, review tags you give and receive', 'Created as you use the service'],
           ['Messages', 'Group chat messages', 'Created as you use the service'],
+          ['Events', 'Events you host (title, description, date and time, place, cost, size), events you join, your comments on events, and reports you send', 'Created as you use the service'],
           ['Volunteer quests', 'The 1365 activity your group chose (public data), whether you confirmed signing up on 1365, group selfie photos and who is tagged in them, your 1365 certificate, your location when you upload a selfie', 'Photos: required to finish a volunteer quest (with your consent). Certificate and location: optional'],
           ['Venue owners', 'Business name, business registration number, address, contact details, menu, photos, opening hours', 'Required to list a venue'],
           ['Collected automatically', 'Sign-in cookie, your language choice (stored in your browser), server logs (IP address, browser, pages requested)', 'Required to run the service'],
@@ -138,7 +139,8 @@ function English() {
         <li>Matching you with compatible people and forming groups</li>
         <li>Running quests: scheduling, check-in, volunteer attendance, reviews</li>
         <li>Safety and fairness: strikes for no-shows, blocks, handling reports</li>
-        <li>Notifications and emails about your matches and quests</li>
+        <li>Showing community events in your city, and telling you about changes to events you host or join</li>
+        <li>Notifications and emails about your matches, quests and events</li>
         <li>Fixing problems and improving the service</li>
         <li>Meeting legal obligations</li>
       </ul>
@@ -150,6 +152,7 @@ function English() {
           ['Account, profile, match and quest records', 'You delete your account. Then deleted within 30 days, including backups'],
           ['Group chat messages', 'You delete your account. Your messages are then anonymized so the group chat still makes sense to others'],
           ['Check-ins', 'Kept with the quest record. We store only your distance from the venue, not your coordinates'],
+          ['Events you host, events you join, comments and reports', 'You delete your account (then deleted with it). You can delete a comment or cancel an event yourself at any time'],
           ['Volunteer group selfies and 1365 certificates (and the location attached to a selfie)', '90 days after upload, then deleted automatically. Deleted sooner if you withdraw your consent'],
           ['Server logs', 'A short period, for security and fixing problems'],
         ]}
@@ -160,6 +163,7 @@ function English() {
       <ul>
         <li><strong>Your group</strong>: people in your matched group see your profile, your messages in the group chat and the group&apos;s photos. People who leave a group before it ends can no longer see its photos.</li>
         <li><strong>Partner venues</strong>: owners see how many people checked in and anonymous review tags. They do not see your profile.</li>
+        <li><strong>Other members, for events</strong>: signed-in members can see events you host (with your name and photo as the host) and your comments on events. Who is going to an event is shown only to its host and to other people going. The host never sees who reported an event.</li>
         <li><strong>The law</strong>: when a court order or law requires it.</li>
         <li><strong>Service providers</strong>: listed in section 5. They process data only to run Doreham for us.</li>
       </ul>
@@ -170,9 +174,10 @@ function English() {
         head={['Company (country)', 'What they do', 'Data']}
         rows={[
           ['Supabase Inc. (USA; data stored in the AWS Seoul region, Korea)', 'Database, file storage, sign-in', 'All account and app data, photos'],
-          ['Vercel Inc. (USA; our servers run in Seoul)', 'Hosting and server functions; routes translation requests', 'Requests, IP addresses, server logs'],
+          ['Vercel Inc. (USA; our servers run in Seoul)', 'Hosting and server functions; routes translation requests (Vercel AI Gateway)', 'Requests, IP addresses, server logs'],
           ['Resend Inc. (USA)', 'Sending email', 'Email address, name, email content'],
-          ['Google LLC (USA)', 'Sign-in with Google; translating public 1365 activity listings into English', 'Sign-in: Google account ID, email, name. Translation: only the public listing text, never your personal data'],
+          ['Google LLC (USA)', 'Sign-in with Google', 'Google account ID, email, name'],
+          ['Google LLC (USA); as backups when it is unavailable: Anthropic PBC, OpenAI (USA)', 'Automatic translation between Korean and English of public 1365 listings and of the events members post', 'Only the text being translated: listing text, and the title, description and place of an event. Never your name, account or contact details'],
           ['Kakao Corp. (Korea)', 'Address search when registering a venue; map links', 'The address you search'],
         ]}
       />
@@ -247,6 +252,7 @@ function Korean() {
           ['생활 습관', '운동, 학력, 음주, 흡연, 자녀 여부', '선택'],
           ['매칭 및 퀘스트', '매칭 요청(도시, 인원, 카테고리), 그룹, 가능 시간 및 투표, 체크인(시각, 장소와의 거리, 200m 이내 여부), 퀘스트 결과, 경고, 차단, 주고받은 리뷰 태그', '서비스 이용 과정에서 생성'],
           ['메시지', '그룹 채팅 메시지', '서비스 이용 과정에서 생성'],
+          ['이벤트', '주최한 이벤트(제목, 설명, 날짜·시간, 장소, 비용, 인원), 참여한 이벤트, 이벤트 댓글, 보낸 신고', '서비스 이용 과정에서 생성'],
           ['봉사 퀘스트', '그룹이 고른 1365 봉사활동(공개 정보), 1365 신청 완료 여부, 단체 사진과 사진 속 멤버 표시, 1365 봉사활동 확인서, 사진을 올릴 때의 위치', '사진: 봉사 퀘스트 완료에 필요(동의 시). 확인서·위치: 선택'],
           ['제휴 장소 운영자', '상호, 사업자등록번호, 주소, 연락처, 메뉴, 사진, 영업시간', '장소 등록에 필수'],
           ['자동 수집', '로그인 쿠키, 언어 설정(브라우저에 저장), 서버 로그(IP 주소, 브라우저 정보, 요청한 페이지)', '서비스 운영에 필수'],
@@ -259,7 +265,8 @@ function Korean() {
         <li>잘 맞는 사람을 찾아 그룹을 만드는 매칭</li>
         <li>퀘스트 운영: 일정, 체크인, 봉사 참여 확인, 리뷰</li>
         <li>안전과 공정성: 불참 경고, 차단, 신고 처리</li>
-        <li>매칭·퀘스트 관련 알림과 이메일 발송</li>
+        <li>내 도시의 커뮤니티 이벤트 보여주기, 주최하거나 참여한 이벤트의 변경 사항 알림</li>
+        <li>매칭·퀘스트·이벤트 관련 알림과 이메일 발송</li>
         <li>오류 수정 및 서비스 개선</li>
         <li>법령상 의무 이행</li>
       </ul>
@@ -271,6 +278,7 @@ function Korean() {
           ['계정, 프로필, 매칭·퀘스트 기록', '회원 탈퇴 시까지. 탈퇴 후 백업을 포함해 30일 이내 삭제'],
           ['그룹 채팅 메시지', '회원 탈퇴 시까지. 탈퇴 후에는 다른 멤버의 대화 흐름을 위해 익명 처리'],
           ['체크인 기록', '퀘스트 기록과 함께 보관. 위치 좌표는 저장하지 않고 장소와의 거리만 저장'],
+          ['주최·참여한 이벤트, 댓글, 신고', '회원 탈퇴 시까지(탈퇴하면 함께 삭제). 댓글 삭제와 이벤트 취소는 언제든 직접 할 수 있어요'],
           ['봉사 단체 사진과 1365 확인서 (사진에 붙은 위치 포함)', '올린 날부터 90일 뒤 자동 삭제. 동의를 철회하면 즉시 삭제'],
           ['서버 로그', '보안과 오류 확인을 위한 짧은 기간'],
         ]}
@@ -281,6 +289,7 @@ function Korean() {
       <ul>
         <li><strong>같은 그룹 멤버</strong>: 프로필, 그룹 채팅 메시지, 그룹 사진을 볼 수 있어요. 그룹이 끝나기 전에 나간 사람은 그룹 사진을 볼 수 없어요.</li>
         <li><strong>제휴 장소</strong>: 운영자는 체크인 인원 수와 익명 리뷰 태그만 볼 수 있고, 회원님의 프로필은 볼 수 없어요.</li>
+        <li><strong>이벤트의 다른 회원</strong>: 로그인한 회원은 회원님이 주최한 이벤트(주최자 이름과 사진 포함)와 이벤트 댓글을 볼 수 있어요. 누가 참여하는지는 주최자와 같은 이벤트 참여자에게만 보여요. 주최자는 누가 신고했는지 볼 수 없어요.</li>
         <li><strong>법령</strong>: 법원 명령 등 법령에 따른 요구가 있는 경우</li>
         <li><strong>처리 위탁</strong>: 아래 5항의 업체가 도레함 운영을 위해서만 처리해요.</li>
       </ul>
@@ -291,9 +300,10 @@ function Korean() {
         head={['업체 (국가)', '위탁 업무', '항목']}
         rows={[
           ['Supabase Inc. (미국; 데이터는 AWS 서울 리전에 저장)', '데이터베이스, 파일 저장, 로그인', '계정 및 앱의 모든 정보, 사진'],
-          ['Vercel Inc. (미국; 서버는 서울에서 실행)', '호스팅 및 서버 기능, 번역 요청 전달', '요청 정보, IP 주소, 서버 로그'],
+          ['Vercel Inc. (미국; 서버는 서울에서 실행)', '호스팅 및 서버 기능, 번역 요청 전달(Vercel AI Gateway)', '요청 정보, IP 주소, 서버 로그'],
           ['Resend Inc. (미국)', '이메일 발송', '이메일 주소, 이름, 이메일 내용'],
-          ['Google LLC (미국)', 'Google 로그인, 공개된 1365 봉사활동 안내문의 영어 번역', '로그인: Google 계정 식별자, 이메일, 이름. 번역: 공개된 안내문만 보내며 개인정보는 보내지 않음'],
+          ['Google LLC (미국)', 'Google 로그인', 'Google 계정 식별자, 이메일, 이름'],
+          ['Google LLC (미국); 장애 시 예비: Anthropic PBC, OpenAI (미국)', '공개된 1365 봉사활동 안내문과 회원이 올린 이벤트의 한국어↔영어 자동 번역', '번역할 글만 보냄: 안내문, 이벤트의 제목·설명·장소. 이름, 계정, 연락처는 보내지 않음'],
           ['(주)카카오 (한국)', '장소 등록 시 주소 검색, 지도 링크', '검색한 주소'],
         ]}
       />

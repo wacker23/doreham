@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { MATCH_CATEGORIES } from '@/lib/matchCategories';
-import { LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
+import { KOREAN_CITIES, LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
 import { useLang } from '@/lib/hooks/useLang';
 import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
+import { AppTabBar } from '@/components/AppTabBar';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -86,27 +87,7 @@ type MatchRequest = {
   matched_group_id: string | null;
 };
 
-type KoreanCity = {
-  slug: string;
-  name_en: string;
-  name_ko: string;
-  emoji: string;
-};
 
-const KOREAN_CITIES: KoreanCity[] = [
-  { slug: 'seoul', name_en: 'Seoul', name_ko: '서울', emoji: '🏙️' },
-  { slug: 'busan', name_en: 'Busan', name_ko: '부산', emoji: '🌊' },
-  { slug: 'incheon', name_en: 'Incheon', name_ko: '인천', emoji: '✈️' },
-  { slug: 'daegu', name_en: 'Daegu', name_ko: '대구', emoji: '⛰️' },
-  { slug: 'daejeon', name_en: 'Daejeon', name_ko: '대전', emoji: '🔬' },
-  { slug: 'gwangju', name_en: 'Gwangju', name_ko: '광주', emoji: '🎨' },
-  { slug: 'suwon', name_en: 'Suwon', name_ko: '수원', emoji: '🏯' },
-  { slug: 'asan', name_en: 'Asan', name_ko: '아산', emoji: '🍃' },
-  { slug: 'cheonan', name_en: 'Cheonan', name_ko: '천안', emoji: '🌸' },
-  { slug: 'ulsan', name_en: 'Ulsan', name_ko: '울산', emoji: '🏭' },
-  { slug: 'jeonju', name_en: 'Jeonju', name_ko: '전주', emoji: '🍚' },
-  { slug: 'jeju', name_en: 'Jeju', name_ko: '제주', emoji: '🌴' },
-];
 
 const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }> = {
   cafe: { en: 'Café', ko: '카페', emoji: '☕' },
@@ -1077,6 +1058,8 @@ export default function MatchesPage() {
         }}
       />
 
+      <AppTabBar lang={lang} />
+
       <style jsx>{`
         .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px); }
         .v-nav-in { display: flex; align-items: center; justify-content: space-between; height: 68px; }
@@ -1127,7 +1110,7 @@ export default function MatchesPage() {
         }
         .premium-dot { font-size: 12px; }
 
-        .main-wrap { padding: 32px 24px 80px; max-width: 900px; min-height: 60vh; }
+        .main-wrap { padding: 32px 24px 48px; max-width: 900px; min-height: 60vh; }
 
         /* Empty states */
         .empty-state { text-align: center; padding: 80px 20px; background: var(--paper-2); border-radius: 24px; }
