@@ -62,10 +62,18 @@ function weekdayIndex(ymd: string): number {
   return (new Date(`${ymd}T00:00:00Z`).getUTCDay() + 6) % 7;
 }
 
-/** actWkdy as a 7-char 0/1 mask starting Monday (1365 lists 월→일). Unknown formats allow every day. */
-function dayAllowed(mask: string | null, ymd: string): boolean {
-  if (!mask || !/^[01]{7}$/.test(mask)) return true;
-  return mask[weekdayIndex(ymd)] === '1';
+/**
+ * Which weekdays (0 = Mon … 6 = Sun) a program runs, from 1365's actWkdy.
+ * Accepts a 7-char 0/1 mask starting Monday (1365 lists 월→일) or Korean day letters ("월,수,금").
+ * Returns null when the format is unknown.
+ */
+function activeWeekdays(actWkdy: string | null): Set<number> | null {
+  if (!actWkdy) return null;
+  const v = actWkdy.trim();
+  if (/^[01]{7}$/.test(v)) return new Set([...v].flatMap((c, i) => (c === '1' ? [i] : [])));
+  const letters = '월화수목금토일';
+  const days = [...v].map((c) => letters.indexOf(c)).filter((i) => i >= 0);
+  return days.length ? new Set(days) : null;
 }
 
 /** KST wall-clock → UTC ISO. */
@@ -96,10 +104,16 @@ export async function buildVolunteerOptions(city: string, groupSize: number) {
     let end = p.program_end && p.program_end < to ? p.program_end : to;
     if (p.notice_end && p.notice_end < end) end = p.notice_end;
 
+    // A one-day program runs on its date. A longer one (e.g. a month of weekday afternoons) is only
+    // offered once the detail sync has told us which weekdays it runs, so we never send a group on a closed day.
+    const weekdays = activeWeekdays(p.act_weekdays);
+    const oneDay = !!p.program_start && p.program_start === p.program_end;
+    if (!oneDay && !weekdays) continue;
+
     let firstDay: string | null = null;
     let firstWeekend: string | null = null;
     for (let d = start; d <= end; d = addDays(d, 1)) {
-      if (!dayAllowed(p.act_weekdays, d)) continue;
+      if (weekdays && !weekdays.has(weekdayIndex(d))) continue;
       firstDay ??= d;
       if (weekdayIndex(d) >= 5) {
         firstWeekend = d;
