@@ -5,7 +5,7 @@ import { createNotifications, createNotification, type NotificationPayload } fro
 import { expandCategoriesToVenueCategories } from '@/lib/matchCategories';
 import { expireOverdueInvites, ACTIVE_PHASES } from '@/lib/server/groupLifecycle';
 import { sendMatchInviteEmail } from '@/lib/server/emails/match-invite';
-import { VOLUNTEER_CITY_SET } from '@/lib/volunteerCities';
+import { LAUNCH_CITY_SLUGS, NEARBY_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
 
 /**
  * Matching algorithm.
@@ -17,9 +17,13 @@ import { VOLUNTEER_CITY_SET } from '@/lib/volunteerCities';
  *
  * Passes are based on how long the request has been searching (search_started_at,
  * which resets when a cancelled group reopens the request):
- *  Pass 1 (0–30 min):   same city, exact group size, compatibility ≥ 75
- *  Pass 2 (30 min–2 h): same city, size may shrink by 1, compatibility ≥ 60
- *  Pass 3 (2 h–48 h):   same city, any size down to 2, compatibility ≥ 50
+ *  Pass 1 (0–30 min):   exact group size, compatibility ≥ 75
+ *  Pass 2 (30 min–2 h): size may shrink by 1, compatibility ≥ 60, neighbouring cities join the pool
+ *  Pass 3 (2 h–48 h):   any size down to 2, compatibility ≥ 50
+ *
+ * A request can list up to 3 cities (or none = anywhere). Each city is tried; invitees are people who
+ * live there, are searching for it themselves, or (pass 2+) live in a neighbouring city (Asan ↔ Cheonan).
+ * The city that gives the biggest, best-fitting group wins.
  *  After 48 h:          no_match_found (user is notified and can request again)
  */
 
@@ -128,6 +132,7 @@ type MatchRequestRow = {
   id: string;
   user_id: string;
   city: string | null;
+  cities: string[] | null;
   group_size: number | null;
   status: string;
   created_at: string;
@@ -181,6 +186,11 @@ export async function processMatchRequests(opts: { requestId?: string; userId?: 
   return { ok: true as const, processed: results.length, expired_invites: expireResult, results };
 }
 
+const NO_VENUES_MESSAGE = {
+  en: "There are no partner venues in the cities you picked yet. Add Asan or Cheonan, or try a 봉사 (volunteer) quest.",
+  ko: '선택한 도시에는 아직 제휴 장소가 없어요. 아산이나 천안을 추가하거나 봉사 퀘스트를 선택해 주세요.',
+};
+
 const NO_PROGRAMS_MESSAGE = {
   en: 'There are no 1365 volunteer activities open to adults in this city right now. Try again in a few days, or pick another category.',
   ko: '지금 이 도시에는 성인이 참여할 수 있는 1365 봉사활동이 없어요. 며칠 뒤 다시 시도하거나 다른 카테고리를 골라 주세요.',
@@ -214,6 +224,21 @@ async function recordAttempt(req: MatchRequestRow) {
     .eq('id', req.id);
 }
 
+/** The cities a request is open to, lowercased. Empty = anywhere. */
+function requestCities(r: { city: string | null; cities?: string[] | null }): string[] {
+  const list = r.cities && r.cities.length > 0 ? r.cities : r.city ? [r.city] : [];
+  return [...new Set(list.map((c) => c.trim().toLowerCase()).filter(Boolean))];
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<string>, citiesWithPrograms: Set<string>) {
   const isVolunteer = req.quest_type === 'volunteer';
   const questCities = isVolunteer ? citiesWithPrograms : citiesWithVenues;
@@ -221,8 +246,12 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
   const startedAt = new Date(req.search_started_at ?? req.created_at).getTime();
   const ageMinutes = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
 
-  // A volunteer request in a supported city waits for the next 1365 sync instead of failing at once.
-  const waitingForPrograms = isVolunteer && (req.city ? !questCities.has(req.city.toLowerCase()) : questCities.size === 0);
+  // ---- cities: the ones this request is open to that can host this kind of quest right now
+  const requested = requestCities(req);
+  const wanted = requested.length > 0 ? requested : [...new Set([...LAUNCH_CITY_SLUGS, ...questCities])];
+  const usable = wanted.filter((c) => questCities.has(c) && (!isVolunteer || VOLUNTEER_CITY_SET.has(c)));
+  // Volunteer programs are re-synced twice a day, so a supported city with none cached yet is worth waiting for.
+  const waitingForPrograms = isVolunteer && usable.length === 0 && wanted.some((c) => VOLUNTEER_CITY_SET.has(c));
 
   if (ageMinutes >= GIVE_UP_MINUTES) {
     return giveUp(req, `searching for ${ageMinutes} min`, waitingForPrograms ? NO_PROGRAMS_MESSAGE : undefined);
@@ -231,22 +260,13 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
   const pass = PASSES.find((p) => ageMinutes >= p.minAgeMinutes && ageMinutes < p.maxAgeMinutes);
   if (!pass) return { action: 'skipped', reason: `no pass for age ${ageMinutes}` };
 
-  // ---- city
-  let targetCity: string;
-  if (req.city) {
-    if (isVolunteer && !VOLUNTEER_CITY_SET.has(req.city.toLowerCase())) {
-      return giveUp(req, `city ${req.city} has no volunteer quests`, NO_PROGRAMS_MESSAGE);
-    }
-    if (waitingForPrograms) return { action: 'skipped', reason: `waiting for 1365 programs in ${req.city}` };
-    if (!questCities.has(req.city.toLowerCase())) return giveUp(req, `city ${req.city} has no active venues`);
-    targetCity = req.city;
-  } else {
-    const available = Array.from(questCities);
-    if (available.length === 0) {
-      if (waitingForPrograms) return { action: 'skipped', reason: 'waiting for 1365 programs' };
-      return giveUp(req, 'no cities with venues');
-    }
-    targetCity = available[Math.floor(Math.random() * available.length)];
+  if (usable.length === 0) {
+    if (waitingForPrograms) return { action: 'skipped', reason: `waiting for 1365 programs in ${wanted.join(', ')}` };
+    return giveUp(
+      req,
+      `no ${isVolunteer ? 'volunteer programs' : 'active venues'} in ${wanted.join(', ') || 'any city'}`,
+      isVolunteer ? NO_PROGRAMS_MESSAGE : NO_VENUES_MESSAGE,
+    );
   }
 
   // ---- requester
@@ -292,7 +312,7 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
   const blockedIds = new Set<string>();
   for (const b of blocks ?? []) blockedIds.add((b.blocker_id === req.user_id ? b.blocked_id : b.blocker_id) as string);
 
-  // ---- candidate pool
+  // ---- candidate pool (city is decided below, per city)
   const { data: candidates } = await admin
     .from('profiles')
     .select(PROFILE_COLUMNS)
@@ -303,53 +323,82 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
 
   const excluded = new Set<string>(req.excluded_user_ids ?? []);
   const eligible = ((candidates ?? []) as Profile[]).filter(
-    (c) =>
-      !busy.has(c.id) &&
-      !frozenIds.has(c.id) &&
-      !excluded.has(c.id) &&
-      !blockedIds.has(c.id) &&
-      cityMatch(c.home_district, targetCity),
+    (c) => !busy.has(c.id) && !frozenIds.has(c.id) && !excluded.has(c.id) && !blockedIds.has(c.id),
   );
 
-  let pool = eligible;
+  // Other people's open searches say where they are willing to go.
+  const { data: searchers } = await admin
+    .from('match_requests')
+    .select('user_id, city, cities, quest_type')
+    .eq('status', 'searching')
+    .neq('user_id', req.user_id);
+  const willing = new Map<string, Set<string> | 'any'>();
+  const wantsToVolunteer = new Set<string>();
+  for (const r of searchers ?? []) {
+    const cs = requestCities(r as { city: string | null; cities: string[] | null });
+    willing.set(r.user_id as string, cs.length > 0 ? new Set(cs) : 'any');
+    if (r.quest_type === 'volunteer') wantsToVolunteer.add(r.user_id as string);
+  }
+
+  let interested = eligible;
   if (isVolunteer && pass.pass < 3) {
-    const { data: volunteerSearchers } = await admin
-      .from('match_requests')
-      .select('user_id')
-      .eq('status', 'searching')
-      .eq('quest_type', 'volunteer');
-    const wantsToVolunteer = new Set((volunteerSearchers ?? []).map((r) => r.user_id as string));
-    pool = eligible.filter(
+    interested = eligible.filter(
       (c) => wantsToVolunteer.has(c.id) || (c.activity_preferences ?? []).includes('volunteering_community'),
     );
   }
 
-  const scored = pool
-    .map((profile) => ({ profile, score: compatibilityScore(requester as Profile, profile) }))
-    .filter((s) => s.score >= pass.minCompatibility)
-    .sort((a, b) => b.score - a.score);
+  /** Lives in the city, is searching for it, or (from pass 2) lives in a neighbouring city. */
+  const canJoin = (c: Profile, city: string) => {
+    const w = willing.get(c.id);
+    if (w === 'any' || (w && w.has(city))) return true;
+    if (cityMatch(c.home_district, city)) return true;
+    return pass.pass >= 2 && (NEARBY_CITIES[city] ?? []).some((n) => cityMatch(c.home_district, n));
+  };
 
   // ---- group size: requested size, shrinking per pass, never below 2 people total
   const requestedSize = req.group_size ?? 2 + Math.floor(Math.random() * 4);
   const minSize = Math.max(2, requestedSize - pass.sizeShrink);
-  let groupSize = 0;
-  for (let size = requestedSize; size >= minSize; size--) {
-    if (scored.length >= size - 1) {
-      groupSize = size;
-      break;
+
+  type CityOption = { city: string; scored: { profile: Profile; score: number }[]; groupSize: number; avg: number };
+  const perCity: Record<string, number> = {};
+  let best: CityOption | null = null;
+  for (const city of shuffle(usable)) {
+    const scored = interested
+      .filter((c) => canJoin(c, city))
+      .map((profile) => ({ profile, score: compatibilityScore(requester as Profile, profile) }))
+      .filter((x) => x.score >= pass.minCompatibility)
+      .sort((a, b) => b.score - a.score);
+    perCity[city] = scored.length;
+
+    let size = 0;
+    for (let n = requestedSize; n >= minSize; n--) {
+      if (scored.length >= n - 1) {
+        size = n;
+        break;
+      }
+    }
+    if (size === 0) continue;
+    const top = scored.slice(0, size - 1);
+    const avg = top.reduce((sum, x) => sum + x.score, 0) / top.length;
+    // Prefer the bigger group, then the better fit.
+    if (!best || size > best.groupSize || (size === best.groupSize && avg > best.avg)) {
+      best = { city, scored, groupSize: size, avg };
     }
   }
-  if (groupSize === 0) {
+
+  if (!best) {
     await recordAttempt(req);
     return {
       action: 'insufficient_candidates',
       pass: pass.pass,
       eligible: eligible.length,
-      qualified: scored.length,
+      qualified_per_city: perCity,
       needed: minSize - 1,
     };
   }
-  const picked = scored.slice(0, groupSize - 1);
+  const targetCity = best.city;
+  const groupSize = best.groupSize;
+  const picked = best.scored.slice(0, groupSize - 1);
 
   // ---- venue: in the city, honouring everyone's category preferences (fallback to any)
   type VenuePick = { id: string; business_name_display: string; category: string };

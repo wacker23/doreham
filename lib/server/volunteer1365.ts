@@ -1,7 +1,7 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { kstDateString } from '@/lib/server/time';
-import type { VOLUNTEER_CITY_SLUGS } from '@/lib/volunteerCities';
+import type { VOLUNTEER_CITY_SLUGS } from '@/lib/cities';
 
 /**
  * Client for 행정안전부_봉사참여정보서비스 (1365 자원봉사포털) on data.go.kr.
@@ -52,18 +52,20 @@ export type VolunteerProgram = {
 
 /**
  * Cities Doreham supports for volunteer quests. Codes are 1365's 행정기관코드 (sidoCd / gugunCd in responses):
- * 충청남도 = 6440000, 아산시 = 4520000 (confirmed from a live response). 천안시 is split into 동남구/서북구,
- * so it is matched by the 449xxxx prefix and searched by keyword until the exact codes are confirmed.
+ * 충청남도 = 6440000, 아산시 = 4520000, 천안시 = 4490000 (all confirmed from live responses), 서울특별시 = 6110000.
+ * Seoul is searched as a whole city (all 구), so it gets more pages.
  */
 export const VOLUNTEER_CITIES: {
   slug: (typeof VOLUNTEER_CITY_SLUGS)[number];
   keyword: string;
   sidoCode: string;
-  gugunCode: string | null; // exact code for schSign1, when known
-  gugunPrefix: string;      // which gugunCd values belong to this city
+  gugunCode: string | null; // exact code for schSign1; null = the whole 시/도
+  gugunPrefix: string;      // which gugunCd values belong to this city ('' = any)
+  maxPages: number;         // 100 programs per page
 }[] = [
-  { slug: 'asan', keyword: '아산', sidoCode: '6440000', gugunCode: '4520000', gugunPrefix: '452' },
-  { slug: 'cheonan', keyword: '천안', sidoCode: '6440000', gugunCode: null, gugunPrefix: '449' },
+  { slug: 'asan', keyword: '아산', sidoCode: '6440000', gugunCode: '4520000', gugunPrefix: '452', maxPages: 5 },
+  { slug: 'cheonan', keyword: '천안', sidoCode: '6440000', gugunCode: '4490000', gugunPrefix: '449', maxPages: 5 },
+  { slug: 'seoul', keyword: '서울', sidoCode: '6110000', gugunCode: null, gugunPrefix: '', maxPages: 10 },
 ];
 
 export const ALLOWED_OPERATIONS = [
@@ -116,8 +118,10 @@ function decodeXml(s: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/&amp;/g, '&')
+    .replace(/\r\n?/g, '\n')
     .trim();
 }
 
@@ -158,6 +162,26 @@ export async function callOperation(op: Operation, params: Record<string, string
   const totalCount = Number(tag(raw, 'totalCount') ?? NaN);
   const ok = res.ok && (resultCode === '00' || resultCode === '0' || resultCode === null) && !/<cmmMsgHeader>/.test(raw);
   return { ok, resultCode, resultMsg, totalCount: Number.isFinite(totalCount) ? totalCount : null, items: parseItems(raw), raw };
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** data.go.kr answers 23 ("초당 서비스 요청제한 횟수 초과") when calls come too fast. */
+export function isRateLimited(res: ApiResult): boolean {
+  return res.resultCode === '23' || /초당|요청제한|LIMITED_NUMBER_OF_SERVICE_REQUESTS/.test(res.resultMsg ?? '');
+}
+
+const CALL_GAP_MS = 250; // ≤ 4 calls per second
+
+/** callOperation with pacing and up to 3 retries when rate-limited. */
+export async function callPaced(op: Operation, params: Record<string, string | number | undefined>): Promise<ApiResult> {
+  let res = await callOperation(op, params);
+  for (let attempt = 1; attempt <= 3 && isRateLimited(res); attempt++) {
+    await sleep(1000 * attempt);
+    res = await callOperation(op, params);
+  }
+  await sleep(CALL_GAP_MS);
+  return res;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +277,10 @@ type SearchParams = Record<string, string | number | undefined>;
  */
 async function listCityPrograms(city: (typeof VOLUNTEER_CITIES)[number]) {
   const attempts: { name: string; params: SearchParams }[] = [];
-  if (city.gugunCode) attempts.push({ name: 'region', params: { schSido: city.sidoCode, schSign1: city.gugunCode } });
+  attempts.push({
+    name: 'region',
+    params: city.gugunCode ? { schSido: city.sidoCode, schSign1: city.gugunCode } : { schSido: city.sidoCode },
+  });
   attempts.push({ name: 'keyword+sido', params: { keyword: city.keyword, schSido: city.sidoCode } });
   attempts.push({ name: 'keyword', params: { keyword: city.keyword } });
 
@@ -261,8 +288,8 @@ async function listCityPrograms(city: (typeof VOLUNTEER_CITIES)[number]) {
   for (const attempt of attempts) {
     const items: VolunteerProgram[] = [];
     let failed = false;
-    for (let page = 1; page <= 5; page++) {
-      const res = await callOperation('getVltrSearchWordList', { ...attempt.params, adultPosblAt: 'Y', numOfRows: 100, pageNo: page });
+    for (let page = 1; page <= city.maxPages; page++) {
+      const res = await callPaced('getVltrSearchWordList', { ...attempt.params, adultPosblAt: 'Y', numOfRows: 100, pageNo: page });
       if (!res.ok) {
         errors.push(`${attempt.name} p${page}: ${res.resultCode ?? ''} ${res.resultMsg ?? 'error'}`.trim());
         failed = true;
@@ -334,20 +361,34 @@ export async function syncVolunteerPrograms() {
     });
   }
 
-  // Details (counts, times, place) for programs still recruiting, stalest first.
+  // Details (spots, weekdays, description) for programs a group could still join, soonest first.
+  // Never-fetched rows go first, then ones older than 12 h.
   const staleBefore = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  const windowStart = kstDateString(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
+  const windowEnd = kstDateString(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000));
   const { data: needDetail } = await admin
     .from('volunteer_programs')
     .select('id, city')
-    .gte('program_end', kstDateString())
+    .gte('program_end', windowStart)
+    .lte('program_start', windowEnd)
+    .neq('status', 3) // 모집완료
+    .not('adult_ok', 'is', false)
     .or(`detail_fetched_at.is.null,detail_fetched_at.lt.${staleBefore}`)
     .order('detail_fetched_at', { ascending: true, nullsFirst: true })
+    .order('program_start', { ascending: true })
     .limit(DETAIL_BUDGET_PER_RUN);
 
   let detailed = 0;
+  let rateLimited = false;
   const detailErrors: string[] = [];
   for (const row of needDetail ?? []) {
-    const res = await callOperation('getVltrPartcptnItem', { progrmRegistNo: row.id as string });
+    const res = await callPaced('getVltrPartcptnItem', { progrmRegistNo: row.id as string });
+    if (isRateLimited(res)) {
+      // Leave the rest for the next run instead of marking them as fetched.
+      rateLimited = true;
+      detailErrors.push(`${row.id}: rate limited, stopped (${detailed} done)`);
+      break;
+    }
     const item = res.items[0];
     const p = item ? normalizeProgram(item) : null;
     if (!res.ok || !p) {
@@ -367,5 +408,12 @@ export async function syncVolunteerPrograms() {
     detailed++;
   }
 
-  return { ok: true as const, report, detailed, detail_errors: detailErrors.slice(0, 20) };
+  return {
+    ok: true as const,
+    report,
+    detailed,
+    detail_queue: needDetail?.length ?? 0,
+    rate_limited: rateLimited,
+    detail_errors: detailErrors.slice(0, 20),
+  };
 }

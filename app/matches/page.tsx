@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { MATCH_CATEGORIES } from '@/lib/matchCategories';
-import { VOLUNTEER_CITY_SET } from '@/lib/volunteerCities';
+import { LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -74,6 +74,7 @@ type Match = {
 type MatchRequest = {
   id: string;
   city: string | null;
+  cities: string[] | null;
   group_size: number | null;
   status: string;
   created_at: string;
@@ -87,7 +88,10 @@ type KoreanCity = {
   emoji: string;
 };
 
+// Launch cities first (Asan, Cheonan, Seoul), then the rest.
 const KOREAN_CITIES: KoreanCity[] = [
+  { slug: 'asan', name_en: 'Asan', name_ko: '아산', emoji: '🍃' },
+  { slug: 'cheonan', name_en: 'Cheonan', name_ko: '천안', emoji: '🌸' },
   { slug: 'seoul', name_en: 'Seoul', name_ko: '서울', emoji: '🏙️' },
   { slug: 'busan', name_en: 'Busan', name_ko: '부산', emoji: '🌊' },
   { slug: 'incheon', name_en: 'Incheon', name_ko: '인천', emoji: '✈️' },
@@ -96,8 +100,6 @@ const KOREAN_CITIES: KoreanCity[] = [
   { slug: 'gwangju', name_en: 'Gwangju', name_ko: '광주', emoji: '🎨' },
   { slug: 'suwon', name_en: 'Suwon', name_ko: '수원', emoji: '🏯' },
   { slug: 'ulsan', name_en: 'Ulsan', name_ko: '울산', emoji: '🏭' },
-  { slug: 'cheonan', name_en: 'Cheonan', name_ko: '천안', emoji: '🌸' },
-  { slug: 'asan', name_en: 'Asan', name_ko: '아산', emoji: '🍃' },
   { slug: 'jeonju', name_en: 'Jeonju', name_ko: '전주', emoji: '🍚' },
   { slug: 'jeju', name_en: 'Jeju', name_ko: '제주', emoji: '🌴' },
 ];
@@ -137,12 +139,15 @@ export default function MatchesPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Request form state
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   // 봉사 (help) turns the request into a volunteer quest; it can't be mixed with venue categories.
   const isVolunteerRequest = selectedCategories.includes('help');
-  // Volunteer quests run in fixed cities; the 1365 cache only tells us whether activities are open right now.
-  const citiesForRequest = isVolunteerRequest ? VOLUNTEER_CITY_SET : availableCities;
+  // Pickable cities: volunteer quests run in fixed cities; venue quests in the launch cities plus any city
+  // that already has venues. Whether a city has venues / open 1365 activities right now is shown as a note.
+  const venueCities = new Set([...LAUNCH_CITY_SET, ...availableCities]);
+  const citiesForRequest: ReadonlySet<string> = isVolunteerRequest ? VOLUNTEER_CITY_SET : venueCities;
+  const citiesWithoutQuests = selectedCities.filter((c) => !(isVolunteerRequest ? volunteerCities : availableCities).has(c));
   const [randomCity, setRandomCity] = useState(false);
   const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
   const [randomSize, setRandomSize] = useState(false);
@@ -225,7 +230,7 @@ export default function MatchesPage() {
     // Match requests
     const { data: reqs } = await supabase
       .from('match_requests')
-      .select('id, city, group_size, status, created_at, matched_group_id')
+      .select('id, city, cities, group_size, status, created_at, matched_group_id')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false });
     if (reqs) setRequests(reqs as MatchRequest[]);
@@ -372,20 +377,16 @@ export default function MatchesPage() {
       setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
       return;
     }
-    if (!randomCity && !selectedCity) {
-      setError(lang === 'ko' ? '도시를 선택해주세요.' : 'Please select a city.');
+    if (!randomCity && selectedCities.length === 0) {
+      setError(lang === 'ko' ? '도시를 하나 이상 선택해주세요.' : 'Please pick at least one city.');
       return;
     }
 
-    // City must have venues (or, for volunteer quests, open 1365 activities)
-    if (!randomCity && selectedCity && !citiesForRequest.has(selectedCity)) {
-      setError(isVolunteerRequest
-        ? (lang === 'ko'
-            ? '이 도시에는 지금 참여할 수 있는 봉사활동이 없어요. 다른 도시를 선택해주세요.'
-            : 'No volunteer activities in this city right now. Please pick another city.')
-        : (lang === 'ko'
-            ? '이 도시에는 아직 매장이 없습니다. 다른 도시를 선택해주세요.'
-            : 'No venues in this city yet. Please pick another city.'));
+    // A venue quest needs at least one chosen city with partner venues.
+    if (!isVolunteerRequest && !randomCity && !selectedCities.some((c) => availableCities.has(c))) {
+      setError(lang === 'ko'
+        ? '선택한 도시에는 아직 제휴 장소가 없어요. 아산이나 천안을 추가하거나 봉사 퀘스트를 선택해 주세요.'
+        : 'The cities you picked have no partner venues yet. Add Asan or Cheonan, or pick a 봉사 (volunteer) quest.');
       return;
     }
 
@@ -395,7 +396,8 @@ export default function MatchesPage() {
 
     const { data: insertedRequest, error: err } = await supabase.from('match_requests').insert({
       user_id: user!.id,
-      city: randomCity ? null : selectedCity,
+      city: randomCity ? null : selectedCities[0],
+      cities: randomCity ? null : selectedCities,
       group_size: randomSize ? null : selectedGroupSize,
       preferred_categories: selectedCategories.length > 0 ? selectedCategories : null,
       quest_type: isVolunteerRequest ? 'volunteer' : 'venue',
@@ -429,7 +431,7 @@ export default function MatchesPage() {
 
     setSubmittingRequest(false);
     setRequestSuccess(true);
-    setSelectedCity(null);
+    setSelectedCities([]);
     setRandomCity(false);
     setSelectedGroupSize(3);
     setRandomSize(false);
@@ -482,6 +484,8 @@ export default function MatchesPage() {
     if (!c) return slug;
     return lang === 'ko' ? c.name_ko : c.name_en;
   };
+  const requestCitiesLabel = (req: MatchRequest): string =>
+    req.cities && req.cities.length > 0 ? req.cities.map(cityDisplayName).join(', ') : cityDisplayName(req.city);
 
   function daysRemaining(expiresAt: string): number {
     const ms = new Date(expiresAt).getTime() - Date.now();
@@ -689,7 +693,7 @@ export default function MatchesPage() {
                           {lang === 'ko' ? '매칭 찾는 중…' : 'Searching for your match…'}
                         </div>
                         <div className="searching-meta">
-                          {cityDisplayName(req.city)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                          {requestCitiesLabel(req)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
                         </div>
                         <div className="searching-est">
                           {lang === 'ko' ? '⏱ 예상 시간: 몇 시간 정도 걸릴 수 있어요' : '⏱ Est. wait: could be a few hours'}
@@ -814,21 +818,26 @@ export default function MatchesPage() {
                 {/* City */}
                 <div className="form-section">
                   <label className="form-label">
-                    {lang === 'ko' ? '🗺 도시 선택' : '🗺 Pick a city'}
+                    {lang === 'ko' ? `🗺 도시 선택 (최대 ${MAX_REQUEST_CITIES}곳)` : `🗺 Pick cities (up to ${MAX_REQUEST_CITIES})`}
                   </label>
+                  <p className="form-hint">
+                    {lang === 'ko'
+                      ? '여러 도시를 고르면 더 빨리 매칭될 수 있어요.'
+                      : 'Pick more than one city to get matched faster.'}
+                  </p>
                   <div className="cities-grid">
                     <button
                       className={`city-card random ${randomCity ? 'selected' : ''}`}
-                      onClick={() => { setRandomCity(!randomCity); if (!randomCity) setSelectedCity(null); }}
+                      onClick={() => { setRandomCity(!randomCity); if (!randomCity) setSelectedCities([]); }}
                     >
                       <div className="city-emoji">🎲</div>
                       <div className="city-name">
-                        {lang === 'ko' ? '랜덤' : 'Random'}
+                        {lang === 'ko' ? '어디든' : 'Anywhere'}
                       </div>
                     </button>
                     {KOREAN_CITIES.map((c) => {
                       const hasVenues = citiesForRequest.has(c.slug);
-                      const isSelected = selectedCity === c.slug && !randomCity;
+                      const isSelected = selectedCities.includes(c.slug) && !randomCity;
                       return (
                         <button
                           key={c.slug}
@@ -836,7 +845,16 @@ export default function MatchesPage() {
                           onClick={() => {
                             if (!hasVenues) return;
                             setRandomCity(false);
-                            setSelectedCity(isSelected ? null : c.slug);
+                            setError(null);
+                            if (isSelected) {
+                              setSelectedCities((prev) => prev.filter((x) => x !== c.slug));
+                            } else if (selectedCities.length >= MAX_REQUEST_CITIES) {
+                              setError(lang === 'ko'
+                                ? `도시는 최대 ${MAX_REQUEST_CITIES}곳까지 고를 수 있어요.`
+                                : `You can pick up to ${MAX_REQUEST_CITIES} cities.`);
+                            } else {
+                              setSelectedCities((prev) => [...prev, c.slug]);
+                            }
                           }}
                           disabled={!hasVenues}
                           title={!hasVenues ? (lang === 'ko' ? '아직 준비 중' : 'Coming soon') : ''}
@@ -854,6 +872,17 @@ export default function MatchesPage() {
                       );
                     })}
                   </div>
+                  {!randomCity && citiesWithoutQuests.length > 0 && (
+                    <div className="volunteer-hint quiet">
+                      {isVolunteerRequest
+                        ? (lang === 'ko'
+                            ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 지금 모집 중인 1365 봉사활동을 아직 찾지 못했어요. 그래도 신청할 수 있어요. 1365를 하루 두 번 확인하고, 48시간 안에 맞는 활동이 없으면 알려 드릴게요.`
+                            : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no open 1365 activities found yet. You can still request: we check 1365 twice a day and will let you know within 48 hours if nothing fits.`)
+                        : (lang === 'ko'
+                            ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 아직 제휴 장소가 없어요. 이 도시에서는 봉사 퀘스트만 가능하고, 장소가 등록되면 다른 퀘스트도 열려요.`
+                            : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no partner venues yet. Only 봉사 (volunteer) quests run there until venues join.`)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Categories */}
@@ -882,8 +911,8 @@ export default function MatchesPage() {
                             });
                             // A city chosen for venues may have no volunteer activities (and vice versa)
                             const nextIsVolunteer = c.volunteer ? !isSelected : false;
-                            const nextCities = nextIsVolunteer ? VOLUNTEER_CITY_SET : availableCities;
-                            if (selectedCity && !nextCities.has(selectedCity)) setSelectedCity(null);
+                            const nextCities: ReadonlySet<string> = nextIsVolunteer ? VOLUNTEER_CITY_SET : venueCities;
+                            setSelectedCities((prev) => prev.filter((x) => nextCities.has(x)));
                           }}
                           disabled={c.coming_soon}
                           title={c.coming_soon ? (lang === 'ko' ? '곧 출시' : 'Coming soon') : ''}
@@ -895,13 +924,6 @@ export default function MatchesPage() {
                       );
                     })}
                   </div>
-                  {isVolunteerRequest && selectedCity && !volunteerCities.has(selectedCity) && (
-                    <div className="volunteer-hint quiet">
-                      {lang === 'ko'
-                        ? '지금 이 도시에서 모집 중인 1365 봉사활동을 아직 찾지 못했어요. 그래도 신청할 수 있어요. 1365를 하루 두 번 확인하고, 48시간 안에 맞는 활동이 없으면 알려 드릴게요.'
-                        : "We haven't found open 1365 activities in this city yet. You can still request: we check 1365 twice a day and will let you know within 48 hours if nothing fits."}
-                    </div>
-                  )}
                   {isVolunteerRequest && (
                     <div className="volunteer-hint">
                       {lang === 'ko'
@@ -994,7 +1016,7 @@ export default function MatchesPage() {
                     </div>
                     <div className="history-body">
                       <div className="history-title">
-                        {cityDisplayName(req.city)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                        {requestCitiesLabel(req)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
                       </div>
                       <div className="history-date">
                         {new Date(req.created_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
