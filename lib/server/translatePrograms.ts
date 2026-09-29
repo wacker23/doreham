@@ -18,7 +18,14 @@ import { volunteerCategoryEn } from '@/lib/volunteerCategories';
  */
 
 const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions';
-const MODEL = process.env.TRANSLATION_MODEL || 'anthropic/claude-haiku-4.5';
+// Tried in order; the first one this Vercel team can use is remembered for the rest of the instance's life.
+// (The AI Gateway free tier does not include every model, e.g. claude-haiku-4.5 needs paid credits.)
+const MODELS = (process.env.TRANSLATION_MODELS ||
+  'google/gemini-3.5-flash-lite,anthropic/claude-haiku-4.5,google/gemini-2.5-flash-lite,openai/gpt-5-mini,alibaba/qwen3.8-flash,deepseek/deepseek-v4-flash')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
+let preferredModel = 0;
 const MAX_DESCRIPTION_CHARS = 3000;
 const CONCURRENCY = 4;
 
@@ -77,14 +84,15 @@ function parseTranslation(text: string): Translation | null {
   }
 }
 
-async function translateOne(p: ProgramRow, token: string, signal: AbortSignal): Promise<Translation> {
+async function callModel(model: string, p: ProgramRow, token: string, signal: AbortSignal): Promise<Translation> {
   const res = await fetch(GATEWAY_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     signal,
     body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
+      model,
+      // Reasoning-style OpenAI models only accept the default temperature.
+      ...(model.startsWith('openai/gpt-5') ? {} : { temperature: 0 }),
       max_tokens: 2000,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -101,14 +109,38 @@ async function translateOne(p: ProgramRow, token: string, signal: AbortSignal): 
     }),
   });
   const body = await res.text();
-  if (!res.ok) throw new Error(`gateway ${res.status}: ${body.slice(0, 200)}`);
+  if (!res.ok) throw new Error(`${model} ${res.status}: ${body.slice(0, 160)}`);
   const content = (JSON.parse(body) as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message?.content ?? '';
   const t = parseTranslation(content);
-  if (!t) throw new Error(`unparseable reply: ${content.slice(0, 120)}`);
+  if (!t) throw new Error(`${model} unparseable reply: ${content.slice(0, 100)}`);
   return t;
 }
 
-export type TranslationReport = { requested: number; translated: number; already: number; skipped?: string; errors: string[] };
+/** Try the models in order, starting from the last one that worked. */
+async function translateOne(p: ProgramRow, token: string, signal: AbortSignal): Promise<{ t: Translation; model: string }> {
+  const errors: string[] = [];
+  for (let k = 0; k < MODELS.length; k++) {
+    const i = (preferredModel + k) % MODELS.length;
+    if (signal.aborted) break;
+    try {
+      const t = await callModel(MODELS[i], p, token, signal);
+      preferredModel = i;
+      return { t, model: MODELS[i] };
+    } catch (e: unknown) {
+      errors.push(e instanceof Error ? e.message : String(e));
+    }
+  }
+  throw new Error(errors.join(' | ').slice(0, 600));
+}
+
+export type TranslationReport = {
+  requested: number;
+  translated: number;
+  already: number;
+  models?: Record<string, number>;
+  skipped?: string;
+  errors: string[];
+};
 
 /**
  * Make sure these programs have an up-to-date English version. Safe to call often:
@@ -146,7 +178,8 @@ export async function ensureProgramTranslations(
       await Promise.all(
         batch.map(async (p) => {
           try {
-            const t = await translateOne(p, token, controller.signal);
+            const { t, model } = await translateOne(p, token, controller.signal);
+            report.models = { ...(report.models ?? {}), [model]: (report.models?.[model] ?? 0) + 1 };
             const { error } = await admin
               .from('volunteer_programs')
               .update({
