@@ -53,6 +53,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   cultural_venue: '🎨 Cultural venue',
   nature_outdoor: '🌿 Nature/Outdoor',
   music_movie: '🎬 Music/Movie',
+  bar_club: '🍸 Bar/Club',
   other: '🏪 Other',
 };
 

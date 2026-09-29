@@ -98,6 +98,7 @@ const CATEGORY_LABELS: Record<string, { en: string; emoji: string; needsMenu: bo
   cultural_venue:    { en: 'Cultural venue', emoji: '🎨', needsMenu: false },
   nature_outdoor:    { en: 'Nature', emoji: '🌿', needsMenu: false },
   music_movie:       { en: 'Music/Movie', emoji: '🎬', needsMenu: false },
+  bar_club:          { en: 'Bar/Club', emoji: '🍸', needsMenu: true },
   other:             { en: 'Other', emoji: '🏪', needsMenu: false },
 };
 
@@ -176,6 +177,7 @@ function generateQuestTitleAndDescription(venue: Venue, menuItems: MenuItem[]) {
     cultural_venue: { titleKo: `${emoji} ${venue.business_name_display} 함께 둘러보기`, titleEn: `${emoji} Explore ${venue.business_name_display} together`, ko: `${venue.business_name_display}을(를) 함께 둘러보세요.`, en: `Explore ${venue.business_name_display} together.` },
     nature_outdoor: { titleKo: `${emoji} ${venue.business_name_display}에서 자연 속으로`, titleEn: `${emoji} Into nature at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Enjoy ${venue.business_name_display} together.` },
     music_movie: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 즐기기`, titleEn: `${emoji} Together at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Meet at ${venue.business_name_display}.` },
+    bar_club: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 한잔`, titleEn: `${emoji} Night out at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 즐거운 밤을 보내세요.`, en: `Enjoy a night out together at ${venue.business_name_display}.` },
     other: { titleKo: `${emoji} ${venue.business_name_display}에서 만나기`, titleEn: `${emoji} Meet up at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Spend time together at ${venue.business_name_display}.` },
   };
   const preset = generic[venue.category] ?? generic.other;

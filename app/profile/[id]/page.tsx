@@ -11,6 +11,8 @@ import { EditLifestyleModal } from './modals/EditLifestyleModal';
 import { EditLanguagesModal } from './modals/EditLanguagesModal';
 import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
+import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
+import { AppTabBar } from '@/components/AppTabBar';
 
 type Profile = {
   id: string;
@@ -751,7 +753,11 @@ export default function ProfilePage() {
             </p>
           </div>
         )}
+
+        {isOwn && <PrivacyConsentsSection lang={lang} />}
       </main>
+
+      <AppTabBar lang={lang} />
 
       {/* Modals */}
       {openModal === 'basic' && (

@@ -6,6 +6,7 @@ import { useUser } from '@/lib/hooks/useUser';
 import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
 import { volunteerCategoryLabel } from '@/lib/volunteerCategories';
+import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 
 /**
  * Volunteer quest page (봉사 퀘스트):
@@ -100,6 +101,8 @@ export default function VolunteerQuestPage() {
       return next;
     });
   const [now, setNow] = useState(() => Date.now());
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [retryUpload, setRetryUpload] = useState<(() => void) | null>(null);
   const selfieInput = useRef<HTMLInputElement>(null);
   const certInput = useRef<HTMLInputElement>(null);
 
@@ -268,6 +271,12 @@ export default function VolunteerQuestPage() {
       }
       const resp = await fetch('/api/volunteer/proof', { method: 'POST', body: form });
       const data = await resp.json();
+      if (data.error === 'consent_required') {
+        setBusy(false);
+        setRetryUpload(() => () => upload(kind, file));
+        setConsentOpen(true);
+        return;
+      }
       if (!resp.ok) throw new Error(data.error ?? 'upload_failed');
       setSelfieFile(null);
       setNotice(kind === 'group_selfie'
@@ -490,8 +499,8 @@ export default function VolunteerQuestPage() {
                 <h3>{t('Step 2 · One group selfie on the day', '2단계 · 당일 단체 사진 한 장')}</h3>
                 <p className="hint">
                   {t(
-                    "When you're together at the activity, one person takes a group selfie and tags who's in it. That's all — no paperwork needed.",
-                    '봉사 장소에 모이면 한 명이 단체 사진을 찍고 사진 속 멤버를 선택해 주세요. 그게 전부예요 — 서류는 필요 없어요.',
+                    "When you're together at the activity, one person takes a group selfie and tags who's in it. That's all — no paperwork needed. If someone uploads a selfie, members who aren't in any photo count as a no-show.",
+                    '봉사 장소에 모이면 한 명이 단체 사진을 찍고 사진 속 멤버를 선택해 주세요. 그게 전부예요 — 서류는 필요 없어요. 단체 사진이 올라오면 사진에 없는 멤버는 불참으로 처리돼요.',
                   )}
                 </p>
                 {selfieNotYet && group.quest_scheduled_at && (
@@ -603,7 +612,7 @@ export default function VolunteerQuestPage() {
           <section className="card center">
             <div className="big-emoji">😔</div>
             <h2>{t('This volunteer quest was closed', '이번 봉사 퀘스트는 종료되었어요')}</h2>
-            <p className="hint">{t('No strike for you. You can request a new quest any time.', '경고는 없어요. 언제든 새 퀘스트를 요청할 수 있어요.')}</p>
+            <p className="hint">{t('You can request a new quest any time.', '언제든 새 퀘스트를 요청할 수 있어요.')}</p>
             <a href="/matches" className="btn btn-ink">{t('Back to matches', '매칭으로 돌아가기')}</a>
           </section>
         )}
@@ -613,6 +622,18 @@ export default function VolunteerQuestPage() {
         )}
         </>)}
       </div>
+
+      <VolunteerConsentModal
+        lang={lang}
+        open={consentOpen}
+        onClose={() => { setConsentOpen(false); setRetryUpload(null); }}
+        onAgreed={() => {
+          setConsentOpen(false);
+          const again = retryUpload;
+          setRetryUpload(null);
+          again?.();
+        }}
+      />
 
       <style jsx>{`
         .vq-wrap { min-height: 100vh; background: var(--paper); }

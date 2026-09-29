@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <h1>{lang === 'ko' ? '이용 약관' : 'Terms of Service'}</h1>
         <p className="last-updated">
-          {lang === 'ko' ? '최종 업데이트: 2026년 7월 25일' : 'Last updated: July 25, 2026'}
+          {lang === 'ko' ? '최종 업데이트: 2026년 9월 29일' : 'Last updated: September 29, 2026'}
         </p>
 
         {/* Summary card */}
@@ -100,6 +100,23 @@ export default function TermsPage() {
               <li>불편함을 느끼면 언제든지 자리를 뜨셔도 됩니다</li>
               <li>비상 상황 발생 시 112 (한국 경찰)에 신고하세요</li>
               <li>매칭된 사람이 문제 있어 보이면 즉시 앱 내 신고 기능을 이용해주세요</li>
+            </ul>
+
+            <h3>퀘스트 규칙과 경고</h3>
+            <ul>
+              <li>매칭 요청은 최대 24시간 동안 그룹을 찾고, 찾지 못하면 알려 드려요.</li>
+              <li>장소 퀘스트는 체크인 시간 안에 QR 체크인으로, 봉사 퀘스트는 활동 장소에서 찍은 단체 사진으로 참여를 확인해요.</li>
+              <li>체크인 시간이 끝났을 때 다른 멤버가 참여를 확인했는데 본인이 체크인하지 않았거나 어떤 단체 사진에도 없으면 불참 경고 1회가 부과돼요. 아무도 참여를 확인하지 않은 경우에는 경고가 없어요.</li>
+              <li>확정된 그룹에서 나가면 경고 1회가 부과돼요. 1365 봉사활동 자리가 없어 나가는 경우에는 경고가 없어요.</li>
+              <li>경고 3회는 48시간, 4회 이상은 1주일 동안 매칭이 정지돼요.</li>
+            </ul>
+
+            <h3>이벤트</h3>
+            <ul>
+              <li>회원과 파트너 가게가 올린 이벤트는 주최자가 기획하고 책임져요. 도레함은 &apos;도레함 공식&apos; 표시가 있는 이벤트만 직접 주최해요.</li>
+              <li>이벤트는 공개된 장소에서 열어야 해요. 판매, 다단계, 종교·정치 모집, 이성 만남 목적의 이벤트는 올릴 수 없어요.</li>
+              <li>미리 돈을 보내 달라고 요구하면 안 돼요. 비용이 있다면 이벤트에 적고 현장에서 받아요. 도레함은 이벤트 참여에 돈을 받지 않아요.</li>
+              <li>규칙에 맞지 않거나 여러 회원이 신고한 이벤트와 댓글은 숨기거나 삭제할 수 있고, 반복되면 계정 이용을 제한할 수 있어요.</li>
             </ul>
 
             <h2>6. 파트너 가게</h2>
@@ -183,6 +200,23 @@ export default function TermsPage() {
               <li>If a matched person seems problematic, use the in-app report function immediately</li>
             </ul>
 
+            <h3>Quest rules and strikes</h3>
+            <ul>
+              <li>A match request looks for a group for up to 24 hours, then lets you know if none was found.</li>
+              <li>Venue quests are confirmed by QR check-in during the check-in window; volunteer quests by a group selfie at the activity.</li>
+              <li>When the check-in window ends, if someone else in your group showed up and you did not check in (or are not in any group selfie), you get a no-show strike. If nobody showed up, nobody gets a strike.</li>
+              <li>Leaving a confirmed group gives you a strike. Leaving a volunteer group because you couldn&apos;t get a 1365 spot does not.</li>
+              <li>3 strikes: matching is paused for 48 hours. 4 or more: 1 week.</li>
+            </ul>
+
+            <h3>Events</h3>
+            <ul>
+              <li>Events posted by members and partner venues are organized by, and the responsibility of, their host. Doreham hosts only the events marked &quot;Official&quot;.</li>
+              <li>Events must be in public places. No selling, MLM, religious or political recruiting, and no dating events.</li>
+              <li>Hosts must not ask for money in advance. If there is a cost, write it on the event and collect it on the spot. Doreham never charges to join an event.</li>
+              <li>We may hide or remove events and comments that break these rules or that several members report, and limit accounts that do it repeatedly.</li>
+            </ul>
+
             <h2>6. Partner Venues</h2>
             <p>Doreham suggests quests at partner venues but takes no responsibility for products or services provided by venues. Contact the venue directly with issues, or let Doreham know.</p>
 
@@ -240,6 +274,7 @@ export default function TermsPage() {
         .summary-card li { font-size: 15px; color: var(--ink); line-height: 1.6; padding-left: 24px; position: relative; margin-bottom: 8px; }
         .summary-card li:before { content: '✓'; position: absolute; left: 0; color: var(--jade); font-weight: 700; }
         h2 { font-family: var(--display); font-weight: 700; font-size: 22px; margin: 40px 0 12px; color: var(--ink); }
+        h3 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 24px 0 10px; color: var(--ink); }
         p { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 0 16px; }
         ul { padding-left: 24px; margin: 0 0 20px; }
         li { font-size: 15px; line-height: 1.7; color: var(--ink); margin-bottom: 8px; }

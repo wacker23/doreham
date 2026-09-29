@@ -12,6 +12,7 @@ export type VenueCategory =
   | 'cultural_venue'
   | 'nature_outdoor'
   | 'music_movie'
+  | 'bar_club'
   | 'other';
 
 export type UiLanguage = 'en' | 'ko';
@@ -90,6 +91,7 @@ export const CATEGORY_LABELS: Record<VenueCategory, { en: string; ko: string; em
   cultural_venue:    { en: 'Cultural venue',            ko: '문화 공간',           emoji: '🎨', needsMenu: false },
   nature_outdoor:    { en: 'Nature / Outdoor',          ko: '자연 · 야외',         emoji: '🌿', needsMenu: false },
   music_movie:       { en: 'Music / Movie',             ko: '음악 · 영화',         emoji: '🎬', needsMenu: false },
+  bar_club:          { en: 'Bar / Club',                ko: '바 · 클럽',           emoji: '🍸', needsMenu: true },
   other:             { en: 'Other',                     ko: '기타',                emoji: '🏪', needsMenu: false },
 };
 

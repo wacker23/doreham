@@ -19,7 +19,12 @@ export type NotificationType =
   | 'quest_day_reminder'
   | 'review_reminder'
   | 'strike_issued'
-  | 'welcome';
+  | 'welcome'
+  | 'event_joined'
+  | 'event_comment'
+  | 'event_updated'
+  | 'event_cancelled'
+  | 'event_reminder';
 
 export type NotificationPayload = {
   user_id: string;

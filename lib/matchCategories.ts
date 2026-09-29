@@ -28,7 +28,7 @@ export const MATCH_CATEGORIES: MatchCategory[] = [
   { slug: 'movie', label_en: 'Movie', label_ko: '영화', icon: 'movie', venue_categories: ['music_movie', 'cultural_venue'] },
   { slug: 'nature', label_en: 'Nature', label_ko: '자연', icon: 'nature', venue_categories: ['nature_outdoor'] },
   { slug: 'adventure', label_en: 'Adventure', label_ko: '모험', icon: 'adventure', venue_categories: ['active_sports', 'nature_outdoor'] },
-  { slug: 'nightout', label_en: 'Night Out', label_ko: '나이트아웃', icon: 'nightout', venue_categories: ['music_movie', 'other'] },
+  { slug: 'nightout', label_en: 'Night Out', label_ko: '나이트아웃', icon: 'nightout', venue_categories: ['bar_club'] },
   { slug: 'puzzle', label_en: 'Puzzle', label_ko: '퍼즐', icon: 'puzzle', venue_categories: ['escape_room', 'board_game_cafe'] },
   { slug: 'makethings', label_en: 'Craft', label_ko: '공예', icon: 'makethings', venue_categories: ['workshop_creative'] },
   { slug: 'network', label_en: 'Network', label_ko: '네트워킹', icon: 'network', venue_categories: ['cultural_venue', 'cafe'] },

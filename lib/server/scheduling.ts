@@ -322,7 +322,9 @@ async function closeGroup(groupId: string) {
     return { action: 'completed', check_in_count: checkedIn.size, strikes_issued: absent.length };
   }
 
-  // Not enough check-ins: the meetup didn't happen. No strikes (see open question in handoff).
+  // Not enough check-ins: the meetup didn't happen.
+  // Sophia, Sep 29: once the check-in window is over, if someone did show up (checked in), everyone
+  // who didn't gets a no-show strike. If nobody checked in we can't tell what happened: no strikes.
   const { data: won } = await admin
     .from('groups')
     .update({ phase: 'cancelled' })
@@ -332,7 +334,31 @@ async function closeGroup(groupId: string) {
   if (!won || won.length === 0) return { action: 'skipped', reason: 'already closed' };
   await admin.from('quests').update({ status: 'cancelled', cancelled_at: now }).eq('id', quest.id);
   await admin.from('group_members').update({ left_at: now }).eq('group_id', groupId).is('left_at', null);
-  return { action: 'failed', check_in_count: checkedIn.size, needed: MIN_CHECK_INS_TO_COMPLETE };
+
+  const someoneCame = checkedIn.size > 0;
+  if (someoneCame) {
+    for (const uid of absent) await issueStrike(uid, 'no_show', `No-show for quest ${quest.id} (group ${groupId})`);
+    const cameAlone = members.filter((m) => checkedIn.has(m));
+    after(async () => {
+      await createNotifications(
+        cameAlone.map((uid) => ({
+          user_id: uid,
+          type: 'match_cancelled' as const,
+          title_en: "😔 Your group didn't make it",
+          title_ko: '😔 그룹 멤버들이 오지 않았어요',
+          body_en: "Thanks for showing up. The others missed the meetup and got a no-show strike. You can request a new group any time.",
+          body_ko: '와 주셔서 고마워요. 오지 않은 멤버에게는 불참 경고가 부과됐어요. 언제든 새 그룹을 요청할 수 있어요.',
+          action_url: '/matches',
+        })),
+      );
+    });
+  }
+  return {
+    action: 'failed',
+    check_in_count: checkedIn.size,
+    needed: MIN_CHECK_INS_TO_COMPLETE,
+    strikes_issued: someoneCame ? absent.length : 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
