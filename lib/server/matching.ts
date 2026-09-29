@@ -19,16 +19,16 @@ import { LAUNCH_CITY_SLUGS, NEARBY_CITIES, VOLUNTEER_CITY_SET } from '@/lib/citi
  * which resets when a cancelled group reopens the request):
  *  Pass 1 (0–30 min):   exact group size, compatibility ≥ 75
  *  Pass 2 (30 min–2 h): size may shrink by 1, compatibility ≥ 60, neighbouring cities join the pool
- *  Pass 3 (2 h–48 h):   any size down to 2, compatibility ≥ 50
+ *  Pass 3 (2 h–24 h):   any size down to 2, compatibility ≥ 50
  *
  * A request can list up to 3 cities (or none = anywhere). Each city is tried; invitees are people who
  * live there, are searching for it themselves, or (pass 2+) live in a neighbouring city (Asan ↔ Cheonan).
  * The city that gives the biggest, best-fitting group wins.
- *  After 48 h:          no_match_found (user is notified and can request again)
+ *  After 24 h:          no_match_found (user is notified and can request again)
  */
 
 export const INVITE_TIMEOUT_HOURS = 24;
-export const GIVE_UP_MINUTES = 48 * 60;
+export const GIVE_UP_MINUTES = 24 * 60; // Sophia, Sep 29: 48 h was too long
 
 type PassRule = {
   pass: number;
@@ -486,7 +486,7 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
   const catEmoji: Record<string, string> = {
     cafe: '☕', restaurant: '🍜', board_game_cafe: '🎲', escape_room: '🧩',
     bookshop: '📚', workshop_creative: '🏺', active_sports: '🥾',
-    cultural_venue: '🎨', nature_outdoor: '🌿', music_movie: '🎬', other: '🏪',
+    cultural_venue: '🎨', nature_outdoor: '🌿', music_movie: '🎬', bar_club: '🍸', other: '🏪',
   };
   const questExpires = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 

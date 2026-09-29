@@ -33,6 +33,7 @@ const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }>
   cultural_venue:    { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
   nature_outdoor:    { en: 'Nature', ko: '자연', emoji: '🌿' },
   music_movie:       { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
+  bar_club:          { en: 'Bar / Club', ko: '바·클럽', emoji: '🍸' },
   other:             { en: 'Other', ko: '기타', emoji: '🏪' },
 };
 

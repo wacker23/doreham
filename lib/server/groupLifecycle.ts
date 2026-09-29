@@ -337,6 +337,7 @@ export async function withdrawPendingGroup(groupId: string, requesterId: string)
 export async function cancelActiveGroup(
   groupId: string,
   reason: { en: string; ko: string },
+  opts: { struckUserIds?: string[] } = {},
 ): Promise<boolean> {
   const admin = getAdmin();
   const { members } = await loadGroupContext(groupId);
@@ -353,6 +354,7 @@ export async function cancelActiveGroup(
   await markAllMembersLeft(groupId);
   await cancelQuest(groupId);
 
+  const struck = new Set(opts.struckUserIds ?? []);
   after(async () => {
     await createNotifications(
       remaining.map((uid) => ({
@@ -360,8 +362,9 @@ export async function cancelActiveGroup(
         type: 'match_cancelled' as const,
         title_en: 'Your group was closed',
         title_ko: '그룹이 종료되었어요',
-        body_en: `${reason.en} No strike for you — request a new match any time.`,
-        body_ko: `${reason.ko} 경고는 없어요 — 언제든 새 매칭을 요청하세요.`,
+        // Members who get a no-show strike hear about it from the strike notification itself.
+        body_en: struck.has(uid) ? reason.en : `${reason.en} No strike for you — request a new match any time.`,
+        body_ko: struck.has(uid) ? reason.ko : `${reason.ko} 경고는 없어요 — 언제든 새 매칭을 요청하세요.`,
         action_url: '/matches',
         is_important: true,
       })),

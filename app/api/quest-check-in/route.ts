@@ -182,9 +182,8 @@ export async function POST(request: Request) {
         user_id,
         venue_id: quest.venue_id,
         qr_code_id: qrRecord.id,
-        latitude: lat,
-        longitude: lng,
-        distance_m: distance,
+        // Data minimisation: we only keep how far you were from the venue, not where you were.
+        distance_m: distance == null ? null : Math.round(distance),
         location_verified: locationVerified,
       })
       .select('id, checked_in_at')

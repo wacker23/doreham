@@ -6,6 +6,7 @@ import { useUser } from '@/lib/hooks/useUser';
 import { MATCH_CATEGORIES } from '@/lib/matchCategories';
 import { LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
 import { useLang } from '@/lib/hooks/useLang';
+import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -118,6 +119,7 @@ const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }>
   cultural_venue: { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
   nature_outdoor: { en: 'Nature', ko: '자연', emoji: '🌿' },
   music_movie: { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
+  bar_club: { en: 'Bar/Club', ko: '바·클럽', emoji: '🍸' },
   other: { en: 'Other', ko: '기타', emoji: '🏪' },
 };
 
@@ -167,6 +169,15 @@ export default function MatchesPage() {
 
   // Touch swipe
   const touchStartX = useRef<number | null>(null);
+
+  // Volunteer-photo consent (needed before requesting or joining a 봉사 quest)
+  const [hasVolunteerConsent, setHasVolunteerConsent] = useState<boolean | null>(null);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const afterConsent = useRef<(() => void) | null>(null);
+  function askConsent(then: () => void) {
+    afterConsent.current = then;
+    setConsentOpen(true);
+  }
   const touchEndX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -187,6 +198,11 @@ export default function MatchesPage() {
   async function loadAll() {
     setLoadingData(true);
     setError(null);
+
+    fetch('/api/consents')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setHasVolunteerConsent((d.consents ?? []).some((c: { kind: string }) => c.kind === 'volunteer_photos')))
+      .catch(() => {});
 
     // Available cities
     const { data: venues } = await supabase
@@ -375,7 +391,11 @@ export default function MatchesPage() {
     setLoadingData(false);
   }
 
-  async function submitMatchRequest() {
+  async function submitMatchRequest(consentJustGiven = false) {
+    if (isVolunteerRequest && hasVolunteerConsent === false && !consentJustGiven) {
+      askConsent(() => submitMatchRequest(true));
+      return;
+    }
     if (isFrozen) {
       setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
       return;
@@ -413,6 +433,9 @@ export default function MatchesPage() {
         setError(lang === 'ko' ? '이미 매칭을 찾고 있어요. 진행 중 탭을 확인해 주세요.' : "You're already searching for a match — check the Pending tab.");
       } else if (err.message.includes('account_frozen')) {
         setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
+      } else if (err.message.includes('consent_required')) {
+        setHasVolunteerConsent(false);
+        askConsent(() => submitMatchRequest(true));
       } else {
         setError(err.message);
       }
@@ -540,6 +563,12 @@ export default function MatchesPage() {
         body: JSON.stringify({ group_id: groupId }),
       });
       const result = await resp.json();
+      if (result.error === 'consent_required') {
+        // Volunteer group: agree to the photo consent first, then accept.
+        setRespondingTo(null);
+        askConsent(() => acceptInvite(groupId));
+        return;
+      }
       if (result.error) throw new Error(result.error);
       await loadAll();
     } catch (e: any) {
@@ -879,8 +908,8 @@ export default function MatchesPage() {
                     <div className="volunteer-hint quiet">
                       {isVolunteerRequest
                         ? (lang === 'ko'
-                            ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 지금 모집 중인 1365 봉사활동을 아직 찾지 못했어요. 그래도 신청할 수 있어요. 1365를 하루 두 번 확인하고, 48시간 안에 맞는 활동이 없으면 알려 드릴게요.`
-                            : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no open 1365 activities found yet. You can still request: we check 1365 twice a day and will let you know within 48 hours if nothing fits.`)
+                            ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 지금 모집 중인 1365 봉사활동을 아직 찾지 못했어요. 그래도 신청할 수 있어요. 1365를 하루 두 번 확인하고, 24시간 안에 맞는 활동이 없으면 알려 드릴게요.`
+                            : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no open 1365 activities found yet. You can still request: we check 1365 twice a day and will let you know within 24 hours if nothing fits.`)
                         : (lang === 'ko'
                             ? `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: 아직 제휴 장소가 없어요. 이 도시에서는 봉사 퀘스트만 가능하고, 장소가 등록되면 다른 퀘스트도 열려요.`
                             : `${citiesWithoutQuests.map(cityDisplayName).join(', ')}: no partner venues yet. Only 봉사 (volunteer) quests run there until venues join.`)}
@@ -967,7 +996,7 @@ export default function MatchesPage() {
                   </div>
                 )}
 
-                <button className="find-btn" onClick={submitMatchRequest} disabled={submittingRequest}>
+                <button className="find-btn" onClick={() => submitMatchRequest()} disabled={submittingRequest}>
                   {submittingRequest
                     ? (lang === 'ko' ? '요청 중…' : 'Requesting…')
                     : (lang === 'ko' ? '🔍 매칭 찾기' : '🔍 Find a match')}
@@ -1034,6 +1063,19 @@ export default function MatchesPage() {
           </>
         )}
       </main>
+
+      <VolunteerConsentModal
+        lang={lang}
+        open={consentOpen}
+        onClose={() => { setConsentOpen(false); afterConsent.current = null; }}
+        onAgreed={() => {
+          setConsentOpen(false);
+          setHasVolunteerConsent(true);
+          const next = afterConsent.current;
+          afterConsent.current = null;
+          next?.();
+        }}
+      />
 
       <style jsx>{`
         .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px); }

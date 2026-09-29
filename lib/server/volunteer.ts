@@ -6,6 +6,8 @@ import { createNotifications, type NotificationPayload } from '@/lib/notificatio
 import { cancelActiveGroup, isAccepted, MIN_GROUP_SIZE } from '@/lib/server/groupLifecycle';
 import { formatKst, hoursFromNow, kstDateString } from '@/lib/server/time';
 import { ensureProgramTranslations } from '@/lib/server/translatePrograms';
+import { issueStrike } from '@/lib/server/strikes';
+import { hasConsent } from '@/lib/server/consents';
 
 /**
  * Volunteer quests (봉사활동 퀘스트).
@@ -449,6 +451,7 @@ export async function recordVolunteerProof(opts: {
   const completedAt = (group.completed_at as string | null) ?? null;
   const stillIn = me && isAccepted(me) && inAtEnd(me, completedAt);
   if (!stillIn) return { ok: false, error: 'not_a_member', status: 403 };
+  if (!(await hasConsent(opts.userId, 'volunteer_photos'))) return { ok: false, error: 'consent_required', status: 409 };
 
   const start = new Date(group.quest_scheduled_at as string).getTime();
   const now = Date.now();
@@ -554,14 +557,37 @@ export async function closeExpiredVolunteerQuests() {
     .lt('quest_scheduled_at', cutoff);
 
   let closed = 0;
+  let strikes = 0;
   for (const g of groups ?? []) {
-    const ok = await cancelActiveGroup(g.id as string, {
-      en: 'No group selfie was uploaded, so this volunteer quest could not be completed.',
-      ko: '단체 사진이 올라오지 않아 이번 봉사 퀘스트를 완료하지 못했어요.',
-    });
-    if (ok) closed++;
+    // Who was still in the group, and who is in a photo (a selfie with fewer than 2 people doesn't complete the quest).
+    const [{ data: members }, { data: selfies }] = await Promise.all([
+      admin.from('group_members').select('user_id, invite_state, accepted_at').eq('group_id', g.id).is('left_at', null),
+      admin.from('volunteer_proofs').select('tagged_user_ids').eq('group_id', g.id).eq('kind', 'group_selfie'),
+    ]);
+    const present = new Set((selfies ?? []).flatMap((s) => (s.tagged_user_ids as string[]) ?? []));
+    const absent = (members ?? []).filter(isAccepted).map((m) => m.user_id as string).filter((uid) => !present.has(uid));
+
+    const willStrike = present.size > 0 ? absent : [];
+    const ok = await cancelActiveGroup(
+      g.id as string,
+      {
+        en: 'No group selfie with at least 2 members was uploaded, so this volunteer quest could not be completed.',
+        ko: '멤버 2명 이상이 나온 단체 사진이 올라오지 않아 이번 봉사 퀘스트를 완료하지 못했어요.',
+      },
+      { struckUserIds: willStrike },
+    );
+    if (!ok) continue;
+    closed++;
+    // Sophia, Sep 29: if someone proved they came (a selfie), the members who didn't get a no-show strike.
+    if (willStrike.length > 0) {
+      const { data: quest } = await admin.from('quests').select('id').eq('group_id', g.id).maybeSingle();
+      for (const uid of willStrike) {
+        await issueStrike(uid, 'no_show', `No-show for volunteer quest ${quest?.id ?? ''} (group ${g.id})`);
+        strikes++;
+      }
+    }
   }
-  return { ok: true as const, closed };
+  return { ok: true as const, closed, strikes };
 }
 
 /** Hourly: remind members who haven't confirmed their 1365 signup (once, within 8h of the deadline). */

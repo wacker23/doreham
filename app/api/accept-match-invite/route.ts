@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { isUuid, jsonError, readJson, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { evaluatePendingGroup } from '@/lib/server/groupLifecycle';
+import { hasConsent } from '@/lib/server/consents';
 
 /** POST { group_id } — the signed-in user accepts their invite. */
 export async function POST(request: Request) {
@@ -23,6 +24,12 @@ export async function POST(request: Request) {
   if (!membership || membership.left_at) return jsonError('Not a member of this group', 403);
   if (membership.invite_state !== 'invited') {
     return jsonError(`Cannot accept — current state: ${membership.invite_state}`, 400);
+  }
+
+  // Volunteer quests finish with a group photo, so joining one needs the photo consent first.
+  const { data: group } = await admin.from('groups').select('quest_type').eq('id', group_id).maybeSingle();
+  if (group?.quest_type === 'volunteer' && !(await hasConsent(userId, 'volunteer_photos'))) {
+    return jsonError('consent_required', 409, { consent: 'volunteer_photos' });
   }
 
   const { data: frozen } = await admin
