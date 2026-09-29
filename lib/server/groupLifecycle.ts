@@ -126,6 +126,8 @@ export async function activateGroup(groupId: string): Promise<boolean> {
   if (!won || won.length === 0) return false;
 
   const { members, venueName } = await loadGroupContext(groupId);
+  const { data: typeRow } = await admin.from('groups').select('quest_type').eq('id', groupId).maybeSingle();
+  const isVolunteer = typeRow?.quest_type === 'volunteer';
 
   // Anyone who declined/expired but somehow has no left_at is released.
   const notAccepted = members.filter((m) => !m.left_at && !isAccepted(m)).map((m) => m.user_id);
@@ -145,25 +147,44 @@ export async function activateGroup(groupId: string): Promise<boolean> {
       .eq('status', 'searching');
   }
 
+  // Volunteer groups skip time-picking: they vote on 1365 programs (each has a fixed date).
+  if (isVolunteer) {
+    const { startVolunteerVoting } = await import('@/lib/server/volunteer');
+    await startVolunteerVoting(groupId);
+  }
+
   after(async () => {
     const names = await displayNames(acceptedIds);
-    const notifs: NotificationPayload[] = acceptedIds.map((uid) => ({
-      user_id: uid,
-      type: 'match_activated',
-      title_en: '✨ Your group is confirmed!',
-      title_ko: '✨ 그룹이 확정되었어요!',
-      body_en: `Everyone's in${venueName ? ` for ${venueName}` : ''}. Pick the times you're free within 24 hours.`,
-      body_ko: `모두 참여했어요${venueName ? ` (${venueName})` : ''}. 24시간 안에 가능한 시간을 선택해 주세요.`,
-      action_url: `/matches/${groupId}/availability`,
-      is_important: true,
-    }));
+    const notifs: NotificationPayload[] = acceptedIds.map((uid) =>
+      isVolunteer
+        ? {
+            user_id: uid,
+            type: 'match_activated',
+            title_en: '✨ Your volunteer group is confirmed!',
+            title_ko: '✨ 봉사 그룹이 확정되었어요!',
+            body_en: "Everyone's in. Next, vote on which volunteer activity to do together.",
+            body_ko: '모두 참여했어요. 이제 함께할 봉사활동을 투표로 골라 주세요.',
+            action_url: `/matches/${groupId}/volunteer`,
+            is_important: true,
+          }
+        : {
+            user_id: uid,
+            type: 'match_activated',
+            title_en: '✨ Your group is confirmed!',
+            title_ko: '✨ 그룹이 확정되었어요!',
+            body_en: `Everyone's in${venueName ? ` for ${venueName}` : ''}. Pick the times you're free within 24 hours.`,
+            body_ko: `모두 참여했어요${venueName ? ` (${venueName})` : ''}. 24시간 안에 가능한 시간을 선택해 주세요.`,
+            action_url: `/matches/${groupId}/availability`,
+            is_important: true,
+          },
+    );
     await createNotifications(notifs);
     await Promise.all(
       acceptedIds.map((uid) =>
         sendGroupActivatedEmail({
           user_id: uid,
           group_id: groupId,
-          venue_name: venueName,
+          venue_name: isVolunteer ? '봉사활동 · Volunteering' : venueName,
           other_member_names: acceptedIds.filter((x) => x !== uid).map((x) => names[x]).filter(Boolean),
         }).then((r) => r.error && console.error('Activation email failed:', uid, r.error)),
       ),

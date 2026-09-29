@@ -5,6 +5,7 @@
     { "path": "/api/send-check-in-reminders", "schedule": "5,20,35,50 * * * *" },
     { "path": "/api/close-expired-quests", "schedule": "25 * * * *" },
     { "path": "/api/send-availability-nudges", "schedule": "40 * * * *" },
-    { "path": "/api/send-quest-day-reminders", "schedule": "0 0 * * *" }
+    { "path": "/api/send-quest-day-reminders", "schedule": "0 0 * * *" },
+    { "path": "/api/volunteer/sync", "schedule": "10 19,3 * * *" }
   ]
 }
