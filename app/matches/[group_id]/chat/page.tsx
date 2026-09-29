@@ -160,14 +160,16 @@ export default function ChatPage() {
 
     const { data: questData } = await supabase
       .from('quests')
-      .select('venue_id, venue:venues!inner(business_name_display)')
+      .select('venue_id, quest_type, venue:venues(business_name_display), program:volunteer_programs(title)')
       .eq('group_id', groupId)
       .maybeSingle();
 
     if (questData) {
       setGroupInfo({
         venue_id: questData.venue_id,
-        venue_name: (questData as any).venue?.business_name_display ?? '',
+        venue_name: (questData as any).quest_type === 'volunteer'
+          ? `🤝 ${(questData as any).program?.title ?? (lang === 'ko' ? '봉사활동' : 'Volunteering')}`
+          : ((questData as any).venue?.business_name_display ?? ''),
       });
     }
 

@@ -383,6 +383,12 @@ export async function closeVolunteerSignups() {
 // Proof upload (selfie required, certificate optional)
 // ---------------------------------------------------------------------------
 
+/** In the group at the end: never left, or released by the completion itself (left_at = completed_at). */
+function inAtEnd(m: { left_at: string | null }, completedAt: string | null): boolean {
+  if (!m.left_at) return true;
+  return !!completedAt && Date.parse(m.left_at) >= Date.parse(completedAt);
+}
+
 export type ProofKind = 'group_selfie' | 'certificate';
 export type ProofResult =
   | { ok: true; proof_id: string; completed: boolean }
@@ -402,7 +408,7 @@ export async function recordVolunteerProof(opts: {
   const admin = getAdmin();
   const { data: group } = await admin
     .from('groups')
-    .select('id, phase, quest_type, quest_scheduled_at')
+    .select('id, phase, quest_type, quest_scheduled_at, completed_at')
     .eq('id', opts.groupId)
     .maybeSingle();
   if (!group || group.quest_type !== 'volunteer') return { ok: false, error: 'not_a_volunteer_group', status: 404 };
@@ -415,7 +421,8 @@ export async function recordVolunteerProof(opts: {
     .select('user_id, invite_state, accepted_at, left_at, volunteer_signup_confirmed_at')
     .eq('group_id', opts.groupId);
   const me = (members ?? []).find((m) => m.user_id === opts.userId);
-  const stillIn = me && isAccepted(me) && (!me.left_at || group.phase === 'completed');
+  const completedAt = (group.completed_at as string | null) ?? null;
+  const stillIn = me && isAccepted(me) && inAtEnd(me, completedAt);
   if (!stillIn) return { ok: false, error: 'not_a_member', status: 403 };
 
   const start = new Date(group.quest_scheduled_at as string).getTime();
@@ -434,7 +441,7 @@ export async function recordVolunteerProof(opts: {
   // Only people who are (or were, at completion) in the group can be tagged; the uploader is always in.
   const eligible = new Set(
     (members ?? [])
-      .filter((m) => isAccepted(m) && (!m.left_at || group.phase === 'completed'))
+      .filter((m) => isAccepted(m) && inAtEnd(m, completedAt))
       .map((m) => m.user_id as string),
   );
   const tagged = opts.kind === 'group_selfie'
@@ -487,7 +494,7 @@ async function completeVolunteerQuest(groupId: string, attendees: string[]): Pro
 
   const { data: quest } = await admin
     .from('quests')
-    .update({ status: 'completed', completed_at: now })
+    .update({ status: 'completed', completed_at: now, verification_method: 'group_selfie' })
     .eq('group_id', groupId)
     .select('id')
     .maybeSingle();
@@ -585,7 +592,7 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
   const admin = getAdmin();
   const { data: group } = await admin
     .from('groups')
-    .select('id, city, phase, quest_type, is_pending_invites, voting_phase_ends_at, quest_scheduled_at, volunteer_signup_deadline, volunteer_signup_closed_at')
+    .select('id, city, phase, quest_type, is_pending_invites, voting_phase_ends_at, quest_scheduled_at, completed_at, volunteer_signup_deadline, volunteer_signup_closed_at')
     .eq('id', groupId)
     .maybeSingle();
   if (!group || group.quest_type !== 'volunteer') return { ok: false as const, status: 404, error: 'not_found' };
@@ -596,6 +603,9 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
     .eq('group_id', groupId);
   const me = (members ?? []).find((m) => m.user_id === userId);
   if (!me || !isAccepted(me)) return { ok: false as const, status: 403, error: 'not_a_member' };
+  const completedAt = (group.completed_at as string | null) ?? null;
+  // Someone who left before the end still sees the outcome, but not the group's photos.
+  const meLeft = group.phase !== 'cancelled' && !inAtEnd(me, completedAt);
 
   const [{ data: quest }, { data: slots }, { data: votes }, { data: proofs }] = await Promise.all([
     admin.from('quests').select('id, status, volunteer_program_id').eq('group_id', groupId).maybeSingle(),
@@ -615,16 +625,16 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
     : { data: [] };
 
   const signed = await Promise.all(
-    (proofs ?? []).map(async (p) => {
+    (meLeft ? [] : proofs ?? []).map(async (p) => {
       const { data } = await admin.storage.from(PROOF_BUCKET).createSignedUrl(p.storage_path as string, 60 * 60);
       return { ...p, url: data?.signedUrl ?? null };
     }),
   );
 
-  const groupActive = ['availability', 'voting', 'scheduled'].includes(group.phase as string);
   return {
     ok: true as const,
     me: userId,
+    me_left: meLeft,
     group,
     quest,
     programs: programs ?? [],
@@ -632,7 +642,7 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
     votes: votes ?? [],
     proofs: signed,
     members: (members ?? [])
-      .filter((m) => isAccepted(m) && (!groupActive || !m.left_at))
+      .filter((m) => isAccepted(m) && inAtEnd(m, completedAt))
       .map((m) => ({
         user_id: m.user_id,
         display_name: (m.profiles as unknown as { display_name: string })?.display_name ?? '',

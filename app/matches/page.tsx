@@ -49,6 +49,7 @@ type Match = {
     description_en: string | null;
     status: string;
     expires_at: string;
+    quest_type: 'venue' | 'volunteer';
     venue: {
       id: string;
       business_name_display: string;
@@ -57,7 +58,14 @@ type Match = {
       road_address: string | null;
       city: string;
       photo_urls: string[];
-    };
+    } | null;
+    program: {
+      id: string;
+      title: string;
+      org_name: string | null;
+      place: string | null;
+      detail_url: string | null;
+    } | null;
     menu_items: QuestMenuItem[];
   };
 };
@@ -123,12 +131,16 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [requests, setRequests] = useState<MatchRequest[]>([]);
   const [availableCities, setAvailableCities] = useState<Set<string>>(new Set());
+  const [volunteerCities, setVolunteerCities] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Request form state
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  // 봉사 (help) turns the request into a volunteer quest; it can't be mixed with venue categories.
+  const isVolunteerRequest = selectedCategories.includes('help');
+  const citiesForRequest = isVolunteerRequest ? volunteerCities : availableCities;
   const [randomCity, setRandomCity] = useState(false);
   const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
   const [randomSize, setRandomSize] = useState(false);
@@ -174,6 +186,13 @@ export default function MatchesPage() {
       .is('deactivated_at', null);
     const cities = new Set((venues ?? []).map((v: any) => (v.city ?? '').toLowerCase()));
     setAvailableCities(cities);
+
+    // Cities with upcoming 1365 volunteer activities (for volunteer quests)
+    const { data: programCities } = await supabase
+      .from('volunteer_programs')
+      .select('city')
+      .gte('program_end', new Date().toISOString().slice(0, 10));
+    setVolunteerCities(new Set((programCities ?? []).map((p: any) => (p.city ?? '').toLowerCase()).filter(Boolean)));
 
     // Penalties
     const { data: penalties } = await supabase
@@ -237,8 +256,9 @@ export default function MatchesPage() {
     const { data: quests } = await supabase
       .from('quests')
       .select(`
-        id, group_id, title, title_en, quest_description, description_en, status, expires_at,
-        venue:venues!inner(id, business_name_display, category, address, road_address, city, photo_urls)
+        id, group_id, title, title_en, quest_description, description_en, status, expires_at, quest_type,
+        venue:venues(id, business_name_display, category, address, road_address, city, photo_urls),
+        program:volunteer_programs(id, title, org_name, place, detail_url)
       `)
       .in('group_id', groupIds);
 
@@ -322,7 +342,9 @@ export default function MatchesPage() {
           description_en: quest.description_en,
           status: quest.status,
           expires_at: quest.expires_at,
-          venue: quest.venue,
+          quest_type: quest.quest_type ?? 'venue',
+          venue: quest.venue ?? null,
+          program: quest.program ?? null,
           menu_items: menuItems,
         },
       } as Match;
@@ -353,11 +375,15 @@ export default function MatchesPage() {
       return;
     }
 
-    // Server-side city validation — check the city has venues
-    if (!randomCity && selectedCity && !availableCities.has(selectedCity)) {
-      setError(lang === 'ko'
-        ? '이 도시에는 아직 매장이 없습니다. 다른 도시를 선택해주세요.'
-        : 'No venues in this city yet. Please pick another city.');
+    // City must have venues (or, for volunteer quests, open 1365 activities)
+    if (!randomCity && selectedCity && !citiesForRequest.has(selectedCity)) {
+      setError(isVolunteerRequest
+        ? (lang === 'ko'
+            ? '이 도시에는 지금 참여할 수 있는 봉사활동이 없어요. 다른 도시를 선택해주세요.'
+            : 'No volunteer activities in this city right now. Please pick another city.')
+        : (lang === 'ko'
+            ? '이 도시에는 아직 매장이 없습니다. 다른 도시를 선택해주세요.'
+            : 'No venues in this city yet. Please pick another city.'));
       return;
     }
 
@@ -370,6 +396,7 @@ export default function MatchesPage() {
       city: randomCity ? null : selectedCity,
       group_size: randomSize ? null : selectedGroupSize,
       preferred_categories: selectedCategories.length > 0 ? selectedCategories : null,
+      quest_type: isVolunteerRequest ? 'volunteer' : 'venue',
       status: 'searching',
     }).select('id').single();
 
@@ -798,7 +825,7 @@ export default function MatchesPage() {
                       </div>
                     </button>
                     {KOREAN_CITIES.map((c) => {
-                      const hasVenues = availableCities.has(c.slug);
+                      const hasVenues = citiesForRequest.has(c.slug);
                       const isSelected = selectedCity === c.slug && !randomCity;
                       return (
                         <button
@@ -846,9 +873,15 @@ export default function MatchesPage() {
                           className={`cat-card ${isSelected ? 'selected' : ''} ${c.coming_soon ? 'disabled' : ''}`}
                           onClick={() => {
                             if (c.coming_soon) return;
-                            setSelectedCategories((prev) =>
-                              isSelected ? prev.filter((x) => x !== c.slug) : [...prev, c.slug]
-                            );
+                            setSelectedCategories((prev) => {
+                              if (isSelected) return prev.filter((x) => x !== c.slug);
+                              if (c.volunteer) return [c.slug];                 // 봉사 alone
+                              return [...prev.filter((x) => x !== 'help'), c.slug];
+                            });
+                            // A city chosen for venues may have no volunteer activities (and vice versa)
+                            const nextIsVolunteer = c.volunteer ? !isSelected : false;
+                            const nextCities = nextIsVolunteer ? volunteerCities : availableCities;
+                            if (selectedCity && !nextCities.has(selectedCity)) setSelectedCity(null);
                           }}
                           disabled={c.coming_soon}
                           title={c.coming_soon ? (lang === 'ko' ? '곧 출시' : 'Coming soon') : ''}
@@ -860,6 +893,13 @@ export default function MatchesPage() {
                       );
                     })}
                   </div>
+                  {isVolunteerRequest && (
+                    <div className="volunteer-hint">
+                      {lang === 'ko'
+                        ? '🤝 봉사 퀘스트: 그룹이 함께할 1365 봉사활동을 찾아드려요. 각자 1365에서 무료로 신청하고, 당일에 단체 사진 한 장만 찍으면 끝! 봉사시간은 1365에 그대로 인정돼요.'
+                        : "🤝 Volunteer quest: we'll find a 1365 volunteer activity for your group. Each of you signs up on 1365 (free), and on the day you just take one group selfie. Your hours count on 1365 as usual."}
+                    </div>
+                  )}
                 </div>
 
                 {/* Group size */}
@@ -1123,6 +1163,7 @@ export default function MatchesPage() {
         .cat-card:hover:not(.disabled) { transform: translateY(-2px); border-color: var(--persimmon); }
         .cat-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); }
         .cat-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .volunteer-hint { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 157, 119, 0.08); color: var(--ink); font-size: 13.5px; line-height: 1.6; }
         .cat-icon { width: 36px; height: 36px; object-fit: contain; }
         .cat-name { font-weight: 700; font-size: 11px; color: var(--ink); text-align: center; line-height: 1.2; }
         .cat-soon { font-size: 9px; color: var(--ink-60); font-weight: 600; }
@@ -1242,7 +1283,8 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
   onLeave?: (groupId: string, isConfirmed: boolean) => void;
   respondingTo?: string | null;
 }) {
-  const cat = CATEGORY_LABELS[match.quest.venue.category];
+  const isVolunteer = match.quest.quest_type === 'volunteer';
+  const cat = match.quest.venue ? CATEGORY_LABELS[match.quest.venue.category] : undefined;
   const status = STATUS_LABELS[match.quest.status] ?? STATUS_LABELS.proposed;
 
   function daysRemaining(iso: string) {
@@ -1331,6 +1373,47 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         </div>
       </div>
 
+      {isVolunteer && (
+        <div className="venue-section">
+          <h3>{lang === 'ko' ? '함께할 봉사활동' : 'Volunteer activity'}</h3>
+          {match.quest.program ? (
+            <div className="venue-card volunteer-card">
+              <div className="volunteer-emoji">🤝</div>
+              <div className="venue-info">
+                <div className="venue-name">{match.quest.program.title}</div>
+                {match.quest.program.org_name && <div className="venue-category">{match.quest.program.org_name}</div>}
+                {match.quest.program.place && <div className="venue-address">📍 {match.quest.program.place}</div>}
+              </div>
+            </div>
+          ) : (
+            <div className="venue-card volunteer-card">
+              <div className="volunteer-emoji">🗳️</div>
+              <div className="venue-info">
+                <div className="venue-name">
+                  {lang === 'ko' ? '함께 고를 1365 봉사활동' : 'A 1365 activity you choose together'}
+                </div>
+                <div className="venue-address">
+                  {lang === 'ko'
+                    ? '모두 수락하면 우리 도시의 봉사활동 중에서 투표로 골라요.'
+                    : "Once everyone accepts, you'll vote on volunteer activities in your city."}
+                </div>
+              </div>
+            </div>
+          )}
+          {match.quest_scheduled_at && (
+            <div className="scheduled-info">
+              <div className="scheduled-label">{lang === 'ko' ? '📅 봉사 시간' : '📅 Volunteering time'}</div>
+              <div className="scheduled-time">
+                {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                {' · '}
+                {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {match.quest.venue && (
       <div className="venue-section">
         <h3>{lang === 'ko' ? '만날 장소' : 'Where to meet'}</h3>
         <div className="venue-card">
@@ -1365,6 +1448,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
           </div>
         )}
       </div>
+      )}
 
       {match.quest.menu_items.length > 0 && (
         <div className="menu-section">
@@ -1412,7 +1496,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       )}
 
       {/* Check-in button — shows when quest is scheduled and we're in the check-in window */}
-      {!isHistory && !match.is_pending_invites && match.quest_scheduled_at && (() => {
+      {!isHistory && !isVolunteer && !match.is_pending_invites && match.quest_scheduled_at && (() => {
         const scheduled = new Date(match.quest_scheduled_at).getTime();
         const now = Date.now();
         const windowStart = scheduled - 40 * 60 * 1000;
@@ -1447,7 +1531,18 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       })()}
 
       {/* Availability button — only if match is active (not pending) and quest not scheduled */}
-      {!isHistory && !match.is_pending_invites && !match.quest_scheduled_at && (
+      {/* Volunteer quest: one page for voting, 1365 signup and the group selfie */}
+      {!isHistory && isVolunteer && !match.is_pending_invites && (
+        <a href={`/matches/${match.group_id}/volunteer`} className="volunteer-btn">
+          {match.phase === 'voting'
+            ? (lang === 'ko' ? '🗳️ 봉사활동 투표하기' : '🗳️ Vote on an activity')
+            : match.phase === 'scheduled'
+              ? (lang === 'ko' ? '🤝 1365 신청 · 단체 사진' : '🤝 1365 signup · group selfie')
+              : (lang === 'ko' ? '🤝 봉사 퀘스트 열기' : '🤝 Open volunteer quest')}
+        </a>
+      )}
+
+      {!isHistory && !isVolunteer && !match.is_pending_invites && !match.quest_scheduled_at && (
         <a
           href={`/matches/${match.group_id}/availability`}
           className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
@@ -1512,6 +1607,9 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         .member-tags { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
         .mini-tag { font-size: 10px; font-weight: 600; color: var(--ink-60); background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ink-12); }
         .venue-card { display: flex; gap: 14px; background: var(--paper-2); border-radius: 12px; padding: 12px; }
+        .volunteer-card { align-items: center; }
+        .volunteer-emoji { width: 64px; height: 64px; border-radius: 12px; background: rgba(15, 157, 119, 0.12); display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; }
+        .volunteer-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #0f9d77, #34c39a); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 16px; text-decoration: none; }
         .venue-photo { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
         .venue-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
         .venue-name { font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
