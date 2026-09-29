@@ -31,6 +31,7 @@ export type EventBase = {
   is_featured: boolean;
   status: 'published' | 'cancelled' | 'hidden';
   created_at: string;
+  poster_url?: string | null;
 };
 
 export type FeedEvent = EventBase & {

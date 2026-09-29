@@ -114,6 +114,10 @@ export const EVENT_ERRORS: Record<string, { en: string; ko: string }> = {
   empty_comment: { en: 'Write something first.', ko: '내용을 입력해 주세요.' },
   too_many_comments: { en: "You've commented a lot on this event.", ko: '이 이벤트에 댓글을 너무 많이 남겼어요.' },
   bad_reason: { en: 'Pick a reason.', ko: '신고 사유를 선택해 주세요.' },
+  poster_too_large: { en: 'That image is too big. Try a smaller one.', ko: '이미지가 너무 커요. 더 작은 이미지를 골라 주세요.' },
+  poster_not_image: { en: 'The poster must be a JPEG, PNG or WebP image.', ko: '포스터는 JPEG, PNG, WebP 이미지여야 해요.' },
+  poster_required: { en: 'Pick an image.', ko: '이미지를 선택해 주세요.' },
+  poster_failed: { en: "The event was saved, but the poster didn't upload. Try adding it again from Edit.", ko: '이벤트는 저장됐지만 포스터를 올리지 못했어요. 수정에서 다시 추가해 주세요.' },
 };
 
 export function eventError(code: string, lang: 'en' | 'ko') {

@@ -115,7 +115,7 @@ export default function LeaderboardPage() {
   return (
     <>
       <AppHeader lang={lang} setLang={setLang} />
-      <main className="wrap lb-wrap">
+      <main className="app-page lb-wrap">
         <h1>{ko ? '랭킹' : 'Ranking'}</h1>
         <p className="lb-sub">
           {ko
@@ -428,7 +428,7 @@ export default function LeaderboardPage() {
       <AppTabBar lang={lang} />
 
       <style jsx>{`
-        .lb-wrap { max-width: 720px; padding-top: 22px; padding-bottom: 48px; }
+        .lb-wrap { max-width: 880px; }
         h1 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -0.02em; margin: 0 0 4px; }
         h2 { font-family: var(--display); font-weight: 800; font-size: 18px; margin: 26px 0 10px; }
         .lb-sub { color: var(--ink-60); font-size: 14.5px; margin: 0 0 16px; }

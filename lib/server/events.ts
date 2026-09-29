@@ -1,6 +1,6 @@
 import 'server-only';
 import { after } from 'next/server';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { isAdminUser } from '@/lib/server/auth';
 import { createNotification, createNotifications } from '@/lib/notifications';
@@ -50,7 +50,7 @@ type Fail = { ok: false; error: string; status: number };
 const fail = (error: string, status = 400): Fail => ({ ok: false, error, status });
 
 const EVENT_COLUMNS =
-  'id, creator_id, host_kind, venue_id, title, description, category, city, place_name, address, starts_at, ends_at, capacity, fee_text, source_lang, translated_to, title_tr, description_tr, place_name_tr, is_featured, status, cancelled_at, hidden_reason, created_at, updated_at';
+  'id, creator_id, host_kind, venue_id, title, description, category, city, place_name, address, starts_at, ends_at, capacity, fee_text, source_lang, translated_to, title_tr, description_tr, place_name_tr, is_featured, status, cancelled_at, hidden_reason, created_at, updated_at, poster_url, poster_path';
 
 type EventRow = {
   id: string;
@@ -78,6 +78,8 @@ type EventRow = {
   hidden_reason: string | null;
   created_at: string;
   updated_at: string;
+  poster_url: string | null;
+  poster_path: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -505,6 +507,85 @@ export async function reportEvent(userId: string, id: string, input: { reason?: 
 }
 
 // ---------------------------------------------------------------------------
+// Poster (one optional image per event)
+// ---------------------------------------------------------------------------
+
+export const POSTER_BUCKET = 'event-posters';
+const POSTER_MAX_BYTES = 4 * 1024 * 1024; // requests to Vercel functions are capped at 4.5 MB
+
+function sniffImage(bytes: Uint8Array): 'jpg' | 'png' | 'webp' | null {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
+  const riff = String.fromCharCode(...bytes.slice(0, 4));
+  const webp = String.fromCharCode(...bytes.slice(8, 12));
+  if (riff === 'RIFF' && webp === 'WEBP') return 'webp';
+  return null;
+}
+
+async function canEditPoster(userId: string, id: string) {
+  const e = await loadEvent(id);
+  if (!e) return { error: fail('not_found', 404) };
+  if (e.creator_id !== userId && !(await isAdminUser(userId))) return { error: fail('not_allowed', 403) };
+  if (e.status === 'cancelled') return { error: fail('event_cancelled', 409) };
+  return { event: e };
+}
+
+export async function setPoster(userId: string, id: string, file: File) {
+  const check = await canEditPoster(userId, id);
+  if (check.error) return check.error;
+  if (file.size === 0) return fail('poster_required');
+  if (file.size > POSTER_MAX_BYTES) return fail('poster_too_large');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const kind = sniffImage(bytes);
+  if (!kind) return fail('poster_not_image');
+
+  const admin = getAdmin();
+  const old = check.event.poster_path;
+  const path = `events/${id}/${randomUUID()}.${kind}`;
+  const contentType = kind === 'jpg' ? 'image/jpeg' : `image/${kind}`;
+  const { error: upErr } = await admin.storage.from(POSTER_BUCKET).upload(path, bytes, { contentType, cacheControl: '31536000', upsert: false });
+  if (upErr) return fail(`upload_failed: ${upErr.message}`, 500);
+  const { data: pub } = admin.storage.from(POSTER_BUCKET).getPublicUrl(path);
+  const { error } = await admin.from('events').update({ poster_url: pub.publicUrl, poster_path: path }).eq('id', id);
+  if (error) {
+    await admin.storage.from(POSTER_BUCKET).remove([path]);
+    return fail(error.message, 500);
+  }
+  if (old && old !== path) await admin.storage.from(POSTER_BUCKET).remove([old]);
+  return { ok: true as const, poster_url: pub.publicUrl };
+}
+
+export async function removePoster(userId: string, id: string) {
+  const check = await canEditPoster(userId, id);
+  if (check.error) return check.error;
+  const admin = getAdmin();
+  const old = check.event.poster_path;
+  await admin.from('events').update({ poster_url: null, poster_path: null }).eq('id', id);
+  if (old) await admin.storage.from(POSTER_BUCKET).remove([old]);
+  return { ok: true as const };
+}
+
+/** Daily: delete poster files whose event no longer exists (e.g. the host deleted their account). */
+export async function deleteOrphanPosters() {
+  const admin = getAdmin();
+  const { data: folders } = await admin.storage.from(POSTER_BUCKET).list('events', { limit: 1000 });
+  const ids = (folders ?? []).map((f) => f.name).filter((n) => /^[0-9a-f-]{36}$/i.test(n));
+  if (ids.length === 0) return { removed: 0 };
+  const { data: alive } = await admin.from('events').select('id, poster_path').in('id', ids);
+  const keep = new Map((alive ?? []).map((e) => [e.id as string, (e.poster_path as string | null) ?? null]));
+  let removed = 0;
+  for (const id of ids) {
+    const { data: files } = await admin.storage.from(POSTER_BUCKET).list(`events/${id}`, { limit: 100 });
+    const stale = (files ?? []).map((f) => `events/${id}/${f.name}`).filter((p) => !keep.has(id) || keep.get(id) !== p);
+    if (stale.length) {
+      await admin.storage.from(POSTER_BUCKET).remove(stale);
+      removed += stale.length;
+    }
+  }
+  return { removed };
+}
+
+// ---------------------------------------------------------------------------
 // Reading
 // ---------------------------------------------------------------------------
 
@@ -549,6 +630,7 @@ function publicEvent(e: EventRow) {
     is_featured: e.is_featured,
     status: e.status,
     created_at: e.created_at,
+    poster_url: e.poster_url ?? null,
   };
 }
 

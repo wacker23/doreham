@@ -135,15 +135,29 @@ export default function EventsPage() {
     <>
       <AppHeader lang={lang} setLang={setLang} />
 
-      <main className="wrap ev-wrap">
+      <main className="app-page ev-page">
         <div className="ev-head">
-          <div>
+          <div className="ev-title">
             <h1>{ko ? '이벤트' : 'Events'}</h1>
             <p className="ev-sub">
               {ko
                 ? '근처 사람들과 가게가 여는 모임, 언어 교환, 나들이를 찾아보세요.'
                 : 'Meetups, language exchanges and nights out, posted by people and places near you.'}
             </p>
+          </div>
+          <a className="ev-host-btn" href="/events/new">
+            + {ko ? '이벤트 열기' : 'Host an event'}
+          </a>
+        </div>
+
+        <div className="ev-toolbar">
+          <div className="ev-scope" role="tablist">
+            <button role="tab" aria-selected={scope === 'upcoming'} className={scope === 'upcoming' ? 'on' : ''} onClick={() => setScope('upcoming')}>
+              {ko ? '둘러보기' : 'Explore'}
+            </button>
+            <button role="tab" aria-selected={scope === 'mine'} className={scope === 'mine' ? 'on' : ''} onClick={() => setScope('mine')}>
+              {ko ? '내 이벤트' : 'My events'}
+            </button>
           </div>
           {scope === 'upcoming' && (
             <label className="ev-city">
@@ -158,15 +172,6 @@ export default function EventsPage() {
               </select>
             </label>
           )}
-        </div>
-
-        <div className="ev-scope" role="tablist">
-          <button role="tab" aria-selected={scope === 'upcoming'} className={scope === 'upcoming' ? 'on' : ''} onClick={() => setScope('upcoming')}>
-            {ko ? '둘러보기' : 'Explore'}
-          </button>
-          <button role="tab" aria-selected={scope === 'mine'} className={scope === 'mine' ? 'on' : ''} onClick={() => setScope('mine')}>
-            {ko ? '내 이벤트' : 'My events'}
-          </button>
         </div>
 
         {scope === 'upcoming' && (
@@ -185,8 +190,8 @@ export default function EventsPage() {
         {error && <p className="ev-error">{error}</p>}
 
         {events === null ? (
-          <div className="ev-skeletons" aria-busy="true">
-            {[0, 1, 2].map((i) => (
+          <div className="ev-grid" aria-busy="true">
+            {[0, 1, 2, 3].map((i) => (
               <div key={i} className="ev-skel" />
             ))}
           </div>
@@ -209,7 +214,7 @@ export default function EventsPage() {
           sections.map((s) => (
             <div key={s.key} className="ev-section">
               <h2 className="ev-day">{s.title}</h2>
-              <div className="ev-list">
+              <div className="ev-grid">
                 {s.items.map((e) => (
                   <EventCard key={e.id} e={e} lang={lang} now={loadedAt} showCity={!city || scope === 'mine'} />
                 ))}
@@ -226,47 +231,74 @@ export default function EventsPage() {
       <AppTabBar lang={lang} />
 
       <style jsx>{`
-        .ev-wrap { max-width: 760px; padding-top: 24px; padding-bottom: 40px; min-height: 70vh; position: relative; }
-        .ev-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-        h1 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -0.02em; margin: 0 0 4px; }
-        .ev-sub { color: var(--ink-60); font-size: 14.5px; margin: 0; max-width: 460px; }
-        .ev-city select { appearance: none; -webkit-appearance: none; font-family: var(--body); font-weight: 700; font-size: 14px; color: var(--ink); background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%231E2230' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center; border: 1px solid var(--ink-12); border-radius: 999px; padding: 9px 34px 9px 14px; cursor: pointer; }
+        .ev-page { min-height: 70vh; }
+        .ev-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+        h1 { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 4px; line-height: 1.15; }
+        .ev-sub { color: var(--ink-60); font-size: 14.5px; line-height: 1.5; margin: 0; max-width: 520px; }
+        .ev-host-btn { display: none; flex-shrink: 0; background: var(--persimmon); color: #fff; font-weight: 800; font-size: 15px; padding: 11px 20px; border-radius: 999px; text-decoration: none; box-shadow: 0 8px 20px rgba(255, 106, 61, 0.25); }
+        .ev-host-btn:hover { transform: translateY(-1px); }
         .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-        .ev-scope { display: inline-flex; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 999px; padding: 3px; margin-bottom: 12px; }
+        .ev-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .ev-scope { display: inline-flex; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 999px; padding: 3px; }
         .ev-scope button { border: 0; background: transparent; font-family: var(--body); font-weight: 700; font-size: 13.5px; padding: 7px 16px; border-radius: 999px; color: var(--ink-60); cursor: pointer; }
         .ev-scope button.on { background: var(--ink); color: var(--paper); }
+        .ev-city select { appearance: none; -webkit-appearance: none; font-family: var(--body); font-weight: 700; font-size: 14px; color: var(--ink); background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%231E2230' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center; border: 1px solid var(--ink-12); border-radius: 999px; padding: 8px 34px 8px 14px; cursor: pointer; }
 
-        .ev-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; scrollbar-width: none; margin: 0 -4px; padding-left: 4px; }
+        .ev-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 4px; padding: 2px 16px 12px; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
         .ev-chips::-webkit-scrollbar { display: none; }
         .ev-chips button { flex-shrink: 0; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 13px; font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
         .ev-chips button.on { background: var(--persimmon); border-color: var(--persimmon); color: #fff; }
 
         .ev-error { color: #b42318; background: #fef3f2; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
-        .ev-section { margin-top: 20px; }
-        .ev-day { font-family: var(--display); font-weight: 800; font-size: 16px; margin: 0 0 10px; color: var(--ink); }
-        .ev-list { display: flex; flex-direction: column; gap: 10px; }
-
-        .ev-skeletons { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
-        .ev-skel { height: 104px; border-radius: 18px; background: linear-gradient(90deg, var(--paper-2), #fff, var(--paper-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border: 1px solid var(--ink-12); }
+        .ev-section { margin-top: 18px; }
+        .ev-day { font-family: var(--display); font-weight: 800; font-size: 17px; margin: 0 0 10px; color: var(--ink); line-height: 1.3; }
+        .ev-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .ev-skel { height: 124px; border-radius: 18px; background: linear-gradient(90deg, var(--paper-2), #fff, var(--paper-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border: 1px solid var(--ink-12); }
         @keyframes shimmer { to { background-position: -200% 0; } }
 
-        .ev-empty { text-align: center; padding: 56px 20px; background: var(--paper-2); border-radius: 24px; margin-top: 18px; }
-        .ev-empty-icon { font-size: 52px; margin-bottom: 12px; }
-        .ev-empty h2 { font-family: var(--display); font-weight: 800; font-size: 21px; margin: 0 0 6px; }
-        .ev-empty p { color: var(--ink-60); font-size: 14.5px; margin: 0 auto 20px; max-width: 420px; }
+        .ev-empty { text-align: center; padding: 48px 20px; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 24px; margin: 18px auto 0; max-width: 560px; }
+        .ev-empty-icon { font-size: 48px; margin-bottom: 10px; }
+        .ev-empty h2 { font-family: var(--display); font-weight: 800; font-size: 21px; margin: 0 0 6px; line-height: 1.3; }
+        .ev-empty p { color: var(--ink-60); font-size: 14.5px; margin: 0 auto 20px; max-width: 420px; line-height: 1.5; }
         .ev-cta { display: inline-block; background: var(--persimmon); color: #fff; font-weight: 700; font-size: 15px; padding: 11px 22px; border-radius: 999px; text-decoration: none; }
 
-        .ev-fab { position: fixed; right: max(16px, calc(50% - 380px + 16px)); bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 25; display: inline-flex; align-items: center; gap: 6px; background: var(--persimmon); color: #fff; font-weight: 800; font-size: 15px; padding: 13px 20px; border-radius: 999px; text-decoration: none; box-shadow: 0 10px 24px rgba(255, 106, 61, 0.35); }
+        .ev-fab { position: fixed; right: 16px; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 25; display: inline-flex; align-items: center; gap: 6px; background: var(--persimmon); color: #fff; font-weight: 800; font-size: 15px; padding: 13px 20px; border-radius: 999px; text-decoration: none; box-shadow: 0 10px 24px rgba(255, 106, 61, 0.35); }
         .ev-fab span { font-size: 20px; line-height: 1; }
-        @media (max-width: 560px) {
-          h1 { font-size: 26px; }
-          .ev-head { flex-direction: column; gap: 10px; }
+
+        @media (min-width: 600px) {
+          h1 { font-size: 32px; }
+          .ev-chips { margin: 0 0 4px; padding: 2px 0 12px; }
+          .ev-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+          .ev-skel { height: 300px; }
+          .ev-fab { right: 24px; }
+        }
+        @media (min-width: 900px) {
+          .ev-head { margin-bottom: 20px; }
+          .ev-host-btn { display: inline-block; }
+          .ev-fab { display: none; }
+          .ev-chips { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+          .ev-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+          .ev-section { margin-top: 26px; }
         }
       `}</style>
     </>
   );
 }
+
+/** Soft backgrounds for events without a poster. */
+const PLACEHOLDER_BG: Record<string, string> = {
+  social: 'linear-gradient(135deg, #F5C2C7, #FBF9F4)',
+  language: 'linear-gradient(135deg, #C7B8E0, #FBF9F4)',
+  food: 'linear-gradient(135deg, #FFC9B5, #FBF9F4)',
+  outdoor: 'linear-gradient(135deg, #BFE6D8, #FBF9F4)',
+  culture: 'linear-gradient(135deg, #D9C9F0, #F5C2C7)',
+  games: 'linear-gradient(135deg, #FFE3A3, #FBF9F4)',
+  study: 'linear-gradient(135deg, #CFD6E6, #FBF9F4)',
+  volunteer: 'linear-gradient(135deg, #A8DCC8, #FBF9F4)',
+  nightlife: 'linear-gradient(135deg, #3B3F5C, #7A5C9E)',
+  other: 'linear-gradient(135deg, #EDE7DA, #FBF9F4)',
+};
 
 function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'; now: number; showCity: boolean }) {
   const ko = lang === 'ko';
@@ -276,10 +308,18 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
   const past = new Date(e.starts_at).getTime() < now - 2 * 3_600_000;
   return (
     <a href={`/events/${e.id}`} className={`ev-card ${e.status === 'cancelled' || past ? 'dim' : ''} ${e.is_featured ? 'feat' : ''}`}>
-      <div className="ev-date" aria-hidden="true">
-        <span className="m">{p.month}</span>
-        <span className="d">{p.day}</span>
-        <span className="w">{p.weekday}</span>
+      <div className="ev-media" style={e.poster_url ? undefined : { background: PLACEHOLDER_BG[cat.slug] ?? PLACEHOLDER_BG.other }}>
+        {e.poster_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={e.poster_url} alt="" loading="lazy" />
+        ) : (
+          <span className="ev-ph" aria-hidden="true">{cat.emoji}</span>
+        )}
+        <span className="ev-date" aria-hidden="true">
+          <span className="m">{p.month}</span>
+          <span className="d">{p.day}</span>
+        </span>
+        {e.is_featured && <span className="ev-feat">⭐ {ko ? '추천' : 'Featured'}</span>}
       </div>
       <div className="ev-body">
         <div className="ev-tags">
@@ -295,7 +335,7 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
         </div>
         <h3>{t.title}</h3>
         <div className="ev-meta">
-          {p.time} · {t.place}
+          {p.weekday} {p.time} · {t.place}
           {showCity ? ` · ${cityName(e.city, lang)}` : ''}
         </div>
         <div className="ev-foot">
@@ -319,38 +359,53 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
             👥 {e.going_count}
             {e.capacity ? `/${e.capacity}` : ''}
           </span>
-          {e.fee_text && <span className="ev-fee">{e.fee_text}</span>}
         </div>
+        {e.fee_text && <div className="ev-fee">{e.fee_text}</div>}
       </div>
       <style jsx>{`
-        .ev-card { display: flex; gap: 14px; padding: 14px; background: #fff; border: 1px solid var(--ink-12); border-radius: 18px; text-decoration: none; color: var(--ink); transition: transform 0.12s, box-shadow 0.12s; }
-        .ev-card:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(30, 34, 48, 0.07); }
-        .ev-card.feat { border-color: rgba(255, 106, 61, 0.45); background: linear-gradient(135deg, rgba(255, 106, 61, 0.06), #fff 60%); }
+        .ev-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 12px; padding: 10px; background: #fff; border: 1px solid var(--ink-12); border-radius: 18px; text-decoration: none; color: var(--ink); transition: transform 0.12s, box-shadow 0.12s; min-width: 0; }
+        .ev-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(30, 34, 48, 0.08); }
+        .ev-card.feat { border-color: rgba(255, 106, 61, 0.5); box-shadow: 0 0 0 1px rgba(255, 106, 61, 0.25); }
         .ev-card.dim { opacity: 0.6; }
-        .ev-date { flex-shrink: 0; width: 56px; height: 64px; border-radius: 14px; background: var(--paper-2); border: 1px solid var(--ink-12); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; }
-        .ev-date .m { font-size: 11px; font-weight: 800; color: var(--persimmon); text-transform: uppercase; }
-        .ev-date .d { font-family: var(--display); font-size: 22px; font-weight: 800; }
-        .ev-date .w { font-size: 11px; color: var(--ink-60); font-weight: 600; }
-        .ev-body { min-width: 0; flex: 1; }
-        .ev-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
-        .tag { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-60); }
+        .ev-media { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--paper-2); }
+        .ev-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .ev-ph { font-size: 38px; filter: drop-shadow(0 4px 10px rgba(30, 34, 48, 0.15)); }
+        .ev-date { position: absolute; top: 6px; left: 6px; display: flex; flex-direction: column; align-items: center; min-width: 34px; padding: 3px 5px; border-radius: 9px; background: rgba(255, 255, 255, 0.94); line-height: 1.05; box-shadow: 0 2px 8px rgba(30, 34, 48, 0.12); }
+        .ev-date .m { font-size: 9.5px; font-weight: 800; color: var(--persimmon); text-transform: uppercase; }
+        .ev-date .d { font-family: var(--display); font-size: 16px; font-weight: 800; }
+        .ev-feat { display: none; position: absolute; font-weight: 800; color: #fff; background: var(--persimmon); border-radius: 999px; }
+        .ev-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 2px 2px 2px 0; }
+        .ev-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-60); white-space: nowrap; }
         .tag.bad { background: #fef3f2; color: #b42318; }
         .tag.going { background: rgba(15, 157, 119, 0.12); color: var(--jade); }
         .tag.host { background: rgba(255, 106, 61, 0.12); color: var(--persimmon); }
-        h3 { font-family: var(--display); font-weight: 800; font-size: 17px; margin: 0 0 3px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .ev-meta { font-size: 13.5px; color: var(--ink-60); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .ev-foot { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--ink-60); flex-wrap: wrap; }
-        .ev-host { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+        h3 { font-family: var(--display); font-weight: 800; font-size: 16px; margin: 0; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: keep-all; overflow-wrap: anywhere; }
+        .ev-meta { font-size: 13px; color: var(--ink-60); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ev-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 4px; font-size: 12.5px; color: var(--ink-60); min-width: 0; }
+        .ev-host { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
         .ev-host img, .av { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-        .av { display: inline-flex; align-items: center; justify-content: center; background: var(--lav); color: var(--ink); font-size: 9.5px; font-weight: 800; }
+        .av { display: inline-flex; align-items: center; justify-content: center; background: var(--lav); color: var(--ink); font-size: 9px; font-weight: 800; }
         .av.admin { background: var(--persimmon); color: #fff; }
         .av.venue { background: var(--pink); }
-        .hn { font-weight: 600; color: var(--ink); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ev-badge { font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--pink); color: var(--ink); }
+        .hn { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ev-lv { font-size: 13px; }
+        .ev-badge { flex-shrink: 0; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--pink); color: var(--ink); }
         .ev-badge.jade { background: rgba(15, 157, 119, 0.14); color: var(--jade); }
-        .ev-count { font-weight: 700; color: var(--ink); }
-        .ev-lv { font-size: 13px; margin-left: -3px; }
-        .ev-fee { background: var(--paper-2); padding: 1px 7px; border-radius: 6px; }
+        .ev-count { flex-shrink: 0; font-weight: 700; color: var(--ink); }
+        .ev-fee { align-self: flex-start; font-size: 12px; color: var(--ink-60); background: var(--paper-2); padding: 1px 8px; border-radius: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        @media (min-width: 600px) {
+          .ev-card { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; }
+          .ev-media { aspect-ratio: 16 / 10; border-radius: 0; }
+          .ev-ph { font-size: 56px; }
+          .ev-date { top: 10px; left: 10px; min-width: 42px; padding: 5px 7px; border-radius: 11px; }
+          .ev-date .m { font-size: 10.5px; }
+          .ev-date .d { font-size: 20px; }
+          .ev-feat { display: inline-block; right: 10px; top: 10px; font-size: 11.5px; padding: 3px 9px; }
+          .ev-body { padding: 12px 14px 14px; gap: 5px; flex: 1; }
+          h3 { font-size: 17px; }
+        }
       `}</style>
     </a>
   );

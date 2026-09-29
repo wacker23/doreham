@@ -33,10 +33,10 @@ export function Footer() {
     '/venues/my',
   ];
 
-  // Also hide on chat and availability pages for grouped match flows
-  const isChatPage = pathname?.match(/^\/matches\/[^/]+\/chat/);
-  const isAvailabilityPage = pathname?.match(/^\/matches\/[^/]+\/availability/);
-  const isHidden = hiddenPaths.includes(pathname ?? '') || isChatPage || isAvailabilityPage;
+  // The signed-in app (matches, events, ranking, profiles, admin) has no footer; its legal links are in the account menu.
+  const APP_PREFIXES = ['/matches/', '/events', '/leaderboard', '/profile/', '/venues/my', '/admin'];
+  const inApp = APP_PREFIXES.some((p) => (pathname ?? '').startsWith(p));
+  const isHidden = hiddenPaths.includes(pathname ?? '') || inApp;
 
   if (isHidden) return null;
 

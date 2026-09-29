@@ -13,7 +13,9 @@ import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
 import { AppTabBar } from '@/components/AppTabBar';
+import { AppHeader } from '@/components/AppHeader';
 import { ProfileLevel } from '@/components/ProfileLevel';
+import { cityName } from '@/lib/cities';
 
 type Profile = {
   id: string;
@@ -434,17 +436,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <header className="v-nav">
-        <div className="wrap v-nav-in">
-          <a className="brand" href="/">
-            Doreham <span className="ko-mark">도레함</span>
-          </a>
-          <div className="toggle">
-            <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
-            <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
-          </div>
-        </div>
-      </header>
+      <AppHeader lang={lang} setLang={setLang} />
 
       <main className="wrap main-wrap">
         <button onClick={() => router.back()} className="back-btn">
@@ -486,7 +478,7 @@ export default function ProfilePage() {
             )}
             {profile.home_district && (
               <p className="hero-district">
-                📍 {profile.home_district}
+                📍 {cityName(profile.home_district.toLowerCase(), lang)}
               </p>
             )}
             {profile.job_title && (

@@ -8,6 +8,7 @@ import { KOREAN_CITIES, LAUNCH_CITY_SET, MAX_REQUEST_CITIES, VOLUNTEER_CITY_SET 
 import { useLang } from '@/lib/hooks/useLang';
 import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 import { AppTabBar } from '@/components/AppTabBar';
+import { AppHeader } from '@/components/AppHeader';
 import { supabase } from '@/lib/supabase/client';
 
 type Tab = 'pending' | 'request' | 'history';
@@ -625,15 +626,7 @@ export default function MatchesPage() {
 
   return (
     <>
-      <header className="v-nav">
-        <div className="wrap v-nav-in">
-          <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span></a>
-          <div className="toggle">
-            <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
-            <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
-          </div>
-        </div>
-      </header>
+      <AppHeader lang={lang} setLang={setLang} />
 
       {/* Top tab bar */}
       <div className="tab-bar-wrap">
@@ -1070,11 +1063,12 @@ export default function MatchesPage() {
         .toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
 
         /* Tab bar */
-        .tab-bar-wrap { background: rgba(245, 242, 235, 0.95); border-bottom: 1px solid var(--ink-12); position: sticky; top: 68px; z-index: 15; backdrop-filter: blur(8px); }
+        .tab-bar-wrap { background: rgba(245, 242, 235, 0.95); border-bottom: 1px solid var(--ink-12); position: sticky; top: 64px; z-index: 15; backdrop-filter: blur(8px); }
         .tab-bar {
           display: flex;
           gap: 4px;
-          padding: 8px 20px 0;
+          padding: 8px 12px 0;
+          max-width: 900px;
           overflow-x: auto;
           scrollbar-width: none;
         }

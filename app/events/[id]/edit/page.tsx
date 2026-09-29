@@ -38,7 +38,7 @@ export default function EditEventPage() {
   return (
     <>
       <AppHeader lang={lang} setLang={setLang} />
-      <main className="wrap evn-wrap">
+      <main className="app-page narrow evn-wrap">
         <a className="evn-back" href={`/events/${id}`}>← {ko ? '이벤트로 돌아가기' : 'Back to event'}</a>
         <h1>{ko ? '이벤트 수정' : 'Edit event'}</h1>
         <p className="evn-sub">
@@ -47,9 +47,9 @@ export default function EditEventPage() {
         {error ? <p className="evn-error">{eventError(error, lang)}</p> : event ? <EventForm lang={lang} initial={event} /> : <div className="evn-loading" />}
       </main>
       <style jsx>{`
-        .evn-wrap { max-width: 680px; padding-top: 20px; padding-bottom: 60px; }
+        .evn-wrap { max-width: 720px; }
         .evn-back { display: inline-block; color: var(--ink-60); font-weight: 600; font-size: 14px; text-decoration: none; margin-bottom: 10px; }
-        h1 { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; }
+        h1 { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; line-height: 1.15; }
         .evn-sub { color: var(--ink-60); font-size: 14.5px; margin: 0 0 22px; }
         .evn-error { color: #b42318; background: #fef3f2; border-radius: 12px; padding: 12px 14px; }
         .evn-loading { height: 300px; border-radius: 18px; background: var(--paper-2); }
