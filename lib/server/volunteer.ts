@@ -642,6 +642,15 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
   const programIds = [
     ...new Set([...(slots ?? []).map((s) => s.volunteer_program_id as string), quest?.volunteer_program_id as string].filter(Boolean)),
   ];
+  // Make sure the activities on this page have an English version before we read them
+  // (no-op when they are already translated; capped so the page never waits long).
+  if (programIds.length) {
+    try {
+      await ensureProgramTranslations(programIds, { timeoutMs: 6000 });
+    } catch (e) {
+      console.error('Volunteer page translation failed:', e);
+    }
+  }
   const { data: programs } = programIds.length
     ? await admin
         .from('volunteer_programs')
