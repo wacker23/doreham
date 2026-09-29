@@ -961,3 +961,18 @@ footer {
   outline-offset: 2px;
   border-radius: 6px;
 }
+/* ---------- signed-in app pages (events, ranking, profile …) ---------- */
+.app-page {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  box-sizing: border-box;
+}
+.app-page.narrow { max-width: 760px; }
+@media (min-width: 600px) {
+  .app-page { padding: 28px 24px 56px; }
+}
+@media (min-width: 900px) {
+  .app-page { padding: 36px 24px 72px; }
+}

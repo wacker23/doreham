@@ -126,7 +126,8 @@ function English() {
           ['Lifestyle', 'Exercise, education, drinking, smoking, children', 'Optional'],
           ['Matching and quests', 'Match requests (cities, group size, categories), groups, availability and votes, check-ins (time, distance from the venue, whether you were within 200 m), quest results, strikes, blocks, review tags you give and receive', 'Created as you use the service'],
           ['Messages', 'Group chat messages', 'Created as you use the service'],
-          ['Events', 'Events you host (title, description, date and time, place, cost, size), events you join, your comments on events, and reports you send', 'Created as you use the service'],
+          ['Events', 'Events you host (title, description, date and time, place, cost, size, and a poster or photo if you add one), events you join, your comments on events, and reports you send', 'Created as you use the service'],
+          ['Points and ranking', 'Points history, level, badges, monthly rank, whether you appear on the leaderboard, and the venue perks you use', 'Created as you use the service'],
           ['Volunteer quests', 'The 1365 activity your group chose (public data), whether you confirmed signing up on 1365, group selfie photos and who is tagged in them, your 1365 certificate, your location when you upload a selfie', 'Photos: required to finish a volunteer quest (with your consent). Certificate and location: optional'],
           ['Venue owners', 'Business name, business registration number, address, contact details, menu, photos, opening hours', 'Required to list a venue'],
           ['Collected automatically', 'Sign-in cookie, your language choice (stored in your browser), server logs (IP address, browser, pages requested)', 'Required to run the service'],
@@ -140,6 +141,7 @@ function English() {
         <li>Running quests: scheduling, check-in, volunteer attendance, reviews</li>
         <li>Safety and fairness: strikes for no-shows, blocks, handling reports</li>
         <li>Showing community events in your city, and telling you about changes to events you host or join</li>
+        <li>Points, levels, badges and the national leaderboard, and partner venue perks</li>
         <li>Notifications and emails about your matches, quests and events</li>
         <li>Fixing problems and improving the service</li>
         <li>Meeting legal obligations</li>
@@ -153,6 +155,7 @@ function English() {
           ['Group chat messages', 'You delete your account. Your messages are then anonymized so the group chat still makes sense to others'],
           ['Check-ins', 'Kept with the quest record. We store only your distance from the venue, not your coordinates'],
           ['Events you host, events you join, comments and reports', 'You delete your account (then deleted with it). You can delete a comment or cancel an event yourself at any time'],
+          ['Points history and perk use', 'You delete your account (then deleted with it)'],
           ['Volunteer group selfies and 1365 certificates (and the location attached to a selfie)', '90 days after upload, then deleted automatically. Deleted sooner if you withdraw your consent'],
           ['Server logs', 'A short period, for security and fixing problems'],
         ]}
@@ -163,6 +166,8 @@ function English() {
       <ul>
         <li><strong>Your group</strong>: people in your matched group see your profile, your messages in the group chat and the group&apos;s photos. People who leave a group before it ends can no longer see its photos.</li>
         <li><strong>Partner venues</strong>: owners see how many people checked in and anonymous review tags. They do not see your profile.</li>
+        <li><strong>Other members, for points</strong>: your name, photo, city, level and points appear on the national leaderboard, and your level, points and badges on your profile. You can hide yourself from the leaderboard any time (Ranking → My points); your points and perks stay.</li>
+        <li><strong>Partner venues, for perks</strong>: when you use a perk, staff see your name, photo and level on your screen. The venue sees how many times each perk was used, not who used it.</li>
         <li><strong>Other members, for events</strong>: signed-in members can see events you host (with your name and photo as the host) and your comments on events. Who is going to an event is shown only to its host and to other people going. The host never sees who reported an event.</li>
         <li><strong>The law</strong>: when a court order or law requires it.</li>
         <li><strong>Service providers</strong>: listed in section 5. They process data only to run Doreham for us.</li>
@@ -252,7 +257,8 @@ function Korean() {
           ['생활 습관', '운동, 학력, 음주, 흡연, 자녀 여부', '선택'],
           ['매칭 및 퀘스트', '매칭 요청(도시, 인원, 카테고리), 그룹, 가능 시간 및 투표, 체크인(시각, 장소와의 거리, 200m 이내 여부), 퀘스트 결과, 경고, 차단, 주고받은 리뷰 태그', '서비스 이용 과정에서 생성'],
           ['메시지', '그룹 채팅 메시지', '서비스 이용 과정에서 생성'],
-          ['이벤트', '주최한 이벤트(제목, 설명, 날짜·시간, 장소, 비용, 인원), 참여한 이벤트, 이벤트 댓글, 보낸 신고', '서비스 이용 과정에서 생성'],
+          ['이벤트', '주최한 이벤트(제목, 설명, 날짜·시간, 장소, 비용, 인원, 올린 경우 포스터나 사진), 참여한 이벤트, 이벤트 댓글, 보낸 신고', '서비스 이용 과정에서 생성'],
+          ['포인트와 랭킹', '포인트 기록, 레벨, 배지, 월간 순위, 순위표 공개 여부, 사용한 제휴 가게 혜택', '서비스 이용 과정에서 생성'],
           ['봉사 퀘스트', '그룹이 고른 1365 봉사활동(공개 정보), 1365 신청 완료 여부, 단체 사진과 사진 속 멤버 표시, 1365 봉사활동 확인서, 사진을 올릴 때의 위치', '사진: 봉사 퀘스트 완료에 필요(동의 시). 확인서·위치: 선택'],
           ['제휴 장소 운영자', '상호, 사업자등록번호, 주소, 연락처, 메뉴, 사진, 영업시간', '장소 등록에 필수'],
           ['자동 수집', '로그인 쿠키, 언어 설정(브라우저에 저장), 서버 로그(IP 주소, 브라우저 정보, 요청한 페이지)', '서비스 운영에 필수'],
@@ -266,6 +272,7 @@ function Korean() {
         <li>퀘스트 운영: 일정, 체크인, 봉사 참여 확인, 리뷰</li>
         <li>안전과 공정성: 불참 경고, 차단, 신고 처리</li>
         <li>내 도시의 커뮤니티 이벤트 보여주기, 주최하거나 참여한 이벤트의 변경 사항 알림</li>
+        <li>포인트, 레벨, 배지, 전국 순위표, 제휴 가게 혜택 제공</li>
         <li>매칭·퀘스트·이벤트 관련 알림과 이메일 발송</li>
         <li>오류 수정 및 서비스 개선</li>
         <li>법령상 의무 이행</li>
@@ -279,6 +286,7 @@ function Korean() {
           ['그룹 채팅 메시지', '회원 탈퇴 시까지. 탈퇴 후에는 다른 멤버의 대화 흐름을 위해 익명 처리'],
           ['체크인 기록', '퀘스트 기록과 함께 보관. 위치 좌표는 저장하지 않고 장소와의 거리만 저장'],
           ['주최·참여한 이벤트, 댓글, 신고', '회원 탈퇴 시까지(탈퇴하면 함께 삭제). 댓글 삭제와 이벤트 취소는 언제든 직접 할 수 있어요'],
+          ['포인트 기록과 혜택 사용 기록', '회원 탈퇴 시까지(탈퇴하면 함께 삭제)'],
           ['봉사 단체 사진과 1365 확인서 (사진에 붙은 위치 포함)', '올린 날부터 90일 뒤 자동 삭제. 동의를 철회하면 즉시 삭제'],
           ['서버 로그', '보안과 오류 확인을 위한 짧은 기간'],
         ]}
@@ -289,6 +297,8 @@ function Korean() {
       <ul>
         <li><strong>같은 그룹 멤버</strong>: 프로필, 그룹 채팅 메시지, 그룹 사진을 볼 수 있어요. 그룹이 끝나기 전에 나간 사람은 그룹 사진을 볼 수 없어요.</li>
         <li><strong>제휴 장소</strong>: 운영자는 체크인 인원 수와 익명 리뷰 태그만 볼 수 있고, 회원님의 프로필은 볼 수 없어요.</li>
+        <li><strong>포인트와 관련된 다른 회원</strong>: 전국 순위표에 이름, 사진, 도시, 레벨, 포인트가 보이고, 프로필에 레벨, 포인트, 배지가 보여요. 순위표에서는 언제든 숨길 수 있어요(랭킹 → 내 포인트). 숨겨도 포인트와 혜택은 그대로예요.</li>
+        <li><strong>혜택을 제공하는 제휴 가게</strong>: 혜택을 사용할 때 직원이 화면에서 이름, 사진, 레벨을 봐요. 가게는 혜택별 사용 횟수만 볼 수 있고 누가 사용했는지는 볼 수 없어요.</li>
         <li><strong>이벤트의 다른 회원</strong>: 로그인한 회원은 회원님이 주최한 이벤트(주최자 이름과 사진 포함)와 이벤트 댓글을 볼 수 있어요. 누가 참여하는지는 주최자와 같은 이벤트 참여자에게만 보여요. 주최자는 누가 신고했는지 볼 수 없어요.</li>
         <li><strong>법령</strong>: 법원 명령 등 법령에 따른 요구가 있는 경우</li>
         <li><strong>처리 위탁</strong>: 아래 5항의 업체가 도레함 운영을 위해서만 처리해요.</li>

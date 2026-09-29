@@ -172,6 +172,18 @@ export function UserMenu({ lang }: Props) {
               <span className="ko lang-ko">이벤트</span>
             </span>
           </a>
+          <a
+            href="/leaderboard"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">🏆</span>
+            <span>
+              <span className="en">Ranking &amp; perks</span>
+              <span className="ko lang-ko">랭킹 · 혜택</span>
+            </span>
+          </a>
 
           <div className="user-menu-divider" />
 
@@ -243,6 +255,23 @@ export function UserMenu({ lang }: Props) {
           )}
 
           <div className="user-menu-divider" />
+
+          <div className="user-menu-legal">
+            <a href="/legal/privacy" onClick={() => setMenuOpen(false)}>
+              <span className="en">Privacy</span>
+              <span className="ko lang-ko">개인정보 처리방침</span>
+            </a>
+            <span aria-hidden="true">·</span>
+            <a href="/legal/terms" onClick={() => setMenuOpen(false)}>
+              <span className="en">Terms</span>
+              <span className="ko lang-ko">이용약관</span>
+            </a>
+            <span aria-hidden="true">·</span>
+            <a href="mailto:support@doreham.co.kr">
+              <span className="en">Contact</span>
+              <span className="ko lang-ko">문의</span>
+            </a>
+          </div>
 
           <button
             className="user-menu-item"
@@ -368,7 +397,23 @@ export function UserMenu({ lang }: Props) {
           color: var(--jade);
           font-weight: 700;
         }
-        .user-menu-divider {
+.user-menu-legal {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 8px 16px 4px;
+          font-size: 12.5px;
+          color: var(--ink-60);
+        }
+        .user-menu-legal a {
+          color: var(--ink-60);
+          text-decoration: none;
+        }
+        .user-menu-legal a:hover {
+          color: var(--ink);
+          text-decoration: underline;
+        }
+                .user-menu-divider {
           height: 1px;
           background: var(--ink-12);
           margin: 4px 0;

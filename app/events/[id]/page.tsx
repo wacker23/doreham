@@ -10,6 +10,7 @@ import { cityName } from '@/lib/cities';
 import { EVENT_REPORT_REASONS, eventCategory } from '@/lib/eventCategories';
 import { dayLabel, eventError, eventText, relativeTime, timeRange } from '@/lib/eventDisplay';
 import { initials, type EventDetail, type EventPerson } from '@/lib/eventTypes';
+import { levelByNumber } from '@/lib/points';
 
 type ReportTarget = { commentId: string | null } | null;
 
@@ -29,6 +30,7 @@ export default function EventDetailPage() {
   const [report, setReport] = useState<ReportTarget>(null);
   const [toast, setToast] = useState('');
   const [isNew, setIsNew] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push(`/sign-in?return=/events/${id}`);
@@ -36,7 +38,9 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the URL after hydration
-    setIsNew(new URLSearchParams(window.location.search).get('new') === '1');
+    const qs = new URLSearchParams(window.location.search);
+    setIsNew(qs.get('new') === '1');
+    setPosterFailed(qs.get('poster') === 'failed');
   }, []);
 
   const load = useCallback(async () => {
@@ -118,7 +122,7 @@ export default function EventDetailPage() {
     return (
       <>
         <AppHeader lang={lang} setLang={setLang} />
-        <main className="wrap" style={{ maxWidth: 720, paddingTop: 24 }}>
+        <main className="app-page">
           <div style={{ height: 320, borderRadius: 22, background: 'var(--paper-2)' }} />
         </main>
       </>
@@ -129,7 +133,7 @@ export default function EventDetailPage() {
     return (
       <>
         <AppHeader lang={lang} setLang={setLang} />
-        <main className="wrap" style={{ maxWidth: 720, paddingTop: 40, textAlign: 'center' }}>
+        <main className="app-page narrow" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 48 }}>🫥</div>
           <h1 style={{ fontFamily: 'var(--display)', fontSize: 22 }}>{eventError(loadError, lang)}</h1>
           <a href="/events" style={{ color: 'var(--persimmon)', fontWeight: 700 }}>
@@ -153,7 +157,7 @@ export default function EventDetailPage() {
     <>
       <AppHeader lang={lang} setLang={setLang} />
 
-      <main className="wrap evd-wrap">
+      <main className="app-page evd-page">
         <a className="evd-back" href="/events">
           ← {ko ? '이벤트' : 'Events'}
         </a>
@@ -164,6 +168,7 @@ export default function EventDetailPage() {
             <button onClick={share}>{ko ? '공유' : 'Share'}</button>
           </div>
         )}
+        {posterFailed && <div className="evd-banner bad">🖼️ {eventError('poster_failed', lang)}</div>}
         {e.status === 'cancelled' && <div className="evd-banner bad">❌ {ko ? '취소된 이벤트예요.' : 'This event was cancelled.'}</div>}
         {e.status === 'hidden' && (
           <div className="evd-banner bad">
@@ -174,6 +179,16 @@ export default function EventDetailPage() {
           </div>
         )}
         {started && e.status === 'published' && <div className="evd-banner">⏱️ {ko ? '이미 시작했거나 끝난 이벤트예요.' : 'This event has started or already happened.'}</div>}
+
+        <div className={`evd-layout ${e.poster_url ? 'has-poster' : ''}`}>
+        {e.poster_url && (
+          <a className="evd-poster" href={e.poster_url} target="_blank" rel="noopener noreferrer" aria-label={ko ? '포스터 크게 보기' : 'Open the poster'}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="evd-poster-bg" src={e.poster_url} alt="" aria-hidden="true" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="evd-poster-img" src={e.poster_url} alt={ko ? `${t.title} 포스터` : `Poster for ${t.title}`} />
+          </a>
+        )}
 
         <article className="evd-card">
           <div className="evd-tags">
@@ -282,6 +297,8 @@ export default function EventDetailPage() {
 
           {actionError && <p className="evd-error" role="alert">{actionError}</p>}
         </article>
+
+        <div className="evd-main">
 
         <div className="evd-sec">
           <h2>{ko ? '소개' : 'About'}</h2>
@@ -397,6 +414,8 @@ export default function EventDetailPage() {
             )}
           </div>
         )}
+        </div>
+        </div>
       </main>
 
       {report && (
@@ -426,7 +445,20 @@ export default function EventDetailPage() {
       <AppTabBar lang={lang} />
 
       <style jsx>{`
-        .evd-wrap { max-width: 720px; padding-top: 18px; padding-bottom: 48px; }
+        .evd-layout { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'info' 'main'; gap: 18px; }
+        .evd-layout.has-poster { grid-template-areas: 'poster' 'info' 'main'; }
+        .evd-poster { grid-area: poster; position: relative; display: block; border-radius: 22px; overflow: hidden; background: var(--paper-2); border: 1px solid var(--ink-12); isolation: isolate; }
+        .evd-poster-bg { position: absolute; inset: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(28px) saturate(1.1); opacity: 0.55; z-index: -1; }
+        .evd-poster-img { position: relative; display: block; width: 100%; max-height: 72vh; object-fit: contain; }
+        .evd-card { grid-area: info; }
+        .evd-main { grid-area: main; min-width: 0; }
+        .evd-main > :first-child { margin-top: 4px; }
+        @media (min-width: 900px) {
+          .evd-layout { grid-template-columns: minmax(0, 1fr) 380px; grid-template-areas: 'main info'; column-gap: 32px; row-gap: 24px; align-items: start; }
+          .evd-layout.has-poster { grid-template-areas: 'poster info' 'main info'; }
+          .evd-card { position: sticky; top: 88px; }
+          .evd-poster-img { max-height: 640px; }
+        }
         .evd-back { display: inline-block; color: var(--ink-60); font-weight: 600; font-size: 14px; text-decoration: none; margin-bottom: 12px; }
         .evd-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 14px; padding: 11px 14px; font-size: 14px; margin-bottom: 12px; }
         .evd-banner.good { background: rgba(15, 157, 119, 0.08); border-color: rgba(15, 157, 119, 0.3); }
@@ -517,7 +549,15 @@ function HostRow({ host, lang }: { host: EventDetail['event']['host']; lang: 'en
       </span>
       <span>
         <span className="h-label">{label}</span>
-        <span className="h-name">{host.name}</span>
+        <span className="h-name">
+          {host.name}
+          {!!host.level && host.level >= 2 && (
+            <span className="h-lv">
+              {' '}
+              {levelByNumber(host.level).emoji} {ko ? levelByNumber(host.level).ko : levelByNumber(host.level).en}
+            </span>
+          )}
+        </span>
       </span>
       <style jsx>{`
         .h-av { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--lav); font-weight: 800; font-size: 14px; flex-shrink: 0; }
@@ -526,6 +566,7 @@ function HostRow({ host, lang }: { host: EventDetail['event']['host']; lang: 'en
         .h-av img { width: 100%; height: 100%; object-fit: cover; }
         .h-label { display: block; font-size: 12px; color: var(--ink-60); font-weight: 600; }
         .h-name { display: block; font-weight: 800; font-size: 15px; }
+        .h-lv { font-weight: 600; font-size: 12.5px; color: var(--ink-60); }
       `}</style>
     </>
   );

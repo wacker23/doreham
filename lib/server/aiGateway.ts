@@ -11,7 +11,7 @@ import { getVercelOidcToken } from '@vercel/oidc';
 
 const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions';
 const MODELS = (process.env.TRANSLATION_MODELS ||
-  'google/gemini-2.5-flash-lite,google/gemini-3.5-flash-lite,anthropic/claude-haiku-4.5,openai/gpt-5-mini,alibaba/qwen3.8-flash,deepseek/deepseek-v4-flash')
+  'google/gemini-2.5-flash-lite,google/gemini-3.5-flash-lite,anthropic/claude-haiku-4.5,openai/gpt-5-mini')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
@@ -103,4 +103,42 @@ export function detectLang(text: string): 'ko' | 'en' | 'other' {
   if (hangul / letters >= 0.3) return 'ko';
   if (latin / letters >= 0.6) return 'en';
   return 'other';
+}
+
+/**
+ * Translate a few short text fields between Korean and English (whichever they aren't in).
+ * Returns null when there is nothing to translate or no model answered in time.
+ */
+export async function translateFields(
+  fields: Record<string, string>,
+  opts: { purpose: string; timeoutMs?: number },
+): Promise<{ source: 'ko' | 'en' | 'other'; target: 'ko' | 'en'; fields: Record<string, string>; model: string } | null> {
+  const keys = Object.keys(fields).filter((k) => fields[k]?.trim());
+  if (keys.length === 0) return null;
+  const source = detectLang(keys.map((k) => fields[k]).join('\n'));
+  const target = source === 'en' ? 'ko' : 'en';
+  const token = await gatewayToken();
+  if (!token) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 8000);
+  try {
+    const { json, model } = await chatJson({
+      system: `You translate ${opts.purpose} for Doreham, an app where foreign residents and Koreans in Korea meet in small groups.
+Translate every field into natural ${target === 'ko' ? 'Korean' : 'English'}.
+Rules: translate faithfully, do not add or remove information; keep names of people, brands and places recognisable; keep numbers, prices, percentages and dates exactly.
+Reply with JSON only, with exactly these keys: ${JSON.stringify(keys)}`,
+      user: JSON.stringify(Object.fromEntries(keys.map((k) => [k, fields[k]]))),
+      token,
+      signal: controller.signal,
+      maxTokens: 1200,
+    });
+    const out: Record<string, string> = {};
+    for (const k of keys) out[k] = typeof json[k] === 'string' ? (json[k] as string).trim() : '';
+    if (!out[keys[0]]) return null;
+    return { source, target, fields: out, model };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }

@@ -6,6 +6,8 @@ export type EventHost = {
   photo_url: string | null;
   profile_id: string | null;
   venue_id: string | null;
+  /** Doreham level of a member host (null for venues and Doreham). */
+  level?: number | null;
 };
 
 export type EventBase = {
@@ -29,6 +31,7 @@ export type EventBase = {
   is_featured: boolean;
   status: 'published' | 'cancelled' | 'hidden';
   created_at: string;
+  poster_url?: string | null;
 };
 
 export type FeedEvent = EventBase & {

@@ -6,6 +6,8 @@ import { expandCategoriesToVenueCategories } from '@/lib/matchCategories';
 import { expireOverdueInvites, ACTIVE_PHASES } from '@/lib/server/groupLifecycle';
 import { sendMatchInviteEmail } from '@/lib/server/emails/match-invite';
 import { LAUNCH_CITY_SLUGS, NEARBY_CITIES, VOLUNTEER_CITY_SET } from '@/lib/cities';
+import { PRIORITY_MATCHING_LEVEL } from '@/lib/points';
+import { levelsById } from '@/lib/server/points';
 
 /**
  * Matching algorithm.
@@ -157,6 +159,11 @@ export async function processMatchRequests(opts: { requestId?: string; userId?: 
   if (!requests || requests.length === 0) {
     return { ok: true as const, processed: 0, expired_invites: expireResult, results: [] };
   }
+
+  // Priority matching (a level perk): higher-level members' requests go first, oldest first within each group.
+  const levels = await levelsById(requests.map((r) => r.user_id as string));
+  const priority = (r: { user_id: string }) => ((levels.get(r.user_id) ?? 1) >= PRIORITY_MATCHING_LEVEL ? 1 : 0);
+  requests.sort((a, b) => priority(b as MatchRequestRow) - priority(a as MatchRequestRow));
 
   const { data: venues } = await admin
     .from('venues')

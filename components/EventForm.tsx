@@ -6,6 +6,7 @@ import { KOREAN_CITIES } from '@/lib/cities';
 import { EVENT_CATEGORIES } from '@/lib/eventCategories';
 import { eventError, fromKstInputs, toKstInputs } from '@/lib/eventDisplay';
 import type { EventBase, HostContext } from '@/lib/eventTypes';
+import { resizeImage } from '@/lib/imageResize';
 
 type HostAs = 'user' | 'venue' | 'admin';
 
@@ -100,6 +101,12 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
   const [ctx, setCtx] = useState<HostContext | null>(null);
   const [f, setF] = useState<FormState>(() => (initial ? fromEvent(initial) : blankState()));
   const [saving, setSaving] = useState(false);
+  // Poster: a new file to upload, or the existing one (edit), or removed.
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState<string | null>(initial?.poster_url ?? null);
+  const [posterRemoved, setPosterRemoved] = useState(false);
+  const [posterBusy, setPosterBusy] = useState(false);
+  const posterInput = useRef<HTMLInputElement>(null);
   const [{ today, maxDate }] = useState(() => ({
     today: toKstInputs(new Date().toISOString()).date,
     maxDate: toKstInputs(new Date(Date.now() + 120 * 86_400_000).toISOString()).date,
@@ -161,6 +168,50 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
     }).open();
   }
 
+  async function pickPoster(file: File | undefined) {
+    if (!file) return;
+    setError('');
+    setPosterBusy(true);
+    try {
+      const small = await resizeImage(file);
+      if (posterPreview?.startsWith('blob:')) URL.revokeObjectURL(posterPreview);
+      setPosterFile(small);
+      setPosterPreview(URL.createObjectURL(small));
+      setPosterRemoved(false);
+    } catch (e: unknown) {
+      setError(eventError(e instanceof Error ? e.message : 'poster_not_image', lang));
+    } finally {
+      setPosterBusy(false);
+      if (posterInput.current) posterInput.current.value = '';
+    }
+  }
+
+  function dropPoster() {
+    if (posterPreview?.startsWith('blob:')) URL.revokeObjectURL(posterPreview);
+    setPosterFile(null);
+    setPosterPreview(null);
+    setPosterRemoved(true);
+  }
+
+  /** After the event is saved: upload / remove the poster. Returns false when that part failed. */
+  async function savePoster(eventId: string) {
+    try {
+      if (posterFile) {
+        const fd = new FormData();
+        fd.append('file', posterFile);
+        const r = await fetch(`/api/events/${eventId}/poster`, { method: 'POST', body: fd });
+        return r.ok;
+      }
+      if (posterRemoved && initial?.poster_url) {
+        const r = await fetch(`/api/events/${eventId}/poster`, { method: 'DELETE' });
+        return r.ok;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function submit(ev: React.FormEvent) {
     ev.preventDefault();
     setError('');
@@ -195,22 +246,26 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
       if (f.fee_text !== was.fee_text) body.fee_text = full.fee_text;
       if (t.starts_at !== wasT.starts_at || t.ends_at !== wasT.ends_at) Object.assign(body, t);
       if (ctx?.isAdmin && f.is_featured !== was.is_featured) body.is_featured = f.is_featured;
-      if (Object.keys(body).length === 0) {
-        router.push(`/events/${initial!.id}`);
-        return;
-      }
     }
 
     setSaving(true);
     try {
-      const r = await fetch(editing ? `/api/events/${initial!.id}` : '/api/events', {
-        method: editing ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || 'failed');
-      router.push(`/events/${j.id ?? initial?.id}${editing ? '' : '?new=1'}`);
+      let id = initial?.id ?? '';
+      if (!editing || Object.keys(body).length > 0) {
+        const r = await fetch(editing ? `/api/events/${initial!.id}` : '/api/events', {
+          method: editing ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'failed');
+        id = j.id ?? id;
+      }
+      const posterOk = await savePoster(id);
+      const qs = new URLSearchParams();
+      if (!editing) qs.set('new', '1');
+      if (!posterOk) qs.set('poster', 'failed');
+      router.push(`/events/${id}${qs.toString() ? `?${qs}` : ''}`);
     } catch (e: unknown) {
       setError(eventError(e instanceof Error ? e.message : '', lang));
       setSaving(false);
@@ -232,6 +287,40 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
           ) : ko ? '계정이 일시 정지된 동안에는 이벤트를 열 수 없어요.' : "You can't host events while your account is paused."}
         </div>
       )}
+
+      <div className="evf-field">
+        <span className="evf-label">
+          {ko ? '포스터 또는 사진' : 'Poster or photo'} <em>{ko ? '(선택)' : '(optional)'}</em>
+        </span>
+        <input
+          ref={posterInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/*"
+          className="evf-file"
+          onChange={(e) => pickPoster(e.target.files?.[0])}
+          aria-label={ko ? '포스터 선택' : 'Choose a poster'}
+        />
+        {posterPreview ? (
+          <div className="evf-poster">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={posterPreview} alt={ko ? '포스터 미리보기' : 'Poster preview'} />
+            <div className="evf-poster-acts">
+              <button type="button" className="evf-ghost" onClick={() => posterInput.current?.click()} disabled={posterBusy}>
+                {ko ? '바꾸기' : 'Change'}
+              </button>
+              <button type="button" className="evf-ghost danger" onClick={dropPoster} disabled={posterBusy}>
+                {ko ? '삭제' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="evf-drop" onClick={() => posterInput.current?.click()} disabled={posterBusy}>
+            <span className="evf-drop-icon" aria-hidden="true">🖼️</span>
+            <strong>{posterBusy ? (ko ? '준비 중…' : 'Preparing…') : ko ? '포스터나 사진 추가' : 'Add a poster or photo'}</strong>
+            <span>{ko ? '이벤트가 눈에 잘 띄어요. JPEG, PNG, WebP (자동으로 줄여서 올려요)' : 'Events with a picture get noticed. JPEG, PNG or WebP (we resize it for you)'}</span>
+          </button>
+        )}
+      </div>
 
       {hostChoices && (
         <div className="evf-field">
@@ -419,7 +508,7 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
         .evf-row > .evf-field { flex: 1 1 140px; }
         .evf-row > .evf-field.grow { flex: 2 1 220px; }
         label, .evf-label { font-weight: 700; font-size: 14px; color: var(--ink); }
-        label em { font-style: normal; font-weight: 500; color: var(--ink-60); font-size: 12.5px; }
+        label em, .evf-label em { font-style: normal; font-weight: 500; color: var(--ink-60); font-size: 12.5px; }
         input, select, textarea { font-family: var(--body); font-size: 15px; color: var(--ink); background: #fff; border: 1px solid var(--ink-12); border-radius: 12px; padding: 11px 13px; width: 100%; box-sizing: border-box; }
         input:focus, select:focus, textarea:focus { outline: 2px solid rgba(255, 106, 61, 0.35); border-color: var(--persimmon); }
         textarea { resize: vertical; line-height: 1.5; }
@@ -430,6 +519,16 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
         .evf-chips button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 8px 13px; font-family: var(--body); font-weight: 600; font-size: 13.5px; cursor: pointer; color: var(--ink); }
         .evf-chips button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
         .evf-check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .evf-file { display: none; }
+        .evf-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 26px 16px; border: 2px dashed rgba(30, 34, 48, 0.18); border-radius: 16px; background: #fff; cursor: pointer; font-family: var(--body); color: var(--ink); text-align: center; }
+        .evf-drop:hover { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.04); }
+        .evf-drop strong { font-size: 15px; }
+        .evf-drop span { font-size: 12.5px; color: var(--ink-60); max-width: 360px; }
+        .evf-drop .evf-drop-icon { font-size: 34px; line-height: 1; margin-bottom: 2px; }
+        .evf-poster { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--ink-12); background: var(--paper-2); }
+        .evf-poster img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+        .evf-poster-acts { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
+        .evf-ghost.danger { color: #b42318; }
         .evf-check input { width: auto; }
         .evf-rules { background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--ink); }
         .evf-rules ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-60); line-height: 1.55; }

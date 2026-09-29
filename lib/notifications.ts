@@ -24,7 +24,9 @@ export type NotificationType =
   | 'event_comment'
   | 'event_updated'
   | 'event_cancelled'
-  | 'event_reminder';
+  | 'event_reminder'
+  | 'level_up'
+  | 'monthly_rank';
 
 export type NotificationPayload = {
   user_id: string;

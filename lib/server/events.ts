@@ -1,6 +1,6 @@
 import 'server-only';
 import { after } from 'next/server';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { isAdminUser } from '@/lib/server/auth';
 import { createNotification, createNotifications } from '@/lib/notifications';
@@ -8,6 +8,8 @@ import { chatJson, detectLang, gatewayToken } from '@/lib/server/aiGateway';
 import { formatKst, kstDateString } from '@/lib/server/time';
 import { EVENT_CATEGORY_SLUGS, EVENT_REPORT_REASONS } from '@/lib/eventCategories';
 import { KOREAN_CITIES } from '@/lib/cities';
+import { hostLimitForLevel } from '@/lib/points';
+import { levelOf, levelsById } from '@/lib/server/points';
 
 /**
  * Community events (Karrot-style city feed).
@@ -16,7 +18,7 @@ import { KOREAN_CITIES } from '@/lib/cities';
  */
 
 export const LIMITS = {
-  userUpcoming: 3, // open events one person can host at a time
+  userUpcoming: 3, // open events one person can host at a time (more from level 3; see hostLimitForLevel)
   venueUpcoming: 10, // per venue
   minLeadMinutes: 30, // an event must start at least this far ahead
   maxAheadDays: 120,
@@ -48,7 +50,7 @@ type Fail = { ok: false; error: string; status: number };
 const fail = (error: string, status = 400): Fail => ({ ok: false, error, status });
 
 const EVENT_COLUMNS =
-  'id, creator_id, host_kind, venue_id, title, description, category, city, place_name, address, starts_at, ends_at, capacity, fee_text, source_lang, translated_to, title_tr, description_tr, place_name_tr, is_featured, status, cancelled_at, hidden_reason, created_at, updated_at';
+  'id, creator_id, host_kind, venue_id, title, description, category, city, place_name, address, starts_at, ends_at, capacity, fee_text, source_lang, translated_to, title_tr, description_tr, place_name_tr, is_featured, status, cancelled_at, hidden_reason, created_at, updated_at, poster_url, poster_path';
 
 type EventRow = {
   id: string;
@@ -76,6 +78,8 @@ type EventRow = {
   hidden_reason: string | null;
   created_at: string;
   updated_at: string;
+  poster_url: string | null;
+  poster_path: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -262,7 +266,7 @@ export async function createEvent(userId: string, input: EventInput) {
       .eq('host_kind', 'user')
       .eq('status', 'published')
       .gt('starts_at', nowIso);
-    if ((count ?? 0) >= LIMITS.userUpcoming) return fail('too_many_events', 429);
+    if ((count ?? 0) >= hostLimitForLevel(await levelOf(userId))) return fail('too_many_events', 429);
   } else if (r.value.host_kind === 'venue') {
     const { count } = await admin
       .from('events')
@@ -503,6 +507,85 @@ export async function reportEvent(userId: string, id: string, input: { reason?: 
 }
 
 // ---------------------------------------------------------------------------
+// Poster (one optional image per event)
+// ---------------------------------------------------------------------------
+
+export const POSTER_BUCKET = 'event-posters';
+const POSTER_MAX_BYTES = 4 * 1024 * 1024; // requests to Vercel functions are capped at 4.5 MB
+
+function sniffImage(bytes: Uint8Array): 'jpg' | 'png' | 'webp' | null {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
+  const riff = String.fromCharCode(...bytes.slice(0, 4));
+  const webp = String.fromCharCode(...bytes.slice(8, 12));
+  if (riff === 'RIFF' && webp === 'WEBP') return 'webp';
+  return null;
+}
+
+async function canEditPoster(userId: string, id: string) {
+  const e = await loadEvent(id);
+  if (!e) return { error: fail('not_found', 404) };
+  if (e.creator_id !== userId && !(await isAdminUser(userId))) return { error: fail('not_allowed', 403) };
+  if (e.status === 'cancelled') return { error: fail('event_cancelled', 409) };
+  return { event: e };
+}
+
+export async function setPoster(userId: string, id: string, file: File) {
+  const check = await canEditPoster(userId, id);
+  if (check.error) return check.error;
+  if (file.size === 0) return fail('poster_required');
+  if (file.size > POSTER_MAX_BYTES) return fail('poster_too_large');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const kind = sniffImage(bytes);
+  if (!kind) return fail('poster_not_image');
+
+  const admin = getAdmin();
+  const old = check.event.poster_path;
+  const path = `events/${id}/${randomUUID()}.${kind}`;
+  const contentType = kind === 'jpg' ? 'image/jpeg' : `image/${kind}`;
+  const { error: upErr } = await admin.storage.from(POSTER_BUCKET).upload(path, bytes, { contentType, cacheControl: '31536000', upsert: false });
+  if (upErr) return fail(`upload_failed: ${upErr.message}`, 500);
+  const { data: pub } = admin.storage.from(POSTER_BUCKET).getPublicUrl(path);
+  const { error } = await admin.from('events').update({ poster_url: pub.publicUrl, poster_path: path }).eq('id', id);
+  if (error) {
+    await admin.storage.from(POSTER_BUCKET).remove([path]);
+    return fail(error.message, 500);
+  }
+  if (old && old !== path) await admin.storage.from(POSTER_BUCKET).remove([old]);
+  return { ok: true as const, poster_url: pub.publicUrl };
+}
+
+export async function removePoster(userId: string, id: string) {
+  const check = await canEditPoster(userId, id);
+  if (check.error) return check.error;
+  const admin = getAdmin();
+  const old = check.event.poster_path;
+  await admin.from('events').update({ poster_url: null, poster_path: null }).eq('id', id);
+  if (old) await admin.storage.from(POSTER_BUCKET).remove([old]);
+  return { ok: true as const };
+}
+
+/** Daily: delete poster files whose event no longer exists (e.g. the host deleted their account). */
+export async function deleteOrphanPosters() {
+  const admin = getAdmin();
+  const { data: folders } = await admin.storage.from(POSTER_BUCKET).list('events', { limit: 1000 });
+  const ids = (folders ?? []).map((f) => f.name).filter((n) => /^[0-9a-f-]{36}$/i.test(n));
+  if (ids.length === 0) return { removed: 0 };
+  const { data: alive } = await admin.from('events').select('id, poster_path').in('id', ids);
+  const keep = new Map((alive ?? []).map((e) => [e.id as string, (e.poster_path as string | null) ?? null]));
+  let removed = 0;
+  for (const id of ids) {
+    const { data: files } = await admin.storage.from(POSTER_BUCKET).list(`events/${id}`, { limit: 100 });
+    const stale = (files ?? []).map((f) => `events/${id}/${f.name}`).filter((p) => !keep.has(id) || keep.get(id) !== p);
+    if (stale.length) {
+      await admin.storage.from(POSTER_BUCKET).remove(stale);
+      removed += stale.length;
+    }
+  }
+  return { removed };
+}
+
+// ---------------------------------------------------------------------------
 // Reading
 // ---------------------------------------------------------------------------
 
@@ -547,6 +630,7 @@ function publicEvent(e: EventRow) {
     is_featured: e.is_featured,
     status: e.status,
     created_at: e.created_at,
+    poster_url: e.poster_url ?? null,
   };
 }
 
@@ -578,10 +662,11 @@ export async function listEvents(viewerId: string, opts: { city?: string | null;
   if (rows.length === 0) return [];
 
   const eventIds = rows.map((r) => r.id);
-  const [{ data: att }, hosts, venues] = await Promise.all([
+  const [{ data: att }, hosts, venues, levels] = await Promise.all([
     admin.from('event_attendees').select('event_id, user_id').in('event_id', eventIds),
     peopleById(rows.map((r) => r.creator_id)),
     venuesById(rows.map((r) => r.venue_id).filter(Boolean) as string[]),
+    levelsById(rows.map((r) => r.creator_id)),
   ]);
   const count = new Map<string, number>();
   const mine = new Set<string>();
@@ -592,7 +677,7 @@ export async function listEvents(viewerId: string, opts: { city?: string | null;
 
   const out = rows.map((e) => ({
     ...publicEvent(e),
-    host: hostInfo(e, hosts, venues),
+    host: hostInfo(e, hosts, venues, levels),
     going_count: count.get(e.id) ?? 0,
     viewer_going: mine.has(e.id),
     viewer_is_host: e.creator_id === viewerId,
@@ -602,14 +687,26 @@ export async function listEvents(viewerId: string, opts: { city?: string | null;
   return out;
 }
 
-function hostInfo(e: EventRow, hosts: Map<string, Person>, venues: Map<string, { id: string; name: string; photo_url: string | null }>) {
-  if (e.host_kind === 'admin') return { kind: 'admin' as const, name: 'Doreham', photo_url: null, profile_id: null, venue_id: null };
+function hostInfo(
+  e: EventRow,
+  hosts: Map<string, Person>,
+  venues: Map<string, { id: string; name: string; photo_url: string | null }>,
+  levels: Map<string, number>,
+) {
+  if (e.host_kind === 'admin') return { kind: 'admin' as const, name: 'Doreham', photo_url: null, profile_id: null, venue_id: null, level: null };
   if (e.host_kind === 'venue' && e.venue_id && venues.get(e.venue_id)) {
     const v = venues.get(e.venue_id)!;
-    return { kind: 'venue' as const, name: v.name, photo_url: v.photo_url, profile_id: null, venue_id: v.id };
+    return { kind: 'venue' as const, name: v.name, photo_url: v.photo_url, profile_id: null, venue_id: v.id, level: null };
   }
   const p = hosts.get(e.creator_id);
-  return { kind: 'user' as const, name: p?.display_name ?? '', photo_url: p?.photo_url ?? null, profile_id: e.creator_id, venue_id: null };
+  return {
+    kind: 'user' as const,
+    name: p?.display_name ?? '',
+    photo_url: p?.photo_url ?? null,
+    profile_id: e.creator_id,
+    venue_id: null,
+    level: levels.get(e.creator_id) ?? 1,
+  };
 }
 
 export async function getEvent(viewerId: string, id: string) {
@@ -627,7 +724,7 @@ export async function getEvent(viewerId: string, id: string) {
   const attendeeIdsList = (att ?? []).map((a) => a.user_id as string);
   const viewerGoing = attendeeIdsList.includes(viewerId);
   const people = await peopleById([e.creator_id, ...attendeeIdsList, ...(comments ?? []).map((c) => c.user_id as string)]);
-  const venues = await venuesById(e.venue_id ? [e.venue_id] : []);
+  const [venues, levels] = await Promise.all([venuesById(e.venue_id ? [e.venue_id] : []), levelsById([e.creator_id])]);
 
   // Who's going is visible to the host, admins and people going; others see the count.
   const canSeeAttendees = isHost || isAdmin || viewerGoing;
@@ -642,7 +739,7 @@ export async function getEvent(viewerId: string, id: string) {
     event: {
       ...publicEvent(e),
       hidden_reason: isHost || isAdmin ? e.hidden_reason : null,
-      host: hostInfo(e, people, venues),
+      host: hostInfo(e, people, venues, levels),
       going_count: attendeeIdsList.length,
       is_full: !!e.capacity && attendeeIdsList.length >= e.capacity,
     },
