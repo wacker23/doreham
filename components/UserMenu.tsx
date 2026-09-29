@@ -172,6 +172,18 @@ export function UserMenu({ lang }: Props) {
               <span className="ko lang-ko">이벤트</span>
             </span>
           </a>
+          <a
+            href="/leaderboard"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">🏆</span>
+            <span>
+              <span className="en">Ranking &amp; perks</span>
+              <span className="ko lang-ko">랭킹 · 혜택</span>
+            </span>
+          </a>
 
           <div className="user-menu-divider" />
 

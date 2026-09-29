@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 
 /**
- * Bottom tab bar for the signed-in app (Matches · Events · Me).
+ * Bottom tab bar for the signed-in app (Matches · Events · Ranking · Me).
  * While it is on the page, the body gets bottom padding so nothing hides behind it.
  */
 export function AppTabBar({ lang }: { lang: 'en' | 'ko' }) {
@@ -15,6 +15,7 @@ export function AppTabBar({ lang }: { lang: 'en' | 'ko' }) {
   const tabs = [
     { href: '/matches', match: '/matches', icon: '🌸', en: 'Matches', ko: '매칭' },
     { href: '/events', match: '/events', icon: '🎉', en: 'Events', ko: '이벤트' },
+    { href: '/leaderboard', match: '/leaderboard', icon: '🏆', en: 'Ranking', ko: '랭킹' },
     { href: `/profile/${user.id}`, match: `/profile/${user.id}`, icon: '👤', en: 'Me', ko: '나' },
   ];
 
@@ -30,7 +31,7 @@ export function AppTabBar({ lang }: { lang: 'en' | 'ko' }) {
         );
       })}
       <style jsx>{`
-        .app-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; justify-content: space-around; background: rgba(255, 255, 255, 0.96); border-top: 1px solid var(--ink-12); backdrop-filter: blur(8px); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+        .app-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; justify-content: center; background: rgba(255, 255, 255, 0.96); border-top: 1px solid var(--ink-12); backdrop-filter: blur(8px); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
         .app-tab { flex: 1; max-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0; text-decoration: none; color: var(--ink-60); font-size: 11.5px; font-weight: 600; border-radius: 12px; }
         .app-tab.active { color: var(--ink); }
         .app-tab.active .app-tab-icon { transform: scale(1.12); }

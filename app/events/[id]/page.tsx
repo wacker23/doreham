@@ -10,6 +10,7 @@ import { cityName } from '@/lib/cities';
 import { EVENT_REPORT_REASONS, eventCategory } from '@/lib/eventCategories';
 import { dayLabel, eventError, eventText, relativeTime, timeRange } from '@/lib/eventDisplay';
 import { initials, type EventDetail, type EventPerson } from '@/lib/eventTypes';
+import { levelByNumber } from '@/lib/points';
 
 type ReportTarget = { commentId: string | null } | null;
 
@@ -517,7 +518,15 @@ function HostRow({ host, lang }: { host: EventDetail['event']['host']; lang: 'en
       </span>
       <span>
         <span className="h-label">{label}</span>
-        <span className="h-name">{host.name}</span>
+        <span className="h-name">
+          {host.name}
+          {!!host.level && host.level >= 2 && (
+            <span className="h-lv">
+              {' '}
+              {levelByNumber(host.level).emoji} {ko ? levelByNumber(host.level).ko : levelByNumber(host.level).en}
+            </span>
+          )}
+        </span>
       </span>
       <style jsx>{`
         .h-av { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--lav); font-weight: 800; font-size: 14px; flex-shrink: 0; }
@@ -526,6 +535,7 @@ function HostRow({ host, lang }: { host: EventDetail['event']['host']; lang: 'en
         .h-av img { width: 100%; height: 100%; object-fit: cover; }
         .h-label { display: block; font-size: 12px; color: var(--ink-60); font-weight: 600; }
         .h-name { display: block; font-weight: 800; font-size: 15px; }
+        .h-lv { font-weight: 600; font-size: 12.5px; color: var(--ink-60); }
       `}</style>
     </>
   );

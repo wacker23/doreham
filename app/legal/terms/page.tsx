@@ -119,6 +119,14 @@ export default function TermsPage() {
               <li>규칙에 맞지 않거나 여러 회원이 신고한 이벤트와 댓글은 숨기거나 삭제할 수 있고, 반복되면 계정 이용을 제한할 수 있어요.</li>
             </ul>
 
+            <h3>포인트, 레벨, 혜택</h3>
+            <ul>
+              <li>포인트는 앱에 안내된 규칙에 따라 확인된 활동(퀘스트 참여, 봉사, 리뷰, 이벤트 주최)에만 쌓이고, 경고를 받으면 줄어들어요. 규칙은 바뀔 수 있어요.</li>
+              <li>포인트와 레벨은 현금 가치가 없고, 다른 사람에게 넘기거나 팔거나 바꿀 수 없어요.</li>
+              <li>가짜 계정, 가짜 이벤트, 담합 등 부정한 방법으로 얻은 포인트와 레벨은 회수하거나 초기화할 수 있어요.</li>
+              <li>제휴 가게 혜택은 각 가게가 제공하고 책임져요. 가게는 혜택을 바꾸거나 멈출 수 있어요.</li>
+            </ul>
+
             <h2>6. 파트너 가게</h2>
             <p>도레함은 파트너 가게에서의 퀘스트를 제안하지만, 가게에서 제공하는 상품과 서비스에 대한 책임은 지지 않습니다. 문제 발생 시 가게에 직접 문의하시거나 도레함에 알려주세요.</p>
 
@@ -215,6 +223,14 @@ export default function TermsPage() {
               <li>Events must be in public places. No selling, MLM, religious or political recruiting, and no dating events.</li>
               <li>Hosts must not ask for money in advance. If there is a cost, write it on the event and collect it on the spot. Doreham never charges to join an event.</li>
               <li>We may hide or remove events and comments that break these rules or that several members report, and limit accounts that do it repeatedly.</li>
+            </ul>
+
+            <h3>Points, levels and perks</h3>
+            <ul>
+              <li>Points are earned only for verified activity (showing up to quests, volunteering, reviews, hosting events) under the rules shown in the app, and are lost for strikes. The rules may change.</li>
+              <li>Points and levels have no cash value and cannot be transferred, sold or exchanged.</li>
+              <li>We may remove or reset points and levels gained by abuse, such as fake accounts, fake events or collusion.</li>
+              <li>Partner venue perks are offered and honored by each venue, which may change or pause them.</li>
             </ul>
 
             <h2>6. Partner Venues</h2>

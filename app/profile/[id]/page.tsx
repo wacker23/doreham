@@ -13,6 +13,7 @@ import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
 import { AppTabBar } from '@/components/AppTabBar';
+import { ProfileLevel } from '@/components/ProfileLevel';
 
 type Profile = {
   id: string;
@@ -501,6 +502,8 @@ export default function ProfilePage() {
           </div>
           )}
         </div>
+
+        <ProfileLevel userId={profile.id} lang={lang} isOwn={isOwn} />
 
         {(profile.bio || isOwn) && (
           <div className="section">

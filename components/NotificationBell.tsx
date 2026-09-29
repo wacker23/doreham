@@ -41,6 +41,8 @@ const TYPE_ICONS: Record<string, string> = {
   event_updated: '📅',
   event_cancelled: '❌',
   event_reminder: '⏰',
+  level_up: '⬆️',
+  monthly_rank: '🏆',
 };
 
 export function NotificationBell({ lang }: Props) {

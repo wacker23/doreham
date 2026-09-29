@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { VenuePerksList } from '@/components/VenuePerksList';
 
 type Venue = {
   id: string;
@@ -279,6 +280,8 @@ export default function VenueDetailPage() {
             <p className="discount-text">{discount}</p>
           </div>
         )}
+
+        <VenuePerksList venueId={venue.id} lang={lang} />
 
         {venue.hours_json && (
           <div className="section">

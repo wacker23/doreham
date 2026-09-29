@@ -10,6 +10,7 @@ import { KOREAN_CITIES, cityName } from '@/lib/cities';
 import { EVENT_CATEGORIES, eventCategory } from '@/lib/eventCategories';
 import { dayLabel, eventText, kstParts, toKstInputs } from '@/lib/eventDisplay';
 import { initials, type FeedEvent, type HostContext } from '@/lib/eventTypes';
+import { levelByNumber } from '@/lib/points';
 
 type Scope = 'upcoming' | 'mine';
 const CITY_KEY = 'doreham_events_city';
@@ -306,6 +307,11 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
               <span className={`av ${e.host.kind}`}>{e.host.kind === 'admin' ? 'D' : initials(e.host.name)}</span>
             )}
             <span className="hn">{e.host.name}</span>
+            {!!e.host.level && e.host.level >= 2 && (
+              <span className="ev-lv" title={ko ? levelByNumber(e.host.level).ko : levelByNumber(e.host.level).en}>
+                {levelByNumber(e.host.level).emoji}
+              </span>
+            )}
             {e.host.kind === 'venue' && <span className="ev-badge">{ko ? '가게' : 'Venue'}</span>}
             {e.host.kind === 'admin' && <span className="ev-badge jade">{ko ? '공식' : 'Official'}</span>}
           </span>
@@ -343,6 +349,7 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
         .ev-badge { font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--pink); color: var(--ink); }
         .ev-badge.jade { background: rgba(15, 157, 119, 0.14); color: var(--jade); }
         .ev-count { font-weight: 700; color: var(--ink); }
+        .ev-lv { font-size: 13px; margin-left: -3px; }
         .ev-fee { background: var(--paper-2); padding: 1px 7px; border-radius: 6px; }
       `}</style>
     </a>

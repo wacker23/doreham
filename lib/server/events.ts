@@ -8,6 +8,8 @@ import { chatJson, detectLang, gatewayToken } from '@/lib/server/aiGateway';
 import { formatKst, kstDateString } from '@/lib/server/time';
 import { EVENT_CATEGORY_SLUGS, EVENT_REPORT_REASONS } from '@/lib/eventCategories';
 import { KOREAN_CITIES } from '@/lib/cities';
+import { hostLimitForLevel } from '@/lib/points';
+import { levelOf, levelsById } from '@/lib/server/points';
 
 /**
  * Community events (Karrot-style city feed).
@@ -16,7 +18,7 @@ import { KOREAN_CITIES } from '@/lib/cities';
  */
 
 export const LIMITS = {
-  userUpcoming: 3, // open events one person can host at a time
+  userUpcoming: 3, // open events one person can host at a time (more from level 3; see hostLimitForLevel)
   venueUpcoming: 10, // per venue
   minLeadMinutes: 30, // an event must start at least this far ahead
   maxAheadDays: 120,
@@ -262,7 +264,7 @@ export async function createEvent(userId: string, input: EventInput) {
       .eq('host_kind', 'user')
       .eq('status', 'published')
       .gt('starts_at', nowIso);
-    if ((count ?? 0) >= LIMITS.userUpcoming) return fail('too_many_events', 429);
+    if ((count ?? 0) >= hostLimitForLevel(await levelOf(userId))) return fail('too_many_events', 429);
   } else if (r.value.host_kind === 'venue') {
     const { count } = await admin
       .from('events')
@@ -578,10 +580,11 @@ export async function listEvents(viewerId: string, opts: { city?: string | null;
   if (rows.length === 0) return [];
 
   const eventIds = rows.map((r) => r.id);
-  const [{ data: att }, hosts, venues] = await Promise.all([
+  const [{ data: att }, hosts, venues, levels] = await Promise.all([
     admin.from('event_attendees').select('event_id, user_id').in('event_id', eventIds),
     peopleById(rows.map((r) => r.creator_id)),
     venuesById(rows.map((r) => r.venue_id).filter(Boolean) as string[]),
+    levelsById(rows.map((r) => r.creator_id)),
   ]);
   const count = new Map<string, number>();
   const mine = new Set<string>();
@@ -592,7 +595,7 @@ export async function listEvents(viewerId: string, opts: { city?: string | null;
 
   const out = rows.map((e) => ({
     ...publicEvent(e),
-    host: hostInfo(e, hosts, venues),
+    host: hostInfo(e, hosts, venues, levels),
     going_count: count.get(e.id) ?? 0,
     viewer_going: mine.has(e.id),
     viewer_is_host: e.creator_id === viewerId,
@@ -602,14 +605,26 @@ export async function listEvents(viewerId: string, opts: { city?: string | null;
   return out;
 }
 
-function hostInfo(e: EventRow, hosts: Map<string, Person>, venues: Map<string, { id: string; name: string; photo_url: string | null }>) {
-  if (e.host_kind === 'admin') return { kind: 'admin' as const, name: 'Doreham', photo_url: null, profile_id: null, venue_id: null };
+function hostInfo(
+  e: EventRow,
+  hosts: Map<string, Person>,
+  venues: Map<string, { id: string; name: string; photo_url: string | null }>,
+  levels: Map<string, number>,
+) {
+  if (e.host_kind === 'admin') return { kind: 'admin' as const, name: 'Doreham', photo_url: null, profile_id: null, venue_id: null, level: null };
   if (e.host_kind === 'venue' && e.venue_id && venues.get(e.venue_id)) {
     const v = venues.get(e.venue_id)!;
-    return { kind: 'venue' as const, name: v.name, photo_url: v.photo_url, profile_id: null, venue_id: v.id };
+    return { kind: 'venue' as const, name: v.name, photo_url: v.photo_url, profile_id: null, venue_id: v.id, level: null };
   }
   const p = hosts.get(e.creator_id);
-  return { kind: 'user' as const, name: p?.display_name ?? '', photo_url: p?.photo_url ?? null, profile_id: e.creator_id, venue_id: null };
+  return {
+    kind: 'user' as const,
+    name: p?.display_name ?? '',
+    photo_url: p?.photo_url ?? null,
+    profile_id: e.creator_id,
+    venue_id: null,
+    level: levels.get(e.creator_id) ?? 1,
+  };
 }
 
 export async function getEvent(viewerId: string, id: string) {
@@ -627,7 +642,7 @@ export async function getEvent(viewerId: string, id: string) {
   const attendeeIdsList = (att ?? []).map((a) => a.user_id as string);
   const viewerGoing = attendeeIdsList.includes(viewerId);
   const people = await peopleById([e.creator_id, ...attendeeIdsList, ...(comments ?? []).map((c) => c.user_id as string)]);
-  const venues = await venuesById(e.venue_id ? [e.venue_id] : []);
+  const [venues, levels] = await Promise.all([venuesById(e.venue_id ? [e.venue_id] : []), levelsById([e.creator_id])]);
 
   // Who's going is visible to the host, admins and people going; others see the count.
   const canSeeAttendees = isHost || isAdmin || viewerGoing;
@@ -642,7 +657,7 @@ export async function getEvent(viewerId: string, id: string) {
     event: {
       ...publicEvent(e),
       hidden_reason: isHost || isAdmin ? e.hidden_reason : null,
-      host: hostInfo(e, people, venues),
+      host: hostInfo(e, people, venues, levels),
       going_count: attendeeIdsList.length,
       is_full: !!e.capacity && attendeeIdsList.length >= e.capacity,
     },

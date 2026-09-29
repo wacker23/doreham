@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { VenuePerksManager } from '@/components/VenuePerksManager';
 
 type Venue = {
   id: string;
@@ -247,6 +248,7 @@ export default function MyVenuesPage() {
                             🔲 {lang === 'ko' ? '오늘의 QR 코드' : "Today's QR code"}
                           </a>
                         </div>
+                        <VenuePerksManager venueId={venue.id} lang={lang} />
                         {venueStats[venue.id] && venueStats[venue.id].review_count > 0 && (
                           <div className="v-reviews-section">
                             <div className="v-reviews-header">

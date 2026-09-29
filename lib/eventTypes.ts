@@ -6,6 +6,8 @@ export type EventHost = {
   photo_url: string | null;
   profile_id: string | null;
   venue_id: string | null;
+  /** Doreham level of a member host (null for venues and Doreham). */
+  level?: number | null;
 };
 
 export type EventBase = {
