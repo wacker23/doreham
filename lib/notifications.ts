@@ -1,9 +1,12 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { sendPush } from '@/lib/server/push';
 
 /**
  * Server-side helper to create in-app notifications (service role).
  * Every user-facing string is bilingual (KO + EN).
+ * Each saved notification is also sent as a web push to the user's devices that turned
+ * notifications on (see lib/server/push.ts; a no-op until the VAPID keys are set).
  */
 
 export type NotificationType =
@@ -64,6 +67,7 @@ export async function createNotifications(payloads: NotificationPayload[]): Prom
       console.error('createNotifications failed:', error);
       return { ok: false, error: error.message };
     }
+    await sendPush(payloads);
     return { ok: true };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown';
