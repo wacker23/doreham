@@ -28,6 +28,7 @@ export default function VenueRegisterPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successVenueId, setSuccessVenueId] = useState<string | null>(null);
   const [atLimit, setAtLimit] = useState(false);
+  const [needsPlus, setNeedsPlus] = useState(false); // registering a venue is a Doreham+ feature
 
   useEffect(() => {
     document.body.setAttribute('data-lang', lang);
@@ -51,6 +52,8 @@ export default function VenueRegisterPage() {
         .eq('owner_id', user.id)
         .is('deactivated_at', null);
       if ((count ?? 0) >= 2) setAtLimit(true);
+      const plan = await fetch('/api/plan').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (plan && !plan.plus) setNeedsPlus(true);
     })();
   }, [user]);
 
@@ -117,6 +120,10 @@ export default function VenueRegisterPage() {
       setSubmitting(false);
 
       if (!result.ok) {
+        if (result.error.includes('plus_required')) {
+          setNeedsPlus(true);
+          return;
+        }
         const errorMsg = result.error === 'venue_limit_reached'
           ? (lang === 'ko'
               ? '한 사용자당 최대 2개의 매장만 등록할 수 있습니다.'
@@ -160,6 +167,44 @@ export default function VenueRegisterPage() {
   }
 
   if (!user) return null;
+
+  if (needsPlus && !atLimit && !successVenueId) {
+    return (
+      <>
+        <header className="v-nav">
+          <div className="wrap v-nav-in">
+            <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span></a>
+          </div>
+        </header>
+        <main className="limit-wrap">
+          <div className="limit-card">
+            <div className="limit-icon">🏪</div>
+            <h1>{lang === 'ko' ? '가게 등록은 Doreham+ 기능이에요' : 'Registering a venue is part of Doreham+'}</h1>
+            <p>
+              {lang === 'ko'
+                ? 'Doreham+ 회원은 가게를 최대 2곳까지 등록하고, 매칭된 그룹을 손님으로 맞이하고, 레벨별 혜택과 가게 이벤트를 열 수 있어요.'
+                : 'With Doreham+ you can register up to 2 venues, welcome matched groups as guests, and offer perks and venue events.'}
+            </p>
+            <a href="/plus" className="btn-primary">
+              {lang === 'ko' ? 'Doreham+ 보기' : 'See Doreham+'}
+            </a>
+          </div>
+        </main>
+        <style jsx>{`
+          .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); }
+          .v-nav-in { display: flex; align-items: center; height: 68px; }
+          .brand { display: flex; align-items: baseline; gap: 9px; font-family: var(--display); font-weight: 800; font-size: 20px; text-decoration: none; color: var(--ink); }
+          .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 17px; }
+          .limit-wrap { min-height: calc(100vh - 68px); display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+          .limit-card { max-width: 480px; text-align: center; background: var(--paper-2); border-radius: 24px; padding: 48px 32px; border: 1px solid var(--ink-12); }
+          .limit-icon { font-size: 56px; margin-bottom: 16px; }
+          h1 { font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0 0 12px; }
+          p { color: var(--ink-60); font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+          .btn-primary { display: inline-block; background: var(--persimmon); color: #fff; padding: 12px 28px; border-radius: 999px; font-weight: 700; text-decoration: none; }
+        `}</style>
+      </>
+    );
+  }
 
   if (atLimit) {
     return (

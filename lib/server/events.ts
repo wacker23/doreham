@@ -10,6 +10,7 @@ import { EVENT_CATEGORY_SLUGS, EVENT_REPORT_REASONS } from '@/lib/eventCategorie
 import { KOREAN_CITIES } from '@/lib/cities';
 import { hostLimitForLevel } from '@/lib/points';
 import { levelOf, levelsById } from '@/lib/server/points';
+import { planEventBonus } from '@/lib/server/plan';
 
 /**
  * Community events (Karrot-style city feed).
@@ -266,7 +267,8 @@ export async function createEvent(userId: string, input: EventInput) {
       .eq('host_kind', 'user')
       .eq('status', 'published')
       .gt('starts_at', nowIso);
-    if ((count ?? 0) >= hostLimitForLevel(await levelOf(userId))) return fail('too_many_events', 429);
+    const [level, bonus] = await Promise.all([levelOf(userId), planEventBonus(userId)]);
+    if ((count ?? 0) >= hostLimitForLevel(level) + bonus) return fail('too_many_events', 429);
   } else if (r.value.host_kind === 'venue') {
     const { count } = await admin
       .from('events')

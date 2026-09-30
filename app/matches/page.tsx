@@ -10,6 +10,7 @@ import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
 import { supabase } from '@/lib/supabase/client';
+import { FREE_MATCH_REQUESTS_PER_MONTH, planError, type PlanStatus } from '@/lib/plan';
 
 type Tab = 'pending' | 'request' | 'history';
 
@@ -139,6 +140,12 @@ export default function MatchesPage() {
   const [selectedGroupSize, setSelectedGroupSize] = useState<number | null>(3);
   const [randomSize, setRandomSize] = useState(false);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  // Plan (Free / Doreham+). Locks show only once it's known, so Doreham+ members never see them flash.
+  const [plan, setPlan] = useState<PlanStatus | null>(null);
+  const isFree = plan !== null && !plan.plus;
+  const requestsLeft = plan ? Math.max(0, plan.match_requests_limit - plan.match_requests_used) : null;
+  const outOfRequests = isFree && requestsLeft === 0 && !isVolunteerRequest;
+  const [planNote, setPlanNote] = useState<string | null>(null);
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [isMatchable, setIsMatchable] = useState(true);
   const [pendingReviews, setPendingReviews] = useState<any[]>([]);
@@ -177,10 +184,27 @@ export default function MatchesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, router]);
 
+  function loadPlan() {
+    fetch('/api/plan')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setPlan(d as PlanStatus);
+        if (!d.plus) {
+          // Free plan: random group size, any category (봉사 can still be picked)
+          setRandomSize(true);
+          setSelectedGroupSize(null);
+          setSelectedCategories((prev) => prev.filter((x) => x === 'help'));
+        }
+      })
+      .catch(() => {});
+  }
+
   async function loadAll() {
     setLoadingData(true);
     setError(null);
 
+    loadPlan();
     fetch('/api/consents')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setHasVolunteerConsent((d.consents ?? []).some((c: { kind: string }) => c.kind === 'volunteer_photos')))
@@ -395,6 +419,11 @@ export default function MatchesPage() {
       return;
     }
 
+    if (outOfRequests) {
+      setError(planError('monthly_limit', lang));
+      return;
+    }
+
     setSubmittingRequest(true);
     setError(null);
     setRequestSuccess(false);
@@ -418,6 +447,9 @@ export default function MatchesPage() {
       } else if (err.message.includes('consent_required')) {
         setHasVolunteerConsent(false);
         askConsent(() => submitMatchRequest(true));
+      } else if (planError(err.message, lang)) {
+        setError(planError(err.message, lang));
+        loadPlan();
       } else {
         setError(err.message);
       }
@@ -441,8 +473,8 @@ export default function MatchesPage() {
     setRequestSuccess(true);
     setSelectedCities([]);
     setRandomCity(false);
-    setSelectedGroupSize(3);
-    setRandomSize(false);
+    setSelectedGroupSize(isFree ? null : 3);
+    setRandomSize(isFree);
     setSelectedCategories([]);
     await loadAll();
     setTimeout(() => setActiveTab('pending'), 800);
@@ -643,7 +675,6 @@ export default function MatchesPage() {
             onClick={() => setActiveTab('request')}
           >
             {lang === 'ko' ? '매칭 요청' : 'Request a match'}
-            <span className="premium-dot" title="Premium">⭐</span>
           </button>
           <button
             className={`tab ${activeTab === 'history' ? 'active' : ''}`}
@@ -754,13 +785,21 @@ export default function MatchesPage() {
             <div className="request-hero">
               <h1>{lang === 'ko' ? '매칭 요청' : 'Request a match'}</h1>
               <p>
-                {lang === 'ko'
-                  ? '도시와 인원을 선택하고 새로운 친구를 만나보세요.'
-                  : 'Pick a city and group size to meet new friends.'}
+                {isFree
+                  ? (lang === 'ko' ? '만나고 싶은 도시를 고르면 그룹을 찾아드려요.' : "Pick where you'd like to meet and we'll find your group.")
+                  : (lang === 'ko' ? '도시와 인원을 선택하고 새로운 친구를 만나보세요.' : 'Pick a city and group size to meet new friends.')}
               </p>
-              <div className="premium-tag">
-                {lang === 'ko' ? '⭐ 프리미엄 기능' : '⭐ Premium feature'}
-              </div>
+              {plan && (
+                plan.plus ? (
+                  <a className="plan-tag plus" href="/plus">✨ Doreham+</a>
+                ) : (
+                  <a className="plan-tag" href="/plus">
+                    {lang === 'ko'
+                      ? `무료 플랜 · 이번 달 요청 ${requestsLeft}/${FREE_MATCH_REQUESTS_PER_MONTH}번 남음 · 봉사 무제한`
+                      : `Free plan · ${requestsLeft} of ${FREE_MATCH_REQUESTS_PER_MONTH} requests left this month · 봉사 unlimited`}
+                  </a>
+                )
+              )}
             </div>
 
             <div className="matchable-toggle">
@@ -895,21 +934,31 @@ export default function MatchesPage() {
                 <div className="form-section">
                   <label className="form-label">
                     {lang === 'ko' ? '🎯 카테고리 선택 (선택 사항)' : '🎯 Pick categories (optional)'}
+                    {isFree && <a className="plus-chip" href="/plus">✨ Doreham+</a>}
                   </label>
                   <p className="form-hint">
-                    {lang === 'ko'
-                      ? '아무것도 선택하지 않으면 모든 카테고리에서 매칭됩니다'
-                      : 'Leave empty to match with any category'}
+                    {isFree
+                      ? (lang === 'ko'
+                          ? '무료 플랜은 모든 카테고리에서 매칭돼요. 봉사 퀘스트는 누구나 고를 수 있어요.'
+                          : 'On the free plan you match with any category. Anyone can pick a 봉사 volunteer quest.')
+                      : (lang === 'ko'
+                          ? '아무것도 선택하지 않으면 모든 카테고리에서 매칭됩니다'
+                          : 'Leave empty to match with any category')}
                   </p>
                   <div className="cat-grid">
                     {MATCH_CATEGORIES.map((c) => {
                       const isSelected = selectedCategories.includes(c.slug);
+                      const planLocked = isFree && !c.volunteer; // free plan: only 봉사 can be picked
                       return (
                         <button
                           key={c.slug}
-                          className={`cat-card ${isSelected ? 'selected' : ''} ${c.coming_soon ? 'disabled' : ''}`}
+                          className={`cat-card ${isSelected ? 'selected' : ''} ${c.coming_soon ? 'disabled' : ''} ${planLocked && !c.coming_soon ? 'locked' : ''}`}
                           onClick={() => {
                             if (c.coming_soon) return;
+                            if (planLocked) {
+                              setPlanNote(lang === 'ko' ? '카테고리 선택은 Doreham+ 기능이에요.' : 'Choosing categories is part of Doreham+.');
+                              return;
+                            }
                             setSelectedCategories((prev) => {
                               if (isSelected) return prev.filter((x) => x !== c.slug);
                               if (c.volunteer) return [c.slug];                 // 봉사 alone
@@ -926,6 +975,7 @@ export default function MatchesPage() {
                           <img src={`/categories/${c.icon}.png`} alt="" className="cat-icon" />
                           <div className="cat-name">{lang === 'ko' ? c.label_ko : c.label_en}</div>
                           {c.coming_soon && <div className="cat-soon">{lang === 'ko' ? '준비 중' : 'Soon'}</div>}
+                          {planLocked && !c.coming_soon && <div className="cat-lock" aria-hidden="true">🔒</div>}
                         </button>
                       );
                     })}
@@ -943,26 +993,53 @@ export default function MatchesPage() {
                 <div className="form-section">
                   <label className="form-label">
                     {lang === 'ko' ? '👥 인원 선택' : '👥 Group size'}
+                    {isFree && <a className="plus-chip" href="/plus">✨ Doreham+</a>}
                   </label>
+                  {isFree && (
+                    <p className="form-hint">
+                      {lang === 'ko' ? '무료 플랜은 랜덤 인원(2–5명)으로 매칭돼요.' : 'On the free plan your group size is random (2–5 people).'}
+                    </p>
+                  )}
                   <div className="size-options">
                     {[2, 3, 4, 5].map((n) => (
                       <button
                         key={n}
-                        className={`size-btn ${!randomSize && selectedGroupSize === n ? 'selected' : ''}`}
-                        onClick={() => { setRandomSize(false); setSelectedGroupSize(n); }}
+                        className={`size-btn ${!randomSize && selectedGroupSize === n ? 'selected' : ''} ${isFree ? 'locked' : ''}`}
+                        onClick={() => {
+                          if (isFree) {
+                            setPlanNote(lang === 'ko' ? '인원 선택은 Doreham+ 기능이에요.' : 'Picking the group size is part of Doreham+.');
+                            return;
+                          }
+                          setRandomSize(false); setSelectedGroupSize(n);
+                        }}
                       >
                         {n}
                       </button>
                     ))}
                     <button
                       className={`size-btn size-random ${randomSize ? 'selected' : ''}`}
-                      onClick={() => { setRandomSize(!randomSize); if (!randomSize) setSelectedGroupSize(null); }}
+                      onClick={() => {
+                        if (isFree) return; // random is the only option on the free plan
+                        setRandomSize(!randomSize); if (!randomSize) setSelectedGroupSize(null);
+                      }}
                     >
                       🎲 {lang === 'ko' ? '랜덤' : 'Random'}
                     </button>
                   </div>
                 </div>
 
+                {planNote && (
+                  <div className="plan-note">
+                    ✨ {planNote}{' '}
+                    <a href="/plus">{lang === 'ko' ? 'Doreham+ 보기 →' : 'See Doreham+ →'}</a>
+                  </div>
+                )}
+                {outOfRequests && (
+                  <div className="plan-note">
+                    {planError('monthly_limit', lang)}{' '}
+                    <a href="/plus">{lang === 'ko' ? 'Doreham+ 보기 →' : 'See Doreham+ →'}</a>
+                  </div>
+                )}
                 {error && <div className="error-msg">{error}</div>}
                 {requestSuccess && (
                   <div className="success-msg">
@@ -970,7 +1047,7 @@ export default function MatchesPage() {
                   </div>
                 )}
 
-                <button className="find-btn" onClick={() => submitMatchRequest()} disabled={submittingRequest}>
+                <button className="find-btn" onClick={() => submitMatchRequest()} disabled={submittingRequest || outOfRequests}>
                   {submittingRequest
                     ? (lang === 'ko' ? '요청 중…' : 'Requesting…')
                     : (lang === 'ko' ? '🔍 매칭 찾기' : '🔍 Find a match')}
@@ -1102,7 +1179,6 @@ export default function MatchesPage() {
           min-width: 20px;
           text-align: center;
         }
-        .premium-dot { font-size: 12px; }
 
         .main-wrap { padding: 32px 24px 48px; max-width: 900px; min-height: 60vh; }
 
@@ -1168,12 +1244,16 @@ export default function MatchesPage() {
         .request-hero { text-align: center; margin-bottom: 32px; }
         .request-hero h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 8px; letter-spacing: -0.02em; }
         .request-hero p { color: var(--ink-60); font-size: 15px; margin: 0 0 16px; }
-        .premium-tag {
-          display: inline-block;
-          background: linear-gradient(135deg, #fbbf24, #f97316);
-          color: #fff; font-weight: 700; font-size: 12px;
-          padding: 5px 14px; border-radius: 999px;
-        }
+        .plan-tag { display: inline-block; background: #fff; border: 1px solid var(--ink-12); color: var(--ink-60); font-weight: 700; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; text-decoration: none; line-height: 1.4; }
+        .plan-tag.plus { background: linear-gradient(135deg, rgba(255, 106, 61, 0.12), rgba(199, 184, 224, 0.25)); border-color: rgba(255, 106, 61, 0.35); color: var(--persimmon); }
+        .plus-chip { margin-left: 8px; font-size: 11px; font-weight: 800; color: var(--persimmon); background: rgba(255, 106, 61, 0.1); border-radius: 999px; padding: 3px 9px; text-decoration: none; vertical-align: middle; }
+        .plan-note { background: rgba(199, 184, 224, 0.18); border: 1px solid rgba(199, 184, 224, 0.6); color: var(--ink); padding: 12px 16px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; line-height: 1.5; }
+        .plan-note a { color: var(--persimmon); font-weight: 700; text-decoration: none; white-space: nowrap; }
+        .cat-card.locked { opacity: 0.55; }
+        .cat-card.locked:hover:not(.disabled) { transform: none; border-color: var(--ink-12); }
+        .cat-lock { position: absolute; top: 4px; right: 6px; font-size: 11px; }
+        .size-btn.locked { opacity: 0.45; cursor: not-allowed; }
+        .size-btn.locked:hover, .size-btn.locked.selected { transform: none; border-color: var(--ink-12); }
 
         .frozen-notice { text-align: center; padding: 60px 30px; background: rgba(91, 124, 250, 0.06); border: 1px solid rgba(91, 124, 250, 0.2); border-radius: 20px; }
         .frozen-icon { font-size: 64px; margin-bottom: 16px; }

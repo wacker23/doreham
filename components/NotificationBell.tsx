@@ -43,6 +43,7 @@ const TYPE_ICONS: Record<string, string> = {
   event_reminder: '⏰',
   level_up: '⬆️',
   monthly_rank: '🏆',
+  plus_granted: '✨',
 };
 
 export function NotificationBell({ lang }: Props) {
