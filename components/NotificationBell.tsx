@@ -53,6 +53,8 @@ export function NotificationBell({ lang }: Props) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Phones: the list is pinned under the header, full width, and never taller than the screen.
+  const [sheet, setSheet] = useState<{ top: number; maxHeight: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
 
@@ -107,6 +109,24 @@ export function NotificationBell({ lang }: Props) {
       supabase.removeChannel(channel);
     };
   }, [userId, loadNotifications]);
+
+  // On small screens, place the list under the header across the full width.
+  useEffect(() => {
+    if (!open) return;
+    function place() {
+      if (window.innerWidth >= 600 || !bellRef.current) {
+        setSheet(null);
+        return;
+      }
+      const header = bellRef.current.closest('header');
+      const top = Math.round((header ?? bellRef.current).getBoundingClientRect().bottom + 6);
+      const tabBar = window.innerWidth < 900 ? 84 : 16; // room for the bottom tab bar
+      setSheet({ top, maxHeight: Math.max(220, window.innerHeight - top - tabBar) });
+    }
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [open]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -206,7 +226,11 @@ export function NotificationBell({ lang }: Props) {
       </button>
 
       {open && (
-        <div ref={dropdownRef} className="dropdown">
+        <div
+          ref={dropdownRef}
+          className={sheet ? 'dropdown sheet' : 'dropdown'}
+          style={sheet ? { top: sheet.top, maxHeight: sheet.maxHeight } : undefined}
+        >
           <div className="dropdown-header">
             <div className="dropdown-title">{lang === 'ko' ? '알림' : 'Notifications'}</div>
             {unreadCount > 0 && (
@@ -266,6 +290,9 @@ export function NotificationBell({ lang }: Props) {
         .mark-all-btn { background: transparent; border: 0; color: var(--persimmon); font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
         .mark-all-btn:hover { background: rgba(255, 106, 61, 0.08); }
         .dropdown-body { max-height: 480px; overflow-y: auto; }
+        .dropdown.sheet { position: fixed; left: 10px; right: 10px; width: auto; max-width: none; display: flex; flex-direction: column; }
+        .dropdown.sheet .dropdown-header { flex: none; }
+        .dropdown.sheet .dropdown-body { flex: 1; min-height: 0; max-height: none; overscroll-behavior: contain; }
         .dropdown-empty { padding: 40px 20px; text-align: center; color: var(--ink-60); }
         .empty-icon { font-size: 32px; margin-bottom: 8px; }
         .dropdown-empty p { margin: 0; font-size: 13px; }
