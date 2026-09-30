@@ -194,24 +194,27 @@ export default function ChatPage() {
     setSending(true);
     setError(null);
 
-    const insertData: any = {
-      group_id: groupId,
-      sender_id: user!.id,
-      content: trimmed,
-      message_type: 'user_text',
-    };
-
-    if (replyingTo) {
-      insertData.reply_to_id = replyingTo.id;
+    // Sent through the server so the other members get a push notification.
+    let data: Message | null = null;
+    try {
+      const r = await fetch(`/api/groups/${groupId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: trimmed, reply_to_id: replyingTo?.id ?? null }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'send_failed');
+      data = j.message as Message;
+    } catch (e) {
+      const code = e instanceof Error ? e.message : '';
+      setError(
+        code === 'not_a_member'
+          ? (lang === 'ko' ? '이 그룹 채팅에 메시지를 보낼 수 없어요.' : "You can't send messages in this group chat.")
+          : (lang === 'ko' ? '메시지를 보내지 못했어요. 다시 시도해 주세요.' : "Couldn't send your message. Please try again."),
+      );
+      setSending(false);
+      return;
     }
-
-    const { data, error: err } = await supabase
-      .from('messages')
-      .insert(insertData)
-      .select('id, group_id, sender_id, content, message_type, is_hidden, created_at, edited_at, reply_to_id')
-      .single();
-
-    if (err) { setError(err.message); setSending(false); return; }
 
     if (data) {
       setMessages((prev) => {

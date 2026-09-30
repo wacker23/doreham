@@ -66,7 +66,19 @@ export async function getPushState(): Promise<PushState> {
   return (await currentSubscription()) ? 'on' : 'off';
 }
 
-async function saveOnServer(sub: PushSubscription, lang: 'en' | 'ko'): Promise<boolean> {
+/** The language chosen in the app right now (it can change while a permission dialog is open). */
+function currentLang(fallback: 'en' | 'ko'): 'en' | 'ko' {
+  try {
+    const v = localStorage.getItem('doreham_lang');
+    if (v === 'en' || v === 'ko') return v;
+  } catch {
+    /* private mode */
+  }
+  return fallback;
+}
+
+async function saveOnServer(sub: PushSubscription, fallbackLang: 'en' | 'ko'): Promise<boolean> {
+  const lang = currentLang(fallbackLang);
   const r = await fetch('/api/push/subscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -78,7 +90,7 @@ async function saveOnServer(sub: PushSubscription, lang: 'en' | 'ko'): Promise<b
 /** Ask permission (must run from a tap) and subscribe. Returns the new state. */
 export async function enablePush(lang: 'en' | 'ko'): Promise<PushState> {
   if (!VAPID || !supported()) return getPushState();
-  const permission = await Notification.requestPermission();
+  const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
   if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'default';
   const reg = await registration();
   let sub = await reg.pushManager.getSubscription();
@@ -107,8 +119,9 @@ export async function disablePushForSignOut(): Promise<void> {
 
 let lastSync = '';
 /** On app load: if this browser is subscribed, refresh the server copy (owner + language). */
-export async function syncPush(lang: 'en' | 'ko'): Promise<void> {
+export async function syncPush(fallbackLang: 'en' | 'ko'): Promise<void> {
   if (!VAPID || !supported() || Notification.permission !== 'granted') return;
+  const lang = currentLang(fallbackLang);
   const sub = await currentSubscription();
   if (!sub || lastSync === `${sub.endpoint}|${lang}`) return;
   lastSync = `${sub.endpoint}|${lang}`;
@@ -117,7 +130,90 @@ export async function syncPush(lang: 'en' | 'ko'): Promise<void> {
   });
 }
 
-export async function sendTestPush(): Promise<boolean> {
-  const r = await fetch('/api/push/test', { method: 'POST' }).catch(() => null);
-  return !!r?.ok;
+// ---- Asking once, like an app ------------------------------------------------------
+
+const ASKED_KEY = 'doreham_push_asked'; // the permission question was answered or dismissed on this device
+const OFF_KEY = 'doreham_push_off'; // the person turned notifications off in their profile
+
+function getFlag(k: string): boolean {
+  try {
+    return localStorage.getItem(k) === '1';
+  } catch {
+    return false;
+  }
+}
+function setFlag(k: string, on: boolean) {
+  try {
+    if (on) localStorage.setItem(k, '1');
+    else localStorage.removeItem(k);
+  } catch {
+    /* private mode */
+  }
+}
+
+let armed = false;
+/** Safari and Firefox only show the permission dialog after a tap: ask on the first tap that isn't a link. */
+function askOnFirstTap(lang: 'en' | 'ko') {
+  if (armed) return;
+  armed = true;
+  const onTap = (e: Event) => {
+    const target = e.target as Element | null;
+    if (target?.closest?.('a[href]')) return; // a link would navigate away and cancel the dialog
+    document.removeEventListener('click', onTap, true);
+    armed = false;
+    setFlag(ASKED_KEY, true);
+    enablePush(lang).catch(() => {});
+  };
+  document.addEventListener('click', onTap, true);
+}
+
+/**
+ * Run once per app page load, for a signed-in user:
+ * - notifications on: refresh the server copy;
+ * - allowed before (e.g. after signing out and in again) and not turned off: subscribe quietly;
+ * - never asked on this device: show the browser's permission dialog (only once, ever).
+ */
+let autoRun: Promise<PushState> | null = null;
+export function autoPush(lang: 'en' | 'ko'): Promise<PushState> {
+  // One run at a time (the header can mount twice while a dialog is open).
+  autoRun ??= runAutoPush(lang).finally(() => {
+    autoRun = null;
+  });
+  return autoRun;
+}
+
+async function runAutoPush(lang: 'en' | 'ko'): Promise<PushState> {
+  const state = await getPushState();
+  if (state === 'on') {
+    await syncPush(lang);
+    return state;
+  }
+  if (state === 'off' && !getFlag(OFF_KEY)) return enablePush(lang).catch(() => state);
+  if (state !== 'default' || getFlag(ASKED_KEY)) return state;
+
+  const started = Date.now();
+  const result = await enablePush(lang).catch(() => 'default' as PushState);
+  // Answered, or the dialog was on screen long enough for a person to close it: don't ask again.
+  if (result !== 'default' || Date.now() - started > 800) setFlag(ASKED_KEY, true);
+  // Resolved instantly with no answer: this browser needs a tap first.
+  else askOnFirstTap(lang);
+  return result;
+}
+
+/** Profile switch. */
+export async function turnPushOn(lang: 'en' | 'ko'): Promise<PushState> {
+  setFlag(OFF_KEY, false);
+  setFlag(ASKED_KEY, true);
+  return enablePush(lang);
+}
+export async function turnPushOff(): Promise<void> {
+  setFlag(OFF_KEY, true);
+  await disablePush();
+}
+
+export function iosHintSeen(): boolean {
+  return getFlag('doreham_push_ios_hint');
+}
+export function markIosHintSeen() {
+  setFlag('doreham_push_ios_hint', true);
 }

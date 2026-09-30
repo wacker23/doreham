@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { disablePush, enablePush, getPushState, sendTestPush, type PushState } from '@/lib/push';
+import { autoPush, getPushState, turnPushOff, turnPushOn, type PushState } from '@/lib/push';
 
-/** Own-profile card: turn push notifications on/off for this device and send a test. */
+/** Own-profile card: turn push notifications on/off for this device. */
 export function PushSettingsSection({ lang }: { lang: 'en' | 'ko' }) {
   const [state, setState] = useState<PushState>('loading');
   const [busy, setBusy] = useState(false);
@@ -11,7 +11,12 @@ export function PushSettingsSection({ lang }: { lang: 'en' | 'ko' }) {
   const t = (en: string, ko: string) => (lang === 'ko' ? ko : en);
 
   useEffect(() => {
-    getPushState().then(setState);
+    // same automatic setup as the header (shared, runs once): then show the real state
+    autoPush(lang)
+      .catch(() => 'loading' as PushState)
+      .then(getPushState)
+      .then(setState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
   if (state === 'unconfigured') return null;
@@ -20,7 +25,7 @@ export function PushSettingsSection({ lang }: { lang: 'en' | 'ko' }) {
     setBusy(true);
     setMessage(null);
     try {
-      const s = await enablePush(lang);
+      const s = await turnPushOn(lang);
       setState(s);
       if (s === 'denied') setMessage(t('Blocked. Allow notifications for doreham.co.kr in your browser settings.', '차단됨. 브라우저 설정에서 doreham.co.kr 알림을 허용해 주세요.'));
     } catch {
@@ -32,15 +37,8 @@ export function PushSettingsSection({ lang }: { lang: 'en' | 'ko' }) {
   async function turnOff() {
     setBusy(true);
     setMessage(null);
-    await disablePush();
+    await turnPushOff();
     setState(await getPushState());
-    setBusy(false);
-  }
-
-  async function test() {
-    setBusy(true);
-    const ok = await sendTestPush();
-    setMessage(ok ? t('Test sent. It should appear in a few seconds.', '테스트 알림을 보냈어요. 곧 도착할 거예요.') : t("Couldn't send a test. Try turning notifications off and on.", '테스트를 보내지 못했어요. 알림을 껐다가 다시 켜 보세요.'));
     setBusy(false);
   }
 
@@ -72,9 +70,6 @@ export function PushSettingsSection({ lang }: { lang: 'en' | 'ko' }) {
           <button className="ps-btn primary" disabled={busy} onClick={turnOn}>{t('Turn on', '켜기')}</button>
         ) : null}
       </div>
-      {state === 'on' && (
-        <button className="ps-link" disabled={busy} onClick={test}>{t('Send a test notification', '테스트 알림 보내기')}</button>
-      )}
       {message && <div className="ps-msg">{message}</div>}
       <style jsx>{`
         .ps-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
@@ -84,8 +79,7 @@ export function PushSettingsSection({ lang }: { lang: 'en' | 'ko' }) {
         .ps-sub { font-size: 13px; color: var(--ink-60); margin-top: 2px; line-height: 1.45; }
         .ps-btn { flex: none; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 13px; cursor: pointer; font-family: var(--body); }
         .ps-btn.primary { background: var(--persimmon); border-color: var(--persimmon); color: #fff; }
-        .ps-btn:disabled, .ps-link:disabled { opacity: 0.5; }
-        .ps-link { margin-top: 12px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--jade); font-weight: 700; cursor: pointer; font-family: var(--body); }
+        .ps-btn:disabled { opacity: 0.5; }
         .ps-msg { margin-top: 10px; font-size: 13px; color: var(--ink-60); }
       `}</style>
     </div>

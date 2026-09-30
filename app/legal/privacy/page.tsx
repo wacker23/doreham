@@ -186,7 +186,7 @@ function English() {
           ['Google LLC (USA)', 'Sign-in with Google', 'Google account ID, email, name'],
           ['Google LLC (USA); as backups when it is unavailable: Anthropic PBC, OpenAI (USA)', 'Automatic translation between Korean and English of public 1365 listings and of the events members post', 'Only the text being translated: listing text, and the title, description and place of an event. Never your name, account or contact details'],
           ['Kakao Corp. (Korea)', 'Address search when registering a venue; map links', 'The address you search'],
-          ['The push service of your browser, only if you turn notifications on: Google (Chrome, Android), Apple (Safari, iPhone, Mac), Mozilla (Firefox), Microsoft (Edge) (USA)', 'Delivering notifications to your device', 'The notification text (for example an event title or a group member\'s name) and the device\'s push address. The text is encrypted so only your device can read it'],
+          ['The push service of your browser, only if you turn notifications on: Google (Chrome, Android), Apple (Safari, iPhone, Mac), Mozilla (Firefox), Microsoft (Edge) (USA)', 'Delivering notifications to your device', 'The notification text (for example an event title, a group member\'s name, or the start of a new group chat message) and the device\'s push address. The text is encrypted so only your device can read it'],
         ]}
       />
       <p>You can refuse these transfers by not using Doreham or by deleting your account, but we cannot run the service without them.</p>
@@ -320,7 +320,7 @@ function Korean() {
           ['Google LLC (미국)', 'Google 로그인', 'Google 계정 식별자, 이메일, 이름'],
           ['Google LLC (미국); 장애 시 예비: Anthropic PBC, OpenAI (미국)', '공개된 1365 봉사활동 안내문과 회원이 올린 이벤트의 한국어↔영어 자동 번역', '번역할 글만 보냄: 안내문, 이벤트의 제목·설명·장소. 이름, 계정, 연락처는 보내지 않음'],
           ['(주)카카오 (한국)', '장소 등록 시 주소 검색, 지도 링크', '검색한 주소'],
-          ['사용하는 브라우저의 푸시 서비스 (알림을 켠 경우에만): Google(Chrome, Android), Apple(Safari, iPhone, Mac), Mozilla(Firefox), Microsoft(Edge) (미국)', '기기로 알림 전달', '알림 내용(예: 이벤트 제목, 그룹 멤버 이름)과 기기의 푸시 주소. 알림 내용은 암호화되어 회원님의 기기만 읽을 수 있음'],
+          ['사용하는 브라우저의 푸시 서비스 (알림을 켠 경우에만): Google(Chrome, Android), Apple(Safari, iPhone, Mac), Mozilla(Firefox), Microsoft(Edge) (미국)', '기기로 알림 전달', '알림 내용(예: 이벤트 제목, 그룹 멤버 이름, 새 그룹 채팅 메시지의 앞부분)과 기기의 푸시 주소. 알림 내용은 암호화되어 회원님의 기기만 읽을 수 있음'],
         ]}
       />
       <p>국외 이전을 거부하려면 서비스 이용을 중단하거나 탈퇴하면 돼요. 다만 이 경우 서비스를 제공할 수 없어요.</p>

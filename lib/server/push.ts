@@ -16,6 +16,9 @@ export type PushMessage = {
   body_en?: string | null;
   body_ko?: string | null;
   action_url?: string | null;
+  /** Same tag = the new notification replaces the old one on the device (used per chat). */
+  tag?: string | null;
+  urgency?: 'normal' | 'high';
 };
 
 type SubRow = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; lang: string; failure_count: number };
@@ -66,7 +69,7 @@ export function buildPayload(m: PushMessage, lang: string) {
     title: (ko ? m.title_ko : m.title_en) || m.title_en || m.title_ko,
     body: (ko ? m.body_ko : m.body_en) ?? '',
     url: safeUrl(m.action_url),
-    tag: m.type,
+    tag: m.tag ?? null,
   };
 }
 
@@ -92,7 +95,7 @@ export async function sendPush(messages: PushMessage[]): Promise<{ sent: number;
             .sendNotification(
               { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
               JSON.stringify(buildPayload(m, s.lang)),
-              { TTL: 60 * 60 * 24, urgency: 'normal', timeout: SEND_TIMEOUT_MS },
+              { TTL: 60 * 60 * 24, urgency: m.urgency ?? 'normal', timeout: SEND_TIMEOUT_MS },
             )
             .then(async () => {
               out.sent++;
