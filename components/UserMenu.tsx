@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useUser } from '@/lib/hooks/useUser';
+import { disablePushForSignOut } from '@/lib/push';
 
 type Props = {
   lang: 'en' | 'ko';
@@ -34,6 +35,7 @@ export function UserMenu({ lang }: Props) {
 
   async function handleSignOut() {
     setSigningOut(true);
+    await disablePushForSignOut();
     await supabase.auth.signOut();
     setMenuOpen(false);
     setSigningOut(false);

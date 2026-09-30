@@ -11,7 +11,7 @@ import { useLang } from '@/lib/hooks/useLang';
  * Not reviewed by a lawyer yet.
  */
 
-const UPDATED = { en: 'September 29, 2026', ko: '2026년 9월 29일' };
+const UPDATED = { en: 'September 30, 2026', ko: '2026년 9월 30일' };
 const PRIVACY_EMAIL = 'privacy@doreham.co.kr';
 
 export default function PrivacyPage() {
@@ -130,6 +130,7 @@ function English() {
           ['Points and ranking', 'Points history, level, badges, monthly rank, whether you appear on the leaderboard, and the venue perks you use', 'Created as you use the service'],
           ['Volunteer quests', 'The 1365 activity your group chose (public data), whether you confirmed signing up on 1365, group selfie photos and who is tagged in them, your 1365 certificate, your location when you upload a selfie', 'Photos: required to finish a volunteer quest (with your consent). Certificate and location: optional'],
           ['Venue owners', 'Business name, business registration number, address, contact details, menu, photos, opening hours', 'Required to list a venue'],
+          ['Push notifications', 'If you turn them on for a browser or phone: the push address your browser gives us for that device, its encryption keys, your language and your browser type', 'Optional'],
           ['Collected automatically', 'Sign-in cookie, your language choice (stored in your browser), server logs (IP address, browser, pages requested)', 'Required to run the service'],
         ]}
       />
@@ -157,6 +158,7 @@ function English() {
           ['Events you host, events you join, comments and reports', 'You delete your account (then deleted with it). You can delete a comment or cancel an event yourself at any time'],
           ['Points history and perk use', 'You delete your account (then deleted with it)'],
           ['Volunteer group selfies and 1365 certificates (and the location attached to a selfie)', '90 days after upload, then deleted automatically. Deleted sooner if you withdraw your consent'],
+          ['Push notification addresses', 'You turn notifications off or sign out on that device, the push service tells us the address expired, or you delete your account'],
           ['Server logs', 'A short period, for security and fixing problems'],
         ]}
       />
@@ -184,6 +186,7 @@ function English() {
           ['Google LLC (USA)', 'Sign-in with Google', 'Google account ID, email, name'],
           ['Google LLC (USA); as backups when it is unavailable: Anthropic PBC, OpenAI (USA)', 'Automatic translation between Korean and English of public 1365 listings and of the events members post', 'Only the text being translated: listing text, and the title, description and place of an event. Never your name, account or contact details'],
           ['Kakao Corp. (Korea)', 'Address search when registering a venue; map links', 'The address you search'],
+          ['The push service of your browser, only if you turn notifications on: Google (Chrome, Android), Apple (Safari, iPhone, Mac), Mozilla (Firefox), Microsoft (Edge) (USA)', 'Delivering notifications to your device', 'The notification text (for example an event title or a group member\'s name) and the device\'s push address. The text is encrypted so only your device can read it'],
         ]}
       />
       <p>You can refuse these transfers by not using Doreham or by deleting your account, but we cannot run the service without them.</p>
@@ -224,7 +227,7 @@ function English() {
       </ul>
 
       <h2>10. Cookies and browser storage</h2>
-      <p>We use one cookie to keep you signed in and store your language choice in your browser. We do not use advertising or tracking cookies.</p>
+      <p>We use one cookie to keep you signed in and store your language choice in your browser. If you turn on notifications, your browser also keeps a small service worker from doreham.co.kr that only shows our notifications. We do not use advertising or tracking cookies.</p>
 
       <h2>11. Minors</h2>
       <p>Doreham is not for anyone under 16. If we learn we collected information from someone under 16, we delete it.</p>
@@ -261,6 +264,7 @@ function Korean() {
           ['포인트와 랭킹', '포인트 기록, 레벨, 배지, 월간 순위, 순위표 공개 여부, 사용한 제휴 가게 혜택', '서비스 이용 과정에서 생성'],
           ['봉사 퀘스트', '그룹이 고른 1365 봉사활동(공개 정보), 1365 신청 완료 여부, 단체 사진과 사진 속 멤버 표시, 1365 봉사활동 확인서, 사진을 올릴 때의 위치', '사진: 봉사 퀘스트 완료에 필요(동의 시). 확인서·위치: 선택'],
           ['제휴 장소 운영자', '상호, 사업자등록번호, 주소, 연락처, 메뉴, 사진, 영업시간', '장소 등록에 필수'],
+          ['푸시 알림', '브라우저나 휴대폰에서 알림을 켠 경우: 브라우저가 그 기기에 발급한 푸시 주소, 암호화 키, 언어 설정, 브라우저 종류', '선택'],
           ['자동 수집', '로그인 쿠키, 언어 설정(브라우저에 저장), 서버 로그(IP 주소, 브라우저 정보, 요청한 페이지)', '서비스 운영에 필수'],
         ]}
       />
@@ -288,6 +292,7 @@ function Korean() {
           ['주최·참여한 이벤트, 댓글, 신고', '회원 탈퇴 시까지(탈퇴하면 함께 삭제). 댓글 삭제와 이벤트 취소는 언제든 직접 할 수 있어요'],
           ['포인트 기록과 혜택 사용 기록', '회원 탈퇴 시까지(탈퇴하면 함께 삭제)'],
           ['봉사 단체 사진과 1365 확인서 (사진에 붙은 위치 포함)', '올린 날부터 90일 뒤 자동 삭제. 동의를 철회하면 즉시 삭제'],
+          ['푸시 알림 주소', '해당 기기에서 알림을 끄거나 로그아웃할 때, 푸시 서비스가 주소 만료를 알릴 때, 또는 탈퇴할 때까지'],
           ['서버 로그', '보안과 오류 확인을 위한 짧은 기간'],
         ]}
       />
@@ -315,6 +320,7 @@ function Korean() {
           ['Google LLC (미국)', 'Google 로그인', 'Google 계정 식별자, 이메일, 이름'],
           ['Google LLC (미국); 장애 시 예비: Anthropic PBC, OpenAI (미국)', '공개된 1365 봉사활동 안내문과 회원이 올린 이벤트의 한국어↔영어 자동 번역', '번역할 글만 보냄: 안내문, 이벤트의 제목·설명·장소. 이름, 계정, 연락처는 보내지 않음'],
           ['(주)카카오 (한국)', '장소 등록 시 주소 검색, 지도 링크', '검색한 주소'],
+          ['사용하는 브라우저의 푸시 서비스 (알림을 켠 경우에만): Google(Chrome, Android), Apple(Safari, iPhone, Mac), Mozilla(Firefox), Microsoft(Edge) (미국)', '기기로 알림 전달', '알림 내용(예: 이벤트 제목, 그룹 멤버 이름)과 기기의 푸시 주소. 알림 내용은 암호화되어 회원님의 기기만 읽을 수 있음'],
         ]}
       />
       <p>국외 이전을 거부하려면 서비스 이용을 중단하거나 탈퇴하면 돼요. 다만 이 경우 서비스를 제공할 수 없어요.</p>
@@ -355,7 +361,7 @@ function Korean() {
       </ul>
 
       <h2>10. 쿠키 및 브라우저 저장소</h2>
-      <p>로그인 유지를 위한 쿠키 하나와 브라우저에 저장하는 언어 설정만 사용해요. 광고·추적 쿠키는 사용하지 않아요.</p>
+      <p>로그인 유지를 위한 쿠키 하나와 브라우저에 저장하는 언어 설정만 사용해요. 알림을 켜면 브라우저에 도레함 알림만 표시하는 작은 서비스 워커가 함께 저장돼요. 광고·추적 쿠키는 사용하지 않아요.</p>
 
       <h2>11. 미성년자</h2>
       <p>도레함은 만 16세 미만은 이용할 수 없어요. 만 16세 미만의 정보를 수집한 사실을 알게 되면 삭제해요.</p>

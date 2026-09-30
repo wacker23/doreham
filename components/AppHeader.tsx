@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { UserMenu } from '@/components/UserMenu';
 import { NotificationBell } from '@/components/NotificationBell';
+import { PushPrompt } from '@/components/PushPrompt';
 import { useUser } from '@/lib/hooks/useUser';
 import { appTabs, isTabActive } from '@/lib/appTabs';
 
@@ -15,6 +16,7 @@ export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: '
   const { user } = useUser();
 
   return (
+    <>
     <header className="app-nav">
       <div className="app-nav-in">
         <a className="app-brand" href="/">
@@ -77,5 +79,7 @@ export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: '
         }
       `}</style>
     </header>
+    <PushPrompt lang={lang} />
+    </>
   );
 }

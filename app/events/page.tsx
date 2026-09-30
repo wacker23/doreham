@@ -9,18 +9,17 @@ import { AppTabBar } from '@/components/AppTabBar';
 import { KOREAN_CITIES, cityName } from '@/lib/cities';
 import { EVENT_CATEGORIES, eventCategory } from '@/lib/eventCategories';
 import { dayLabel, eventText, kstParts, toKstInputs } from '@/lib/eventDisplay';
-import { initials, type FeedEvent, type HostContext } from '@/lib/eventTypes';
+import { initials, type FeedEvent } from '@/lib/eventTypes';
 import { levelByNumber } from '@/lib/points';
 
 type Scope = 'upcoming' | 'mine';
-const CITY_KEY = 'doreham_events_city';
 
 export default function EventsPage() {
   const router = useRouter();
   const { user, loading } = useUser();
   const [lang, setLang] = useLang();
   const [scope, setScope] = useState<Scope>('upcoming');
-  const [city, setCity] = useState<string | null>(null); // null = not decided yet, '' = all cities
+  const [city, setCity] = useState<string | null>(''); // '' = all cities (the default)
   const [category, setCategory] = useState('');
   const [events, setEvents] = useState<FeedEvent[] | null>(null);
   const [loadedAt, setLoadedAt] = useState(0);
@@ -29,29 +28,6 @@ export default function EventsPage() {
   useEffect(() => {
     if (!loading && !user) router.push('/sign-in?return=/events');
   }, [loading, user, router]);
-
-  // Starting city: the one picked last time, else the viewer's home city, else all cities.
-  useEffect(() => {
-    if (!user || city !== null) return;
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem(CITY_KEY);
-    } catch {
-      /* private mode */
-    }
-    if (saved !== null && (saved === '' || KOREAN_CITIES.some((c) => c.slug === saved))) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the browser after sign-in
-      setCity(saved);
-      return;
-    }
-    fetch('/api/events/host-context')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((ctx: HostContext | null) => {
-        const home = (ctx?.homeDistrict ?? '').toLowerCase();
-        setCity(KOREAN_CITIES.some((c) => c.slug === home) ? home : '');
-      })
-      .catch(() => setCity(''));
-  }, [user, city]);
 
   useEffect(() => {
     if (!user || city === null) return;
@@ -85,11 +61,6 @@ export default function EventsPage() {
 
   function pickCity(slug: string) {
     setCity(slug);
-    try {
-      localStorage.setItem(CITY_KEY, slug);
-    } catch {
-      /* private mode */
-    }
   }
 
   // Featured on top, then grouped by day (Korea time). "Mine" splits into coming up and past.

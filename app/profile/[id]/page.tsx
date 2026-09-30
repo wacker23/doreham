@@ -12,6 +12,7 @@ import { EditLanguagesModal } from './modals/EditLanguagesModal';
 import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
+import { PushSettingsSection } from '@/components/PushSettingsSection';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
 import { ProfileLevel } from '@/components/ProfileLevel';
@@ -749,6 +750,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {isOwn && <PushSettingsSection lang={lang} />}
         {isOwn && <PrivacyConsentsSection lang={lang} />}
       </main>
 
