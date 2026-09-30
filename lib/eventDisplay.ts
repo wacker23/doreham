@@ -98,7 +98,7 @@ export const EVENT_ERRORS: Record<string, { en: string; ko: string }> = {
   start_too_far: { en: 'Events can be at most 4 months ahead.', ko: '이벤트는 최대 4개월 뒤까지 만들 수 있어요.' },
   bad_end: { en: 'The end time must be after the start.', ko: '종료 시간은 시작 시간 이후여야 해요.' },
   too_long: { en: 'Events can last at most 24 hours.', ko: '이벤트는 최대 24시간까지 가능해요.' },
-  too_many_events: { en: "You've reached the limit of open events. Wait until one has happened or cancel one.", ko: '열 수 있는 이벤트 수를 넘었어요. 기존 이벤트가 끝나거나 취소한 뒤 다시 시도해 주세요.' },
+  too_many_events: { en: "You've reached the limit of open events. Wait until one has happened or cancel one. (Doreham+ members can host 2 more.)", ko: '열 수 있는 이벤트 수를 넘었어요. 기존 이벤트가 끝나거나 취소한 뒤 다시 시도해 주세요. (Doreham+ 회원은 2개 더 열 수 있어요.)' },
   finish_onboarding: { en: 'Finish your profile first.', ko: '먼저 프로필을 완성해 주세요.' },
   account_frozen: { en: 'Your account is paused right now.', ko: '현재 계정이 일시 정지되어 있어요.' },
   cannot_host: { en: "You can't host events right now.", ko: '지금은 이벤트를 열 수 없어요.' },

@@ -13,6 +13,7 @@ import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
 import { PushSettingsSection } from '@/components/PushSettingsSection';
+import { isPlusActive } from '@/lib/plan';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
 import { ProfileLevel } from '@/components/ProfileLevel';
@@ -21,6 +22,8 @@ import { cityName } from '@/lib/cities';
 type Profile = {
   id: string;
   display_name: string;
+  subscription_tier?: string | null;
+  subscription_expires_at?: string | null;
   photo_url: string | null;
   bio: string | null;
   date_of_birth: string | null;
@@ -466,6 +469,9 @@ export default function ProfilePage() {
           <div className="hero-info">
             <h1>
               {profile.display_name}
+              {isPlusActive(profile.subscription_tier, profile.subscription_expires_at) && (
+                <a className="plus-badge" href="/plus" title="Doreham+">✨ Doreham+</a>
+              )}
               {isOwn && (
                 <span className="you-tag">
                   {lang === 'ko' ? '나' : 'you'}
@@ -830,6 +836,7 @@ export default function ProfilePage() {
         .avatar-fallback { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 42px; }
         .hero-info { flex: 1; }
         .hero-info h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .plus-badge { font-size: 12px; font-weight: 800; color: var(--persimmon); background: linear-gradient(135deg, rgba(255, 106, 61, 0.14), rgba(199, 184, 224, 0.3)); padding: 4px 10px; border-radius: 999px; text-decoration: none; letter-spacing: 0.01em; vertical-align: middle; }
         .you-tag { font-size: 12px; font-weight: 700; color: var(--persimmon); background: rgba(255, 106, 61, 0.15); padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; }
         .hero-age, .hero-district, .hero-job { color: var(--ink-60); font-size: 15px; margin: 4px 0; }
         .edit-pencil { position: absolute; top: 16px; right: 16px; background: #fff; border: 1px solid var(--ink-12); border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; font-size: 15px; transition: transform 0.12s, box-shadow 0.12s; }

@@ -186,6 +186,15 @@ export function UserMenu({ lang }: Props) {
               <span className="ko lang-ko">랭킹 · 혜택</span>
             </span>
           </a>
+          <a
+            href="/plus"
+            className="user-menu-item"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="menu-icon">✨</span>
+            <span>Doreham+</span>
+          </a>
 
           <div className="user-menu-divider" />
 
@@ -252,6 +261,15 @@ export function UserMenu({ lang }: Props) {
               >
                 <span className="menu-icon">🎉</span>
                 <span>Admin · Events</span>
+              </a>
+              <a
+                href="/admin/plus"
+                className="user-menu-item user-menu-item-admin"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="menu-icon">💳</span>
+                <span>Admin · Doreham+</span>
               </a>
             </>
           )}

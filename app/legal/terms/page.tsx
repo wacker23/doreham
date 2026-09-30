@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <h1>{lang === 'ko' ? '이용 약관' : 'Terms of Service'}</h1>
         <p className="last-updated">
-          {lang === 'ko' ? '최종 업데이트: 2026년 9월 29일' : 'Last updated: September 29, 2026'}
+          {lang === 'ko' ? '최종 업데이트: 2026년 9월 30일' : 'Last updated: September 30, 2026'}
         </p>
 
         {/* Summary card */}
@@ -131,7 +131,15 @@ export default function TermsPage() {
             <p>도레함은 파트너 가게에서의 퀘스트를 제안하지만, 가게에서 제공하는 상품과 서비스에 대한 책임은 지지 않습니다. 문제 발생 시 가게에 직접 문의하시거나 도레함에 알려주세요.</p>
 
             <h2>7. 요금</h2>
-            <p>현재 도레함의 기본 매칭 서비스는 무료입니다. 향후 프리미엄 기능이 추가될 경우 사전 공지합니다. 파트너 가게 방문 시 발생하는 비용은 사용자 부담입니다.</p>
+            <p>도레함은 무료 플랜과 유료 플랜 <strong>Doreham+</strong>(월 ₩4,900 또는 연 ₩39,000)를 운영합니다.</p>
+            <ul>
+              <li><strong>무료 플랜</strong>: 한 달(한국 시간 기준)에 매칭 요청 2번, 그룹에 매칭되기, 봉사 퀘스트(무제한), 이벤트 보기·참여, 레벨 한도만큼 이벤트 열기, 채팅·알림·안전 기능. 매칭되지 않고 끝나거나 취소된 요청, 그룹이 성사되지 않은 요청은 횟수에 포함되지 않습니다. 무료 플랜의 그룹 인원은 랜덤(2–5명)이고 카테고리는 선택할 수 없습니다.</li>
+              <li><strong>Doreham+</strong>: 무제한 매칭 요청, 인원·카테고리 선택, 가게 등록, 동시에 열 수 있는 이벤트 2개 추가, 프로필 배지.</li>
+              <li>온라인 결제는 아직 열리지 않았으며, 그 전까지 도레함이 초기 회원과 제휴 가게에 Doreham+를 무료로 제공할 수 있습니다. 무료 제공이 끝나기 전에 알려드리며, 회원님의 별도 동의 없이 유료로 전환하거나 결제하지 않습니다.</li>
+              <li>결제가 시작되면 가격, 자동 갱신 여부와 날짜를 결제 전에 안내하고, 언제든 한 번의 절차로 해지할 수 있게 하며, 청약철회와 환불은 전자상거래법 등 관련 법령에 따릅니다. 요금이 오르는 경우 적용 30일 전에 알리고 다시 동의를 받습니다.</li>
+              <li>Doreham+가 끝나도 이미 등록한 가게와 진행 중인 매칭은 그대로 유지됩니다.</li>
+            </ul>
+            <p>파트너 가게 방문 시 발생하는 비용은 사용자 부담입니다.</p>
 
             <h2>8. 지적 재산권</h2>
             <ul>
@@ -237,7 +245,15 @@ export default function TermsPage() {
             <p>Doreham suggests quests at partner venues but takes no responsibility for products or services provided by venues. Contact the venue directly with issues, or let Doreham know.</p>
 
             <h2>7. Fees</h2>
-            <p>Basic Doreham matching is currently free. Any future premium features will be announced in advance. Costs incurred at partner venues are your responsibility.</p>
+            <p>Doreham has a free plan and one paid plan, <strong>Doreham+</strong> (₩4,900 a month or ₩39,000 a year).</p>
+            <ul>
+              <li><strong>Free plan</strong>: 2 match requests per calendar month (Korea time), being matched into groups, 봉사 volunteer quests (unlimited), seeing and joining events, hosting events up to your level limit, chat, notifications and safety tools. Requests that end with no match, that you cancel, or whose group doesn't come together don't count. On the free plan your group size is random (2–5) and you can't choose categories.</li>
+              <li><strong>Doreham+</strong>: unlimited match requests, choosing group size and categories, registering a venue, 2 extra open events, and a profile badge.</li>
+              <li>Online payment is not open yet. Until it is, Doreham may give Doreham+ for free to early members and partner venues. We will tell you before a free period ends, and we will never switch you to a paid plan or charge you without your separate consent.</li>
+              <li>When payment opens, we will show the price, whether it renews automatically and when, before you pay; you can cancel any time in one step; withdrawals and refunds follow Korean law, including the E-Commerce Act. If the price goes up, we will tell you 30 days before and ask for your consent again.</li>
+              <li>If Doreham+ ends, venues you already registered and matches in progress stay as they are.</li>
+            </ul>
+            <p>Costs incurred at partner venues are your responsibility.</p>
 
             <h2>8. Intellectual Property</h2>
             <ul>
