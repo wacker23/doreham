@@ -20,9 +20,11 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (list) => {
-      // Already looking at that page (e.g. the chat is open)? Don't ring. Browsers still
-      // require a notification for every push, so show a silent one and close it right away.
-      const watching = list.some((c) => c.visibilityState === 'visible' && c.focused && new URL(c.url).pathname === url);
+      // Chat messages only: if that chat is open on screen, don't ring. Browsers still require a
+      // notification for every push, so show a silent one and close it right away.
+      // Every other notification is always shown.
+      const isChat = !!tag && tag.startsWith('chat-');
+      const watching = isChat && list.some((c) => c.visibilityState === 'visible' && c.focused && new URL(c.url).pathname === url);
       await self.registration.showNotification(title, {
         body: data.body || '',
         icon: '/icons/icon-192.png',

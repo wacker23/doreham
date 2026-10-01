@@ -45,6 +45,6 @@ export async function POST(request: Request) {
   if (!isUuid(body.user_id)) return jsonError('bad_user', 400);
   const months = body.months === null ? null : Number(body.months);
   if (months !== null && (!Number.isInteger(months) || months < 0 || months > 24)) return jsonError('bad_months', 400);
-  const r = await setPlus(body.user_id, months);
+  const r = await setPlus(body.user_id, months, auth.user.id);
   return r.ok ? NextResponse.json(r) : jsonError(r.error, r.error === 'user_not_found' ? 404 : 500);
 }

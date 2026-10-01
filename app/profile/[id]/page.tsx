@@ -12,7 +12,7 @@ import { EditLanguagesModal } from './modals/EditLanguagesModal';
 import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
-import { PushSettingsSection } from '@/components/PushSettingsSection';
+import { MembershipSection } from '@/components/MembershipSection';
 import { isPlusActive } from '@/lib/plan';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
@@ -756,7 +756,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {isOwn && <PushSettingsSection lang={lang} />}
+        {isOwn && <MembershipSection lang={lang} />}
         {isOwn && <PrivacyConsentsSection lang={lang} />}
       </main>
 

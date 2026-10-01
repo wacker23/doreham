@@ -17,6 +17,45 @@ export type PlanStatus = {
   match_requests_limit: number;
 };
 
+export type PlanHistoryEntry = {
+  id: string;
+  action: 'granted' | 'extended' | 'removed' | 'purchased' | 'renewed' | 'cancelled' | 'refunded';
+  source: 'doreham' | 'payment';
+  months: number | null;
+  amount_won: number | null;
+  ends_at: string | null;
+  created_at: string;
+};
+
+export type Membership = PlanStatus & {
+  member_since: string | null;
+  events_open: number;
+  events_limit: number;
+  history: PlanHistoryEntry[];
+};
+
+export function historyLabel(h: PlanHistoryEntry, lang: 'en' | 'ko'): string {
+  const ko = lang === 'ko';
+  const m = h.months;
+  const period = m == null ? (ko ? '기간 제한 없음' : 'no end date') : ko ? `${m}개월` : `${m} month${m === 1 ? '' : 's'}`;
+  switch (h.action) {
+    case 'granted':
+      return ko ? `Doreham+ 시작 · ${period} · 도레함 제공` : `Doreham+ started · ${period} · given by Doreham`;
+    case 'extended':
+      return ko ? `Doreham+ 연장 · ${period} · 도레함 제공` : `Doreham+ extended · ${period} · given by Doreham`;
+    case 'removed':
+      return ko ? 'Doreham+ 종료' : 'Doreham+ ended';
+    case 'purchased':
+      return ko ? `Doreham+ 결제 · ${period}` : `Doreham+ bought · ${period}`;
+    case 'renewed':
+      return ko ? `Doreham+ 자동 갱신 · ${period}` : `Doreham+ renewed · ${period}`;
+    case 'cancelled':
+      return ko ? 'Doreham+ 해지' : 'Doreham+ cancelled';
+    case 'refunded':
+      return ko ? '환불' : 'Refunded';
+  }
+}
+
 /** For showing a badge from a profile row (the server/DB decides access). */
 export function isPlusActive(tier: string | null | undefined, expiresAt: string | null | undefined, now = Date.now()) {
   return tier === 'plus' && (!expiresAt || new Date(expiresAt).getTime() > now);
