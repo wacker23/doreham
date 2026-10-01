@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <h1>{lang === 'ko' ? '이용 약관' : 'Terms of Service'}</h1>
         <p className="last-updated">
-          {lang === 'ko' ? '최종 업데이트: 2026년 9월 30일' : 'Last updated: September 30, 2026'}
+          {lang === 'ko' ? '최종 업데이트: 2026년 10월 1일' : 'Last updated: October 1, 2026'}
         </p>
 
         {/* Summary card */}
@@ -138,6 +138,7 @@ export default function TermsPage() {
               <li>온라인 결제는 아직 열리지 않았으며, 그 전까지 도레함이 초기 회원과 제휴 가게에 Doreham+를 무료로 제공할 수 있습니다. 무료 제공이 끝나기 전에 알려드리며, 회원님의 별도 동의 없이 유료로 전환하거나 결제하지 않습니다.</li>
               <li>결제가 시작되면 가격, 자동 갱신 여부와 날짜를 결제 전에 안내하고, 언제든 한 번의 절차로 해지할 수 있게 하며, 청약철회와 환불은 전자상거래법 등 관련 법령에 따릅니다. 요금이 오르는 경우 적용 30일 전에 알리고 다시 동의를 받습니다.</li>
               <li>Doreham+가 끝나도 이미 등록한 가게와 진행 중인 매칭은 그대로 유지됩니다.</li>
+              <li>테스트 기간에는 플랜 제한을 끄고 모든 기능을 모두에게 무료로 제공할 수 있습니다. 제한을 다시 적용하기 전에 앱에서 미리 알려드립니다.</li>
             </ul>
             <p>파트너 가게 방문 시 발생하는 비용은 사용자 부담입니다.</p>
 
@@ -252,6 +253,7 @@ export default function TermsPage() {
               <li>Online payment is not open yet. Until it is, Doreham may give Doreham+ for free to early members and partner venues. We will tell you before a free period ends, and we will never switch you to a paid plan or charge you without your separate consent.</li>
               <li>When payment opens, we will show the price, whether it renews automatically and when, before you pay; you can cancel any time in one step; withdrawals and refunds follow Korean law, including the E-Commerce Act. If the price goes up, we will tell you 30 days before and ask for your consent again.</li>
               <li>If Doreham+ ends, venues you already registered and matches in progress stay as they are.</li>
+              <li>During a test period we may switch the plan limits off so every feature is free for everyone. We will tell you in the app before the limits apply again.</li>
             </ul>
             <p>Costs incurred at partner venues are your responsibility.</p>
 

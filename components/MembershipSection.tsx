@@ -30,13 +30,15 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
   if (failed) return null;
 
   const plus = !!m?.plus;
+  const testPeriod = !!m && m.enforced === false && !plus; // plans switched off: everything unlocked
+  const open = plus || testPeriod;
   const used = m?.match_requests_used ?? 0;
   const limit = m?.match_requests_limit ?? FREE_MATCH_REQUESTS_PER_MONTH;
   const history = m?.history ?? [];
   const shown = showAll ? history : history.slice(0, 4);
 
   return (
-    <div className={`ms-card ${plus ? 'plus' : ''}`}>
+    <div className={`ms-card ${open ? 'plus' : ''}`}>
       <div className="ms-top">
         <h3>{t('Membership', '멤버십')}</h3>
         <a className="ms-link" href="/plus">{t('See plans →', '플랜 보기 →')}</a>
@@ -47,9 +49,13 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
       ) : (
         <>
           <div className="ms-plan">
-            <span className={`ms-pill ${plus ? 'plus' : ''}`}>{plus ? '✨ Doreham+' : t('Free plan', '무료 플랜')}</span>
+            <span className={`ms-pill ${open ? 'plus' : ''}`}>
+              {plus ? '✨ Doreham+' : testPeriod ? t('🎉 Test period', '🎉 테스트 기간') : t('Free plan', '무료 플랜')}
+            </span>
             <span className="ms-status">
-              {plus
+              {testPeriod
+                ? t('Everything is unlocked for everyone', '모든 기능이 모두에게 열려 있어요')
+                : plus
                 ? m.expires_at
                   ? t(`Active until ${date(m.expires_at)}`, `${date(m.expires_at)}까지 이용`)
                   : t('Active · no end date', '이용 중 · 기간 제한 없음')
@@ -63,9 +69,9 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
           <div className="ms-usage">
             <div className="ms-row">
               <span>{t('Match requests this month', '이번 달 매칭 요청')}</span>
-              <b>{plus ? t(`${used} · unlimited`, `${used}번 · 무제한`) : t(`${used} of ${limit}`, `${limit}번 중 ${used}번`)}</b>
+              <b>{open ? t(`${used} · unlimited`, `${used}번 · 무제한`) : t(`${used} of ${limit}`, `${limit}번 중 ${used}번`)}</b>
             </div>
-            {!plus && (
+            {!open && (
               <div className="ms-bar" aria-hidden="true">
                 <div style={{ width: `${Math.min(100, (used / Math.max(1, limit)) * 100)}%` }} />
               </div>
@@ -80,11 +86,11 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
             </div>
             <div className="ms-row">
               <span>{t('Group size & categories', '인원·카테고리 선택')}</span>
-              <b>{plus ? t('You choose', '직접 선택') : t('Random · any', '랜덤 · 전체')}</b>
+              <b>{open ? t('You choose', '직접 선택') : t('Random · any', '랜덤 · 전체')}</b>
             </div>
             <div className="ms-row">
               <span>{t('Register a venue', '가게 등록')}</span>
-              <b>{plus ? t('Included', '포함') : '—'}</b>
+              <b>{open ? t('Included', '포함') : '—'}</b>
             </div>
           </div>
 
@@ -94,10 +100,12 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
               <b>
                 {plus
                   ? t('Given by Doreham · no charge', '도레함 제공 · 결제 없음')
-                  : t('Online payment opens soon', '온라인 결제 곧 시작')}
+                  : testPeriod
+                    ? t('Free during the test', '테스트 기간 무료')
+                    : t('Online payment opens soon', '온라인 결제 곧 시작')}
               </b>
             </div>
-            {plus && (
+            {open && (
               <div className="ms-note">
                 {t(
                   "You won't be charged. When payment opens we'll ask you first; nothing renews without your OK.",
@@ -107,7 +115,7 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
             )}
           </div>
 
-          {!plus && (
+          {!open && (
             <div className="ms-upsell">
               <div className="ms-upsell-title">{t('With Doreham+', 'Doreham+로')}</div>
               <ul>

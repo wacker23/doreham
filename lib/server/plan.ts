@@ -5,7 +5,7 @@ import { FREE_MATCH_REQUESTS_PER_MONTH, PLUS_EXTRA_OPEN_EVENTS, type Membership,
 import { hostLimitForLevel } from '@/lib/points';
 import { levelOf } from '@/lib/server/points';
 
-const FREE: PlanStatus = { plus: false, expires_at: null, match_requests_used: 0, match_requests_limit: FREE_MATCH_REQUESTS_PER_MONTH };
+const FREE: PlanStatus = { plus: false, expires_at: null, match_requests_used: 0, match_requests_limit: FREE_MATCH_REQUESTS_PER_MONTH, enforced: true };
 
 /** Someone's plan, from the database (public.plan_status). Falls back to Free on errors. */
 export async function getPlan(userId: string): Promise<PlanStatus> {
@@ -17,6 +17,7 @@ export async function getPlan(userId: string): Promise<PlanStatus> {
     expires_at: d.expires_at ?? null,
     match_requests_used: Number(d.match_requests_used ?? 0),
     match_requests_limit: Number(d.match_requests_limit ?? FREE_MATCH_REQUESTS_PER_MONTH),
+    enforced: d.enforced !== false, // older database without the switch = enforced
   };
 }
 
@@ -24,9 +25,24 @@ export async function hasPlus(userId: string): Promise<boolean> {
   return (await getPlan(userId)).plus;
 }
 
-/** Extra open events a Doreham+ member can host on top of their level limit. */
+/** Extra open events on top of the level limit: Doreham+ members, and everyone during the test period. */
 export async function planEventBonus(userId: string): Promise<number> {
-  return (await hasPlus(userId)) ? PLUS_EXTRA_OPEN_EVENTS : 0;
+  const p = await getPlan(userId);
+  return p.plus || !p.enforced ? PLUS_EXTRA_OPEN_EVENTS : 0;
+}
+
+/** The test-period switch (app_settings.plans_enforced). */
+export async function getPlansEnforced(): Promise<boolean> {
+  const { data, error } = await getAdmin().rpc('get_plans_enforced');
+  if (error) return true;
+  return data !== false;
+}
+
+export async function setPlansEnforced(on: boolean, byUserId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await getAdmin()
+    .from('app_settings')
+    .upsert({ key: 'plans_enforced', value: on, updated_at: new Date().toISOString(), updated_by: byUserId }, { onConflict: 'key' });
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 /**
@@ -124,7 +140,7 @@ export async function getMembership(userId: string): Promise<Membership> {
     ...plan,
     member_since: since,
     events_open: events.count ?? 0,
-    events_limit: hostLimitForLevel(level) + (plan.plus ? PLUS_EXTRA_OPEN_EVENTS : 0),
+    events_limit: hostLimitForLevel(level) + (plan.plus || !plan.enforced ? PLUS_EXTRA_OPEN_EVENTS : 0),
     history: rows,
   };
 }

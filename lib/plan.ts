@@ -11,11 +11,19 @@ export const PLUS_PRICE_MONTH_WON = 4900;
 export const PLUS_PRICE_YEAR_WON = 39000;
 
 export type PlanStatus = {
+  /** A real Doreham+ membership. */
   plus: boolean;
   expires_at: string | null;
   match_requests_used: number;
   match_requests_limit: number;
+  /** false = test period: plan limits are switched off and everyone can use everything. */
+  enforced: boolean;
 };
+
+/** Whether Doreham+ features are open to this person right now (member, or plans not enforced yet). */
+export function planUnlocked(p: Pick<PlanStatus, 'plus' | 'enforced'> | null | undefined): boolean {
+  return !!p && (p.plus || p.enforced === false);
+}
 
 export type PlanHistoryEntry = {
   id: string;

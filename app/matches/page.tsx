@@ -10,7 +10,7 @@ import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
 import { supabase } from '@/lib/supabase/client';
-import { FREE_MATCH_REQUESTS_PER_MONTH, planError, type PlanStatus } from '@/lib/plan';
+import { FREE_MATCH_REQUESTS_PER_MONTH, planError, planUnlocked, type PlanStatus } from '@/lib/plan';
 
 type Tab = 'pending' | 'request' | 'history';
 
@@ -142,7 +142,8 @@ export default function MatchesPage() {
   const [submittingRequest, setSubmittingRequest] = useState(false);
   // Plan (Free / Doreham+). Locks show only once it's known, so Doreham+ members never see them flash.
   const [plan, setPlan] = useState<PlanStatus | null>(null);
-  const isFree = plan !== null && !plan.plus;
+  // Locks only when plans are enforced (not during the test period) and the person isn't a member.
+  const isFree = plan !== null && !planUnlocked(plan);
   const requestsLeft = plan ? Math.max(0, plan.match_requests_limit - plan.match_requests_used) : null;
   const outOfRequests = isFree && requestsLeft === 0 && !isVolunteerRequest;
   const [planNote, setPlanNote] = useState<string | null>(null);
@@ -190,7 +191,7 @@ export default function MatchesPage() {
       .then((d) => {
         if (!d) return;
         setPlan(d as PlanStatus);
-        if (!d.plus) {
+        if (!planUnlocked(d as PlanStatus)) {
           // Free plan: random group size, any category (봉사 can still be picked)
           setRandomSize(true);
           setSelectedGroupSize(null);
@@ -792,6 +793,10 @@ export default function MatchesPage() {
               {plan && (
                 plan.plus ? (
                   <a className="plan-tag plus" href="/plus">✨ Doreham+</a>
+                ) : !plan.enforced ? (
+                  <a className="plan-tag plus" href="/plus">
+                    {lang === 'ko' ? '🎉 테스트 기간 · 모든 기능 무료' : '🎉 Test period · everything is free'}
+                  </a>
                 ) : (
                   <a className="plan-tag" href="/plus">
                     {lang === 'ko'

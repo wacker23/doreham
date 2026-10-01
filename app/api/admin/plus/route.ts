@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isUuid, jsonError, readJson, requireAdmin } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { setPlus } from '@/lib/server/plan';
+import { getPlansEnforced, setPlansEnforced, setPlus } from '@/lib/server/plan';
 import { isPlusActive } from '@/lib/plan';
 
 type Row = { id: string; display_name: string | null; email: string | null; plus: boolean; tier: string; expires_at: string | null };
@@ -31,17 +31,25 @@ export async function GET(request: Request) {
   }));
 
   const members = rows.filter((r) => r.tier === 'plus').sort((a, b) => (a.display_name ?? '').localeCompare(b.display_name ?? ''));
+  const enforced = await getPlansEnforced();
   const results = q
     ? rows.filter((r) => (r.display_name ?? '').toLowerCase().includes(q) || (r.email ?? '').toLowerCase().includes(q) || r.id === q).slice(0, 30)
     : [];
-  return NextResponse.json({ members, results });
+  return NextResponse.json({ members, results, enforced });
 }
 
-/** POST { user_id, months } — months: 1–24 to give/extend, null for no end date, 0 to remove. */
+/**
+ * POST { user_id, months } — months: 1–24 to give/extend, null for no end date, 0 to remove.
+ * POST { enforced: boolean } — switch the Free / Doreham+ limits on or off (test period).
+ */
 export async function POST(request: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
-  const body = await readJson<{ user_id?: unknown; months?: unknown }>(request);
+  const body = await readJson<{ user_id?: unknown; months?: unknown; enforced?: unknown }>(request);
+  if (typeof body.enforced === 'boolean') {
+    const r = await setPlansEnforced(body.enforced, auth.user.id);
+    return r.ok ? NextResponse.json({ ok: true, enforced: body.enforced }) : jsonError(r.error, 500);
+  }
   if (!isUuid(body.user_id)) return jsonError('bad_user', 400);
   const months = body.months === null ? null : Number(body.months);
   if (months !== null && (!Number.isInteger(months) || months < 0 || months > 24)) return jsonError('bad_months', 400);
