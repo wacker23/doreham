@@ -15,6 +15,7 @@ export default function AdminPlusPage() {
   const [q, setQ] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+  const [enforced, setEnforced] = useState<boolean | null>(null);
 
   const load = useCallback(
     async (query: string) => {
@@ -27,6 +28,7 @@ export default function AdminPlusPage() {
       }
       setMembers(j.members ?? []);
       setResults(j.results ?? []);
+      setEnforced(typeof j.enforced === 'boolean' ? j.enforced : null);
     },
     [router],
   );
@@ -49,6 +51,24 @@ export default function AdminPlusPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, months }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) setError(j.error || 'failed');
+    await load(q);
+    setBusy('');
+  }
+
+  async function flip(on: boolean) {
+    const msg = on
+      ? 'Turn the plans ON? Free members go back to 2 match requests a month, random group size, no categories, and no new venues. Tell your testers first.'
+      : 'Turn the plans OFF? Everyone can use every Doreham+ feature for free.';
+    if (!confirm(msg)) return;
+    setBusy('switch');
+    setError('');
+    const r = await fetch('/api/admin/plus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enforced: on }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) setError(j.error || 'failed');
@@ -105,6 +125,24 @@ export default function AdminPlusPage() {
         </p>
         {error && <div className="err">{error}</div>}
 
+        <div className={`switch ${enforced === false ? 'test' : ''}`}>
+          <div>
+            <div className="switch-title">
+              {enforced === null ? 'Plans: …' : enforced ? 'Plans are ON' : 'Test period: plans are OFF'}
+            </div>
+            <div className="muted small">
+              {enforced === false
+                ? 'Everyone can use every feature for free (unlimited requests, group size, categories, venues, +2 events). Memberships and history are kept.'
+                : 'Free members have the free-plan limits; Doreham+ members have everything.'}
+            </div>
+          </div>
+          {enforced !== null && (
+            <button disabled={!!busy} onClick={() => flip(!enforced)}>
+              {enforced ? 'Turn plans off' : 'Turn plans on'}
+            </button>
+          )}
+        </div>
+
         <form
           className="search"
           onSubmit={(e) => {
@@ -136,6 +174,10 @@ export default function AdminPlusPage() {
         .admin-plus .muted { color: var(--ink-60); font-size: 14px; }
         .admin-plus .small { font-size: 12.5px; }
         .admin-plus .err { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); padding: 10px 14px; border-radius: 10px; margin: 12px 0; font-size: 14px; }
+        .admin-plus .switch { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: #fff; border: 1px solid var(--ink-12); border-radius: 14px; padding: 14px 16px; margin: 16px 0 6px; flex-wrap: wrap; }
+        .admin-plus .switch.test { border-color: rgba(15, 157, 119, 0.4); background: rgba(15, 157, 119, 0.06); }
+        .admin-plus .switch-title { font-weight: 800; font-size: 15px; color: var(--ink); }
+        .admin-plus .switch button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: var(--body); }
         .admin-plus .search { display: flex; gap: 8px; margin: 18px 0 10px; }
         .admin-plus .search input { flex: 1; border: 1px solid var(--ink-12); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: var(--body); background: #fff; }
         .admin-plus .search button, .admin-plus .acts button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 12px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: var(--body); }

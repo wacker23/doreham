@@ -14,6 +14,7 @@ import { ReviewStep } from './steps/ReviewStep';
 import { uploadPhoto, submitVenue } from './lib/save';
 import type { UiLanguage, VenueFormData, VenueStep, MenuItem } from './lib/types';
 import { CATEGORY_LABELS, DEFAULT_HOURS, TOTAL_VENUE_STEPS } from './lib/types';
+import { planUnlocked } from '@/lib/plan';
 
 export default function VenueRegisterPage() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function VenueRegisterPage() {
         .is('deactivated_at', null);
       if ((count ?? 0) >= 2) setAtLimit(true);
       const plan = await fetch('/api/plan').then((r) => (r.ok ? r.json() : null)).catch(() => null);
-      if (plan && !plan.plus) setNeedsPlus(true);
+      if (plan && !planUnlocked(plan)) setNeedsPlus(true);
     })();
   }, [user]);
 

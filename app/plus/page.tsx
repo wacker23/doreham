@@ -64,9 +64,19 @@ export default function PlusPage() {
           </p>
         </div>
 
-        <div className={`status ${plan?.plus ? 'on' : ''}`}>
+        <div className={`status ${plan?.plus || plan?.enforced === false ? 'on' : ''}`}>
           {!plan ? (
             <span className="muted">…</span>
+          ) : !plan.enforced && !plan.plus ? (
+            <>
+              <div className="status-title">🎉 {t('Test period: everything is unlocked', '테스트 기간: 모든 기능이 열려 있어요')}</div>
+              <div className="status-sub">
+                {t(
+                  "While we test Doreham, every Doreham+ feature is free for everyone. We'll tell you before the plans start.",
+                  '도레함을 테스트하는 동안 Doreham+ 기능을 모두 무료로 쓸 수 있어요. 플랜이 시작되기 전에 미리 알려드릴게요.',
+                )}
+              </div>
+            </>
           ) : plan.plus ? (
             <>
               <div className="status-title">✨ {t('You have Doreham+', 'Doreham+ 이용 중')}</div>
@@ -113,7 +123,7 @@ export default function PlusPage() {
               '온라인 결제는 곧 열려요. 그 전까지는 도레함이 초기 회원과 제휴 가게에 Doreham+를 드리고 있어요.',
             )}
           </p>
-          {!plan?.plus && (
+          {!plan?.plus && plan?.enforced !== false && (
             <a className="ask" href={`mailto:${SUPPORT_EMAIL}?subject=Doreham%2B`}>
               {t('Ask for Doreham+ →', 'Doreham+ 문의하기 →')}
             </a>
