@@ -11,7 +11,7 @@ import { useLang } from '@/lib/hooks/useLang';
  * Not reviewed by a lawyer yet.
  */
 
-const UPDATED = { en: 'September 30, 2026', ko: '2026년 9월 30일' };
+const UPDATED = { en: 'October 1, 2026', ko: '2026년 10월 1일' };
 const PRIVACY_EMAIL = 'privacy@doreham.co.kr';
 
 export default function PrivacyPage() {
@@ -130,7 +130,7 @@ function English() {
           ['Points and ranking', 'Points history, level, badges, monthly rank, whether you appear on the leaderboard, and the venue perks you use', 'Created as you use the service'],
           ['Volunteer quests', 'The 1365 activity your group chose (public data), whether you confirmed signing up on 1365, group selfie photos and who is tagged in them, your 1365 certificate, your location when you upload a selfie', 'Photos: required to finish a volunteer quest (with your consent). Certificate and location: optional'],
           ['Venue owners', 'Business name, business registration number, address, contact details, menu, photos, opening hours', 'Required to list a venue'],
-          ['Plan', 'Whether you have Doreham+ and until when, and how many match requests you made this month', 'Created as you use the service'],
+          ['Plan', 'Whether you have Doreham+ and until when, the history of your membership (when it started, was extended or ended), and how many match requests you made this month', 'Created as you use the service'],
           ['Push notifications', 'If you turn them on for a browser or phone: the push address your browser gives us for that device, its encryption keys, your language and your browser type', 'Optional'],
           ['Collected automatically', 'Sign-in cookie, your language choice (stored in your browser), server logs (IP address, browser, pages requested)', 'Required to run the service'],
         ]}
@@ -265,7 +265,7 @@ function Korean() {
           ['포인트와 랭킹', '포인트 기록, 레벨, 배지, 월간 순위, 순위표 공개 여부, 사용한 제휴 가게 혜택', '서비스 이용 과정에서 생성'],
           ['봉사 퀘스트', '그룹이 고른 1365 봉사활동(공개 정보), 1365 신청 완료 여부, 단체 사진과 사진 속 멤버 표시, 1365 봉사활동 확인서, 사진을 올릴 때의 위치', '사진: 봉사 퀘스트 완료에 필요(동의 시). 확인서·위치: 선택'],
           ['제휴 장소 운영자', '상호, 사업자등록번호, 주소, 연락처, 메뉴, 사진, 영업시간', '장소 등록에 필수'],
-          ['플랜', 'Doreham+ 이용 여부와 기간, 이번 달 매칭 요청 횟수', '서비스 이용 과정에서 생성'],
+          ['플랜', 'Doreham+ 이용 여부와 기간, 멤버십 기록(시작·연장·종료 일시), 이번 달 매칭 요청 횟수', '서비스 이용 과정에서 생성'],
           ['푸시 알림', '브라우저나 휴대폰에서 알림을 켠 경우: 브라우저가 그 기기에 발급한 푸시 주소, 암호화 키, 언어 설정, 브라우저 종류', '선택'],
           ['자동 수집', '로그인 쿠키, 언어 설정(브라우저에 저장), 서버 로그(IP 주소, 브라우저 정보, 요청한 페이지)', '서비스 운영에 필수'],
         ]}

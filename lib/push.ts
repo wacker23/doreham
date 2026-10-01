@@ -113,7 +113,9 @@ export async function disablePush(): Promise<void> {
 
 /** Before signing out: stop this browser getting the old account's notifications. Never hangs sign-out. */
 export async function disablePushForSignOut(): Promise<void> {
-  if (typeof window === 'undefined' || !supported()) return;
+  if (typeof window === 'undefined') return;
+  forgetPushAsks();
+  if (!supported()) return;
   await Promise.race([disablePush().catch(() => {}), new Promise((r) => setTimeout(r, 2500))]);
 }
 
@@ -130,90 +132,111 @@ export async function syncPush(fallbackLang: 'en' | 'ko'): Promise<void> {
   });
 }
 
-// ---- Asking once, like an app ------------------------------------------------------
+// ---- Ask until allowed ---------------------------------------------------------------
+// Every time someone opens the app (a new browser session) or signs in, and notifications
+// aren't allowed yet, the browser's permission dialog is shown again.
 
-const ASKED_KEY = 'doreham_push_asked'; // the permission question was answered or dismissed on this device
-const OFF_KEY = 'doreham_push_off'; // the person turned notifications off in their profile
-
-function getFlag(k: string): boolean {
+// Flags from the earlier "ask once" version: forget them so everyone is asked again.
+function clearOldFlags() {
   try {
-    return localStorage.getItem(k) === '1';
-  } catch {
-    return false;
-  }
-}
-function setFlag(k: string, on: boolean) {
-  try {
-    if (on) localStorage.setItem(k, '1');
-    else localStorage.removeItem(k);
+    for (const k of ['doreham_push_asked', 'doreham_push_off', 'doreham_push_ios_hint', 'doreham_push_prompt_dismissed_at']) {
+      localStorage.removeItem(k);
+    }
   } catch {
     /* private mode */
   }
 }
 
-let armed = false;
-/** Safari and Firefox only show the permission dialog after a tap: ask on the first tap that isn't a link. */
+function sessionFlag(key: string): boolean {
+  try {
+    return sessionStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+function setSessionFlag(key: string, on: boolean) {
+  try {
+    if (on) sessionStorage.setItem(key, '1');
+    else sessionStorage.removeItem(key);
+  } catch {
+    /* private mode */
+  }
+}
+
+const askedKey = (userId: string) => `doreham_push_asked_${userId}`;
+const BANNER_KEY = 'doreham_push_banner_closed';
+
+let armedTap: ((e: Event) => void) | null = null;
+function disarmTap() {
+  if (armedTap) document.removeEventListener('click', armedTap, true);
+  armedTap = null;
+}
+/** Safari and Firefox only show the permission dialog after a tap: ask on the next tap that isn't a link. */
 function askOnFirstTap(lang: 'en' | 'ko') {
-  if (armed) return;
-  armed = true;
-  const onTap = (e: Event) => {
+  if (armedTap) return;
+  armedTap = (e: Event) => {
     const target = e.target as Element | null;
     if (target?.closest?.('a[href]')) return; // a link would navigate away and cancel the dialog
-    document.removeEventListener('click', onTap, true);
-    armed = false;
-    setFlag(ASKED_KEY, true);
+    if (target?.closest?.('.pp-on')) return; // the reminder's own button asks by itself
+    disarmTap();
     enablePush(lang).catch(() => {});
   };
-  document.addEventListener('click', onTap, true);
+  document.addEventListener('click', armedTap, true);
 }
 
 /**
- * Run once per app page load, for a signed-in user:
- * - notifications on: refresh the server copy;
- * - allowed before (e.g. after signing out and in again) and not turned off: subscribe quietly;
- * - never asked on this device: show the browser's permission dialog (only once, ever).
+ * Run on every app page for a signed-in user:
+ * - notifications on: refresh the server copy (owner + language);
+ * - allowed already (e.g. after signing out and in again): subscribe quietly;
+ * - not allowed yet: show the browser's permission dialog, once per visit / sign-in.
+ * Returns the state afterwards, so the page can show a hint when it's still not on.
  */
 let autoRun: Promise<PushState> | null = null;
-export function autoPush(lang: 'en' | 'ko'): Promise<PushState> {
+export function autoPush(lang: 'en' | 'ko', userId: string): Promise<PushState> {
   // One run at a time (the header can mount twice while a dialog is open).
-  autoRun ??= runAutoPush(lang).finally(() => {
+  autoRun ??= runAutoPush(lang, userId).finally(() => {
     autoRun = null;
   });
   return autoRun;
 }
 
-async function runAutoPush(lang: 'en' | 'ko'): Promise<PushState> {
+async function runAutoPush(lang: 'en' | 'ko', userId: string): Promise<PushState> {
+  clearOldFlags();
   const state = await getPushState();
   if (state === 'on') {
     await syncPush(lang);
     return state;
   }
-  if (state === 'off' && !getFlag(OFF_KEY)) return enablePush(lang).catch(() => state);
-  if (state !== 'default' || getFlag(ASKED_KEY)) return state;
+  if (state === 'off') return enablePush(lang).catch(() => state);
+  if (state !== 'default') return state;
+  if (sessionFlag(askedKey(userId))) return state;
 
+  setSessionFlag(askedKey(userId), true);
   const started = Date.now();
   const result = await enablePush(lang).catch(() => 'default' as PushState);
-  // Answered, or the dialog was on screen long enough for a person to close it: don't ask again.
-  if (result !== 'default' || Date.now() - started > 800) setFlag(ASKED_KEY, true);
-  // Resolved instantly with no answer: this browser needs a tap first.
-  else askOnFirstTap(lang);
+  // Resolved at once with no answer: this browser shows the dialog only after a tap.
+  if (result === 'default' && Date.now() - started < 800) askOnFirstTap(lang);
   return result;
 }
 
-/** Profile switch. */
-export async function turnPushOn(lang: 'en' | 'ko'): Promise<PushState> {
-  setFlag(OFF_KEY, false);
-  setFlag(ASKED_KEY, true);
-  return enablePush(lang);
-}
-export async function turnPushOff(): Promise<void> {
-  setFlag(OFF_KEY, true);
-  await disablePush();
+/** From the reminder banner's button (a tap, so every browser can show the dialog). */
+export function askNow(lang: 'en' | 'ko'): Promise<PushState> {
+  disarmTap();
+  return enablePush(lang).catch(() => 'default' as PushState);
 }
 
-export function iosHintSeen(): boolean {
-  return getFlag('doreham_push_ios_hint');
+/** Signing out: the next account on this browser is asked again. */
+export function forgetPushAsks() {
+  try {
+    for (const k of Object.keys(sessionStorage)) if (k.startsWith('doreham_push_')) sessionStorage.removeItem(k);
+  } catch {
+    /* private mode */
+  }
 }
-export function markIosHintSeen() {
-  setFlag('doreham_push_ios_hint', true);
+
+export function bannerClosedThisVisit(): boolean {
+  return sessionFlag(BANNER_KEY);
+}
+export function closeBannerThisVisit() {
+  setSessionFlag(BANNER_KEY, true);
 }
