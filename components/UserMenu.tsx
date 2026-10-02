@@ -29,6 +29,7 @@ export function UserMenu({ lang }: Props) {
       .from('venues')
       .select('id', { count: 'exact', head: true })
       .eq('owner_id', user.id)
+      .is('deactivated_at', null)
       .then(({ count }) => {
         setVenueCount(count ?? 0);
       });

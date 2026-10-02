@@ -12,9 +12,15 @@ type Props = {
   onSubmit: () => void;
   onBack: () => void;
   onEditStep: (step: number) => void;
+  /** 'edit' = changing a venue that already exists (My venues → Edit). */
+  mode?: 'new' | 'edit';
 };
 
-export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack, onEditStep }: Props) {
+export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack, onEditStep, mode = 'new' }: Props) {
+  const editing = mode === 'edit';
+  const keptPhotos = formData.photo_urls ?? [];
+  const newPhotos = formData.photo_files ?? [];
+  const photoCount = keptPhotos.length + newPhotos.length;
   const cityLabel =
     KOREAN_CITIES.find((c) => c.code === formData.city)?.[lang] ?? formData.city ?? '';
   const catInfo = formData.category ? CATEGORY_LABELS[formData.category] : null;
@@ -22,10 +28,14 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
   return (
     <div>
       <h2 className="step-title">
-        {lang === 'ko' ? '내용 확인' : 'Review your submission'}
+        {editing ? (lang === 'ko' ? '바뀐 내용 확인' : 'Check your changes') : lang === 'ko' ? '내용 확인' : 'Review your submission'}
       </h2>
       <p className="step-sub">
-        {lang === 'ko'
+        {editing
+          ? lang === 'ko'
+            ? '아래 내용을 확인하고 저장해 주세요.'
+            : 'Check everything below, then save.'
+          : lang === 'ko'
           ? '아래 내용을 확인하고 제출해주세요. 승인 후 도레함에 등록됩니다.'
           : "Review everything below. We'll email you within 48 hours after approval."}
       </p>
@@ -147,16 +157,20 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
       )}
 
       {/* Photos */}
-      {formData.photo_files && formData.photo_files.length > 0 && (
+      {photoCount > 0 && (
         <div className="section">
           <div className="section-header">
-            <h3>{lang === 'ko' ? `사진 (${formData.photo_files.length}장)` : `Photos (${formData.photo_files.length})`}</h3>
+            <h3>{lang === 'ko' ? `사진 (${photoCount}장)` : `Photos (${photoCount})`}</h3>
             <button type="button" onClick={() => onEditStep(5)} className="edit-btn">
               {lang === 'ko' ? '수정' : 'Edit'}
             </button>
           </div>
           <div className="photos-preview">
-            {formData.photo_files.map((f, i) => (
+            {keptPhotos.map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={url} src={url} alt={`Photo ${i + 1}`} className="preview-img" />
+            ))}
+            {newPhotos.map((f, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img key={i} src={URL.createObjectURL(f)} alt={`Photo ${i + 1}`} className="preview-img" />
             ))}
@@ -192,7 +206,11 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
       {error && <div className="error-banner">{error}</div>}
 
       <div className="disclaimer">
-        {lang === 'ko'
+        {editing
+          ? lang === 'ko'
+            ? '가게 이름(사업자등록증상), 사업자등록번호, 주소를 바꾸면 도레함이 다시 확인할 때까지 가게가 잠시 숨겨져요. 다른 내용은 바로 반영돼요.'
+            : 'If you change the legal name, registration number or address, your venue is hidden until Doreham checks it again. Other changes show right away.'
+          : lang === 'ko'
           ? '제출 후 관리자 검토를 거쳐 승인됩니다. 승인 완료 시 이메일로 알려드립니다. (보통 48시간 이내)'
           : "After submission, we review and approve manually. You'll get an email once approved (usually within 48 hours)."}
       </div>
@@ -203,8 +221,12 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
         </button>
         <button type="button" className="btn-submit" onClick={onSubmit} disabled={submitting}>
           {submitting
-            ? (lang === 'ko' ? '제출 중… 사진 업로드 포함 시간이 걸릴 수 있습니다.' : 'Submitting… uploads may take a moment.')
-            : (lang === 'ko' ? '제출하기' : 'Submit for review')}
+            ? editing
+              ? (lang === 'ko' ? '저장 중…' : 'Saving…')
+              : (lang === 'ko' ? '제출 중… 사진 업로드 포함 시간이 걸릴 수 있습니다.' : 'Submitting… uploads may take a moment.')
+            : editing
+              ? (lang === 'ko' ? '변경 내용 저장' : 'Save changes')
+              : (lang === 'ko' ? '제출하기' : 'Submit for review')}
         </button>
       </div>
 

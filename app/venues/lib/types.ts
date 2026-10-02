@@ -28,6 +28,8 @@ export type DayHours = {
 export type WeekHours = Record<Weekday, DayHours>;
 
 export type MenuItem = {
+  /** Saved menu item (editing a venue). */
+  id?: string;
   name: string;
   name_en?: string;
   description?: string;

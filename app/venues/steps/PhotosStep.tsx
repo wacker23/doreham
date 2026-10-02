@@ -6,7 +6,7 @@ import type { UiLanguage, VenueFormData } from '../lib/types';
 type Props = {
   lang: UiLanguage;
   initialData: Partial<VenueFormData>;
-  onNext: (data: { photo_files: File[] }) => void;
+  onNext: (data: { photo_files: File[]; photo_urls: string[] }) => void;
   onBack: () => void;
 };
 
@@ -14,6 +14,8 @@ const MAX_PHOTOS = 5;
 const MAX_FILE_SIZE_MB = 5;
 
 export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
+  // Photos already saved (editing a venue): kept unless removed.
+  const [kept, setKept] = useState<string[]>(initialData.photo_urls ?? []);
   const [files, setFiles] = useState<File[]>(initialData.photo_files ?? []);
   const [previews, setPreviews] = useState<string[]>(() =>
     (initialData.photo_files ?? []).map((f) => URL.createObjectURL(f))
@@ -30,7 +32,7 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
     const newPreviews: string[] = [];
 
     for (const f of filesArray) {
-      if (files.length + validFiles.length >= MAX_PHOTOS) {
+      if (kept.length + files.length + validFiles.length >= MAX_PHOTOS) {
         setError(
           lang === 'ko'
             ? `사진은 최대 ${MAX_PHOTOS}장까지 업로드 가능합니다.`
@@ -75,10 +77,17 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
     setError(null);
   }
 
+  function removeKept(index: number) {
+    setKept(kept.filter((_, i) => i !== index));
+    setError(null);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onNext({ photo_files: files });
+    onNext({ photo_files: files, photo_urls: kept });
   }
+
+  const total = kept.length + files.length;
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -102,6 +111,25 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
       />
 
       <div className="photos-grid">
+        {kept.map((url, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <div key={url} className="photo-tile">
+            <img src={url} alt={`Venue photo ${i + 1}`} />
+            <button
+              type="button"
+              className="remove-btn"
+              onClick={() => removeKept(i)}
+              aria-label={lang === 'ko' ? '사진 삭제' : 'Remove photo'}
+            >
+              ×
+            </button>
+            {i === 0 && (
+              <span className="cover-badge">
+                {lang === 'ko' ? '대표 사진' : 'Cover'}
+              </span>
+            )}
+          </div>
+        ))}
         {previews.map((preview, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <div key={i} className="photo-tile">
@@ -114,7 +142,7 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
             >
               ×
             </button>
-            {i === 0 && (
+            {i === 0 && kept.length === 0 && (
               <span className="cover-badge">
                 {lang === 'ko' ? '대표 사진' : 'Cover'}
               </span>
@@ -122,7 +150,7 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
           </div>
         ))}
 
-        {files.length < MAX_PHOTOS && (
+        {total < MAX_PHOTOS && (
           <label htmlFor="photo-upload" className="upload-tile">
             <span className="upload-icon">+</span>
             <span className="upload-text">
@@ -135,12 +163,12 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
       <div className="info">
         {lang === 'ko' ? (
           <>
-            <span>{files.length} / {MAX_PHOTOS}장</span>
+            <span>{total} / {MAX_PHOTOS}장</span>
             <span>파일당 최대 {MAX_FILE_SIZE_MB}MB · JPG, PNG, WebP</span>
           </>
         ) : (
           <>
-            <span>{files.length} / {MAX_PHOTOS} photos</span>
+            <span>{total} / {MAX_PHOTOS} photos</span>
             <span>Max {MAX_FILE_SIZE_MB}MB per file · JPG, PNG, WebP</span>
           </>
         )}

@@ -50,6 +50,7 @@ export default function MyVenuesPage() {
   const [complimentTagsMap, setComplimentTagsMap] = useState<Record<string, any>>({});
   const [loadingVenues, setLoadingVenues] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -68,6 +69,7 @@ export default function MyVenuesPage() {
       .from('venues')
       .select('*')
       .eq('owner_id', user!.id)
+      .is('deactivated_at', null)
       .order('created_at', { ascending: false });
 
     if (err) {
@@ -116,6 +118,24 @@ export default function MyVenuesPage() {
   }
 
   if (!user) return null;
+
+  async function removeVenue(venue: Venue) {
+    const ok = confirm(
+      lang === 'ko'
+        ? `"${venue.business_name_display}"을(를) 도레함에서 삭제할까요?\n\n가게 페이지, 사진, 메뉴, 혜택이 사라지고 예정된 가게 이벤트는 취소돼요. 되돌릴 수 없어요.`
+        : `Delete "${venue.business_name_display}" from Doreham?\n\nIts page, photos, menu and perks are removed and upcoming venue events are cancelled. This can't be undone.`,
+    );
+    if (!ok) return;
+    setDeleting(venue.id);
+    setError(null);
+    const r = await fetch(`/api/venues/${venue.id}`, { method: 'DELETE' });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      setError(lang === 'ko' ? `삭제하지 못했어요 (${j.error ?? r.status})` : `Couldn't delete (${j.error ?? r.status})`);
+    }
+    setDeleting(null);
+    await loadMyVenues();
+  }
 
   const pendingCount = venues.filter((v) => !v.is_active).length;
   const approvedCount = venues.filter((v) => v.is_active).length;
@@ -197,6 +217,20 @@ export default function MyVenuesPage() {
                         </p>
                         {venue.address && <p className="v-address">{venue.address}</p>}
                       </div>
+                    </div>
+
+                    <div className="v-manage">
+                      <a href={`/venues/my/${venue.id}/edit`} className="v-manage-btn">
+                        ✏️ {lang === 'ko' ? '정보 수정' : 'Edit info'}
+                      </a>
+                      <button
+                        type="button"
+                        className="v-manage-btn danger"
+                        onClick={() => removeVenue(venue)}
+                        disabled={deleting === venue.id}
+                      >
+                        🗑 {deleting === venue.id ? (lang === 'ko' ? '삭제 중…' : 'Deleting…') : lang === 'ko' ? '삭제' : 'Delete'}
+                      </button>
                     </div>
 
                     {venue.is_active ? (
@@ -362,6 +396,11 @@ export default function MyVenuesPage() {
         .v-approved-note { font-size: 12px; color: var(--ink-60); font-weight: 500; margin-bottom: 8px; }
         .v-preview-note { font-size: 13px; color: var(--jade); background: rgba(15, 157, 119, 0.08); padding: 8px 12px; border-radius: 8px; }
         .v-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+        .v-manage { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 16px; margin-top: -4px; }
+        .v-manage-btn { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: var(--ink); border: 1px solid var(--ink-12); padding: 8px 14px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 13px; text-decoration: none; cursor: pointer; }
+        .v-manage-btn:hover { border-color: var(--ink-60); }
+        .v-manage-btn.danger { color: var(--persimmon); border-color: rgba(255, 106, 61, 0.35); }
+        .v-manage-btn:disabled { opacity: 0.6; cursor: default; }
         .v-action-qr { display: inline-flex; align-items: center; gap: 8px; background: var(--persimmon); color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; transition: transform 0.15s; }
         .v-action-qr:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
         .v-action-event { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--ink); border: 1px solid var(--ink-12); text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; }

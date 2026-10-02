@@ -26,6 +26,7 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
   const [formIsSignature, setFormIsSignature] = useState(false);
   const [formPhotoFile, setFormPhotoFile] = useState<File | null>(null);
   const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
+  const [formPhotoUrl, setFormPhotoUrl] = useState<string | null>(null); // saved photo (editing a venue)
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +74,7 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
     if (formPhotoPreview) URL.revokeObjectURL(formPhotoPreview);
     setFormPhotoFile(null);
     setFormPhotoPreview(null);
+    setFormPhotoUrl(null);
     setFormError(null);
     setEditingIndex(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -93,9 +95,11 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
     if (item.photo_file) {
       setFormPhotoFile(item.photo_file);
       setFormPhotoPreview(URL.createObjectURL(item.photo_file));
+      setFormPhotoUrl(null);
     } else {
       setFormPhotoFile(null);
-      setFormPhotoPreview(null);
+      setFormPhotoUrl(item.photo_url ?? null);
+      setFormPhotoPreview(item.photo_url ?? null);
     }
     setEditingIndex(index);
     setShowForm(true);
@@ -123,6 +127,7 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
 
     if (formPhotoPreview) URL.revokeObjectURL(formPhotoPreview);
     setFormPhotoFile(file);
+    setFormPhotoUrl(null);
     setFormPhotoPreview(URL.createObjectURL(file));
   }
 
@@ -133,12 +138,14 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
     }
 
     const newItem: MenuItem = {
+      id: editingIndex !== null ? items[editingIndex].id : undefined,
       name: formName.trim(),
       name_en: formNameEn.trim() || undefined,
       description: formDescription.trim() || undefined,
       price_won: formPrice ? parseInt(formPrice, 10) : undefined,
       is_signature: formIsSignature,
       photo_file: formPhotoFile ?? undefined,
+      photo_url: formPhotoFile ? undefined : formPhotoUrl ?? undefined,
     };
 
     if (editingIndex !== null) {
@@ -190,10 +197,10 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
 
         {items.map((item, i) => (
           <div key={i} className="item-card">
-            {item.photo_file && (
+            {(item.photo_file || item.photo_url) && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={URL.createObjectURL(item.photo_file)}
+                src={item.photo_file ? URL.createObjectURL(item.photo_file) : item.photo_url}
                 alt={item.name}
                 className="item-photo"
               />

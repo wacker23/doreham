@@ -49,6 +49,8 @@ type Match = {
   quest_scheduled_at: string | null;
   phase: string;
   i_left: boolean;
+  /** When it happened (or ended), for sorting the History tab newest first. */
+  history_at: string | null;
   quest: {
     id: string;
     title: string;
@@ -88,6 +90,7 @@ type MatchRequest = {
   group_size: number | null;
   status: string;
   created_at: string;
+  resolved_at: string | null;
   matched_group_id: string | null;
 };
 
@@ -260,7 +263,7 @@ export default function MatchesPage() {
     // Match requests
     const { data: reqs } = await supabase
       .from('match_requests')
-      .select('id, city, cities, group_size, status, created_at, matched_group_id')
+      .select('id, city, cities, group_size, status, created_at, resolved_at, matched_group_id')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false });
     if (reqs) setRequests(reqs as MatchRequest[]);
@@ -281,7 +284,7 @@ export default function MatchesPage() {
 
     const { data: groups } = await supabase
       .from('groups')
-      .select('id, city, phase, availability_phase_ends_at, quest_scheduled_at, is_pending_invites')
+      .select('id, city, phase, availability_phase_ends_at, quest_scheduled_at, is_pending_invites, created_at, updated_at, completed_at')
       .in('id', groupIds);
 
     const { data: allMembers } = await supabase
@@ -368,6 +371,13 @@ export default function MatchesPage() {
         phase: g.phase ?? 'availability',
         // I left (or declined) a group that is still running for others → show it in history.
         i_left: groupIsActive && !!(memberships.find((mm: any) => mm.group_id === g.id)?.left_at),
+        history_at:
+          g.completed_at ??
+          memberships.find((mm: any) => mm.group_id === g.id)?.left_at ??
+          g.quest_scheduled_at ??
+          g.updated_at ??
+          g.created_at ??
+          null,
         is_pending_invites: g.is_pending_invites ?? false,
         my_invite_state: myMember?.invite_state ?? null,
         my_invite_expires_at: null,
@@ -547,6 +557,12 @@ export default function MatchesPage() {
   const historyMatches = matches.filter((m) => isClosed(m));
   const activeRequests = requests.filter((r) => r.status === 'searching');
   const pastRequests = requests.filter((r) => r.status !== 'searching');
+  // History: finished groups and past requests in one list, newest first.
+  const timeOf = (iso: string | null | undefined) => (iso ? new Date(iso).getTime() || 0 : 0);
+  const historyItems = [
+    ...historyMatches.map((m) => ({ kind: 'match' as const, at: timeOf(m.history_at ?? m.quest.expires_at), match: m })),
+    ...pastRequests.map((r) => ({ kind: 'request' as const, at: timeOf(r.resolved_at ?? r.created_at), req: r })),
+  ].sort((a, b) => b.at - a.at);
   const totalPending = pendingMatches.length + activeRequests.length;
 
   // Swipe handlers
@@ -1089,41 +1105,44 @@ export default function MatchesPage() {
               </div>
             ) : (
               <div className="history-list">
-                {historyMatches.map((match) => (
-                  <FullMatchCard
-                    key={match.group_id}
-                    match={match}
-                    lang={lang}
-                    user={user}
-                    isHistory
-                    onAccept={acceptInvite}
-                    onDecline={declineInvite}
-                    respondingTo={respondingTo}
-                  />
-                ))}
-                {pastRequests.map((req) => (
-                  <div key={req.id} className="request-history-card">
-                    <div className="history-status">
-                      {req.status === 'no_match_found'
-                        ? `✗ ${lang === 'ko' ? '매칭 실패' : 'No match found'}`
-                        : req.status === 'cancelled_by_user'
-                          ? `✗ ${lang === 'ko' ? '요청 취소됨' : 'Request cancelled'}`
-                          : req.status === 'expired'
-                            ? `⏱ ${lang === 'ko' ? '만료됨' : 'Expired'}`
-                            : req.status}
-                    </div>
-                    <div className="history-body">
-                      <div className="history-title">
-                        {requestCitiesLabel(req)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                {historyItems.map((item) =>
+                  item.kind === 'match' ? (
+                    <FullMatchCard
+                      key={item.match.group_id}
+                      match={item.match}
+                      lang={lang}
+                      user={user}
+                      isHistory
+                      onAccept={acceptInvite}
+                      onDecline={declineInvite}
+                      respondingTo={respondingTo}
+                    />
+                  ) : (
+                    <div key={item.req.id} className="request-history-card">
+                      <div className="history-status">
+                        {item.req.status === 'no_match_found'
+                          ? `✗ ${lang === 'ko' ? '매칭 실패' : 'No match found'}`
+                          : item.req.status === 'cancelled_by_user'
+                            ? `✗ ${lang === 'ko' ? '요청 취소됨' : 'Request cancelled'}`
+                            : item.req.status === 'expired'
+                              ? `⏱ ${lang === 'ko' ? '만료됨' : 'Expired'}`
+                              : item.req.status === 'matched'
+                                ? `✓ ${lang === 'ko' ? '매칭됨' : 'Matched'}`
+                                : item.req.status}
                       </div>
-                      <div className="history-date">
-                        {new Date(req.created_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
-                          year: 'numeric', month: 'long', day: 'numeric',
-                        })}
+                      <div className="history-body">
+                        <div className="history-title">
+                          {requestCitiesLabel(item.req)} · {item.req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
+                        </div>
+                        <div className="history-date">
+                          {new Date(item.req.resolved_at ?? item.req.created_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+                            year: 'numeric', month: 'long', day: 'numeric',
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             )}
           </>
