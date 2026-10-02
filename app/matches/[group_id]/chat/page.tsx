@@ -407,7 +407,9 @@ export default function ChatPage() {
 
                   <div className="msg-content">
                     {!isMine && showSender && (
-                      <div className="msg-sender">{sender?.display_name ?? '?'}</div>
+                      <div className="msg-sender">
+                        {sender?.display_name ?? (msg.sender_id ? '?' : lang === 'ko' ? '탈퇴한 멤버' : 'Former member')}
+                      </div>
                     )}
 
                     {replyPreview && (
