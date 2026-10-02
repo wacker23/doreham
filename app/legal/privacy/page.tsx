@@ -211,6 +211,7 @@ function English() {
         <li>See, correct or delete your information</li>
         <li>Ask us to stop processing it</li>
         <li>Withdraw a consent (profile page → Privacy)</li>
+        <li>Delete your account (profile page → Delete account); it happens right away</li>
         <li>Get a copy of your data</li>
       </ul>
       <p>
@@ -346,6 +347,7 @@ function Korean() {
         <li>개인정보 열람, 정정, 삭제</li>
         <li>처리 정지 요구</li>
         <li>동의 철회 (프로필 → 개인정보)</li>
+        <li>회원 탈퇴 (프로필 → 계정 삭제): 바로 처리돼요</li>
         <li>내 정보 사본 요청</li>
       </ul>
       <p>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
 import { EditBasicInfoModal } from './modals/EditBasicInfoModal';
 import { EditBioModal } from './modals/EditBioModal';
@@ -14,6 +15,7 @@ import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
 import { MembershipSection } from '@/components/MembershipSection';
 import { MeetPeopleCard } from '@/components/MeetPeopleCard';
+import { DeleteAccountSection } from '@/components/DeleteAccountSection';
 import { isVenueAccount } from '@/lib/accountType';
 import { isPlusActive } from '@/lib/plan';
 import { AppTabBar } from '@/components/AppTabBar';
@@ -45,6 +47,7 @@ type Profile = {
   big_five_neuroticism: number | null;
   onboarding_completed: boolean;
   account_type?: string | null;
+  role?: string | null;
   job_title: string | null;
   exercise_frequency: string | null;
   education_level: string | null;
@@ -215,7 +218,7 @@ export default function ProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useUser();
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang, setLang] = useLang();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,11 +229,6 @@ export default function ProfilePage() {
   const [vibeTagsMap, setVibeTagsMap] = useState<Record<string, any>>({});
 
   const targetId = params?.id as string;
-
-  useEffect(() => {
-    document.body.setAttribute('data-lang', lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -785,6 +783,7 @@ export default function ProfilePage() {
 
         {isOwn && <MembershipSection lang={lang} />}
         {isOwn && <PrivacyConsentsSection lang={lang} />}
+        {isOwn && profile.role !== 'admin' && <DeleteAccountSection lang={lang} />}
       </main>
 
       <AppTabBar lang={lang} />
