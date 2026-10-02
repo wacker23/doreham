@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useUser } from '@/lib/hooks/useUser';
 import { disablePushForSignOut } from '@/lib/push';
+import { isVenueAccount, MEET_PEOPLE_HREF } from '@/lib/accountType';
 
 type Props = {
   lang: 'en' | 'ko';
@@ -126,7 +127,7 @@ export function UserMenu({ lang }: Props) {
 
       {menuOpen && (
         <div className="user-menu-dropdown" role="menu">
-          {!profile?.onboarding_completed && (
+          {!profile?.onboarding_completed && !isVenueAccount(profile) && (
             <a
               href="/onboarding"
               className="user-menu-item user-menu-item-highlight"
@@ -150,6 +151,20 @@ export function UserMenu({ lang }: Props) {
               <span className="ko lang-ko">내 프로필</span>
             </span>
           </a>
+          {isVenueAccount(profile) && (
+            <a
+              href={MEET_PEOPLE_HREF}
+              className="user-menu-item"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+            >
+              <span className="menu-icon">👋</span>
+              <span>
+                <span className="en">Meet people too</span>
+                <span className="ko lang-ko">사람들도 만나기</span>
+              </span>
+            </a>
+          )}
           <a
             href="/matches"
             className="user-menu-item"

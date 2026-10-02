@@ -72,6 +72,8 @@ export type EventDetail = {
 export type HostContext = {
   canHost: boolean;
   frozen: boolean;
+  /** Hosting a new event needs Doreham+ (false during the test period). */
+  plusRequired: boolean;
   onboarded: boolean;
   homeDistrict: string | null;
   isAdmin: boolean;

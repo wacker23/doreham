@@ -123,6 +123,18 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
         if (!initial && c) {
           const home = (c.homeDistrict ?? '').toLowerCase();
           if (KOREAN_CITIES.some((x) => x.slug === home)) setF((p) => (p.city ? p : { ...p, city: home }));
+          // "Host an event here" from My venues: start as that venue.
+          const wanted = new URLSearchParams(window.location.search).get('venue');
+          const v = wanted ? c.venues.find((x) => x.id === wanted) : undefined;
+          if (v) {
+            setF((p) => ({
+              ...p,
+              host_as: 'venue',
+              venue_id: v.id,
+              place_name: p.place_name || v.name,
+              city: KOREAN_CITIES.some((x) => x.slug === v.city) ? v.city : p.city,
+            }));
+          }
         }
       })
       .catch(() => setCtx(null));
@@ -272,19 +284,17 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
     }
   }
 
-  const blocked = ctx && (!ctx.onboarded || ctx.frozen);
+  const blocked = ctx && ctx.frozen;
   const hostChoices = !editing && ctx && (ctx.venues.length > 0 || ctx.isAdmin);
+
+  // Hosting a new event is a Doreham+ feature (editing your existing events stays open).
+  if (!editing && ctx?.plusRequired) return <HostPlusLock lang={lang} />;
 
   return (
     <form className="evf" onSubmit={submit} noValidate>
       {blocked && (
         <div className="evf-block">
-          {!ctx!.onboarded ? (
-            <>
-              {ko ? '이벤트를 열려면 먼저 프로필을 완성해 주세요.' : 'Finish your profile before hosting an event.'}{' '}
-              <a href="/onboarding">{ko ? '프로필 완성하기 →' : 'Complete profile →'}</a>
-            </>
-          ) : ko ? '계정이 일시 정지된 동안에는 이벤트를 열 수 없어요.' : "You can't host events while your account is paused."}
+          {ko ? '계정이 일시 정지된 동안에는 이벤트를 열 수 없어요.' : "You can't host events while your account is paused."}
         </div>
       )}
 
@@ -539,5 +549,31 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
         .evf-submit:disabled, .evf-ghost:disabled { opacity: 0.55; cursor: not-allowed; }
       `}</style>
     </form>
+  );
+}
+
+/** Shown instead of the form when hosting needs Doreham+. */
+function HostPlusLock({ lang }: { lang: 'en' | 'ko' }) {
+  const ko = lang === 'ko';
+  return (
+    <div className="hpl">
+      <div className="hpl-ic" aria-hidden="true">✨</div>
+      <h2>{ko ? '이벤트 열기는 Doreham+ 기능이에요' : 'Hosting events is part of Doreham+'}</h2>
+      <p>
+        {ko
+          ? 'Doreham+ 회원은 직접 모임을 열거나 내 가게에서 이벤트를 열 수 있어요. 이벤트 보기와 참여는 누구나 무료예요.'
+          : 'Doreham+ members can host their own meetups, or events at their venue. Seeing and joining events stays free for everyone.'}
+      </p>
+      <a className="hpl-btn" href="/plus">{ko ? 'Doreham+ 보기' : 'See Doreham+'}</a>
+      <a className="hpl-back" href="/events">{ko ? '이벤트 둘러보기' : 'Browse events'}</a>
+      <style jsx>{`
+        .hpl { text-align: center; background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 32px 24px; }
+        .hpl-ic { font-size: 40px; margin-bottom: 8px; }
+        h2 { font-family: var(--display); font-weight: 800; font-size: 22px; margin: 0 0 10px; color: var(--ink); }
+        p { color: var(--ink-60); font-size: 15px; line-height: 1.55; margin: 0 auto 20px; max-width: 46ch; }
+        .hpl-btn { display: inline-block; background: var(--persimmon); color: #fff; font-weight: 700; font-size: 15px; border-radius: 999px; padding: 12px 24px; text-decoration: none; }
+        .hpl-back { display: block; margin-top: 14px; color: var(--ink-60); font-weight: 600; font-size: 14px; text-decoration: none; }
+      `}</style>
+    </div>
   );
 }

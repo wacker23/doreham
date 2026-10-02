@@ -9,6 +9,8 @@ import { useLang } from '@/lib/hooks/useLang';
 import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
+import { MeetPeopleCard } from '@/components/MeetPeopleCard';
+import { isVenueAccount } from '@/lib/accountType';
 import { supabase } from '@/lib/supabase/client';
 import { FREE_MATCH_REQUESTS_PER_MONTH, planError, planUnlocked, type PlanStatus } from '@/lib/plan';
 
@@ -116,7 +118,8 @@ const STATUS_LABELS: Record<string, { en: string; ko: string; color: string }> =
 
 export default function MatchesPage() {
   const router = useRouter();
-  const { user, loading } = useUser();
+  const { user, profile, loading } = useUser();
+  const venueOnly = isVenueAccount(profile);
   const [lang, setLang] = useLang();
   const [activeTab, setActiveTab] = useState<Tab>('pending');
   const [matches, setMatches] = useState<Match[]>([]);
@@ -181,9 +184,10 @@ export default function MatchesPage() {
       router.push('/sign-in?return=/matches');
       return;
     }
+    if (venueOnly) return; // venue-only account: nothing to load, the page invites them to meet people
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loading, router]);
+  }, [user, loading, router, venueOnly]);
 
   function loadPlan() {
     fetch('/api/plan')
@@ -443,6 +447,8 @@ export default function MatchesPage() {
       // The database enforces these rules too (see guard_match_request_insert).
       if (err.message.includes('already_searching')) {
         setError(lang === 'ko' ? '이미 매칭을 찾고 있어요. 진행 중 탭을 확인해 주세요.' : "You're already searching for a match — check the Pending tab.");
+      } else if (err.message.includes('finish_onboarding')) {
+        setError(lang === 'ko' ? '매칭을 요청하려면 먼저 프로필을 완성해 주세요.' : 'Finish your profile first to request a match.');
       } else if (err.message.includes('account_frozen')) {
         setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
       } else if (err.message.includes('consent_required')) {
@@ -640,6 +646,10 @@ export default function MatchesPage() {
       setError(e.message ?? 'Leave failed');
     }
     setRespondingTo(null);
+  }
+
+  if (!loading && user && venueOnly) {
+    return <VenueAccountMatches lang={lang} setLang={setLang} />;
   }
 
   if (loading || loadingData) {
@@ -1813,5 +1823,30 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
 
       `}</style>
     </div>
+  );
+}
+
+/** Matches for a venue-only account: no groups yet, just the invitation to make a friend profile. */
+function VenueAccountMatches({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: 'en' | 'ko') => void }) {
+  const ko = lang === 'ko';
+  return (
+    <>
+      <AppHeader lang={lang} setLang={setLang} />
+      <main className="vam-wrap">
+        <h1>{ko ? '매칭' : 'Matches'}</h1>
+        <p className="vam-sub">
+          {ko
+            ? '도레함은 성격과 관심사가 맞는 2~5명을 묶어 파트너 가게나 봉사 활동에서 만나게 해요.'
+            : 'Doreham puts 2 to 5 people with matching personalities and interests together, to meet at a partner venue or a volunteer activity.'}
+        </p>
+        <MeetPeopleCard lang={lang} />
+      </main>
+      <AppTabBar lang={lang} />
+      <style jsx>{`
+        .vam-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 96px; }
+        h1 { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; color: var(--ink); }
+        .vam-sub { color: var(--ink-60); font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+      `}</style>
+    </>
   );
 }

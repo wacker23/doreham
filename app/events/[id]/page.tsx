@@ -23,6 +23,7 @@ export default function EventDetailPage() {
   const [loadedAt, setLoadedAt] = useState(0);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [needsProfile, setNeedsProfile] = useState(false); // last action failed for lack of a friend profile
   const [busy, setBusy] = useState('');
   const [showOriginal, setShowOriginal] = useState(false);
   const [comment, setComment] = useState('');
@@ -69,6 +70,7 @@ export default function EventDetailPage() {
   async function call(key: string, url: string, init: RequestInit) {
     setBusy(key);
     setActionError('');
+    setNeedsProfile(false);
     try {
       const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json' } });
       const j = await r.json().catch(() => ({}));
@@ -76,7 +78,9 @@ export default function EventDetailPage() {
       await load();
       return true;
     } catch (e: unknown) {
-      setActionError(eventError(e instanceof Error ? e.message : '', lang));
+      const code = e instanceof Error ? e.message : '';
+      setNeedsProfile(code === 'finish_onboarding');
+      setActionError(eventError(code, lang));
       return false;
     } finally {
       setBusy('');
@@ -295,7 +299,17 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {actionError && <p className="evd-error" role="alert">{actionError}</p>}
+          {actionError && (
+            <p className="evd-error" role="alert">
+              {actionError}
+              {needsProfile && (
+                <>
+                  {' '}
+                  <a href="/onboarding">{ko ? '프로필 만들기 →' : 'Make my profile →'}</a>
+                </>
+              )}
+            </p>
+          )}
         </article>
 
         <div className="evd-main">

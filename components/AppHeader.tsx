@@ -6,6 +6,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { PushPrompt } from '@/components/PushPrompt';
 import { useUser } from '@/lib/hooks/useUser';
 import { appTabs, isTabActive } from '@/lib/appTabs';
+import { isVenueAccount } from '@/lib/accountType';
 
 /**
  * Top bar for signed-in app pages: brand, main sections (computers only; phones and tablets
@@ -13,7 +14,7 @@ import { appTabs, isTabActive } from '@/lib/appTabs';
  */
 export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: 'en' | 'ko') => void }) {
   const pathname = usePathname() ?? '';
-  const { user } = useUser();
+  const { user, profile } = useUser();
 
   return (
     <>
@@ -24,7 +25,7 @@ export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: '
         </a>
         {user && (
           <nav className="app-links" aria-label={lang === 'ko' ? '메뉴' : 'Main'}>
-            {appTabs(user.id).map((t) => {
+            {appTabs(user.id, isVenueAccount(profile)).map((t) => {
               const active = isTabActive(pathname, t);
               return (
                 <a key={t.href} href={t.href} className={active ? 'on' : ''} aria-current={active ? 'page' : undefined}>

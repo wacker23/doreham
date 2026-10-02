@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 import { askNow, autoPush, bannerClosedThisVisit, closeBannerThisVisit, type PushState } from '@/lib/push';
+import { isVenueAccount } from '@/lib/accountType';
 
 /**
  * Notifications, like an app: on every visit (and after signing in) the browser's own
@@ -11,8 +12,9 @@ import { askNow, autoPush, bannerClosedThisVisit, closeBannerThisVisit, type Pus
  * visit and comes back next time.
  */
 export function PushPrompt({ lang }: { lang: 'en' | 'ko' }) {
-  const { user } = useUser();
+  const { user, profile } = useUser();
   const userId = user?.id;
+  const venue = isVenueAccount(profile); // venue-only account: approvals and event sign-ups
   const [state, setState] = useState<PushState>('loading');
   const [hidden, setHidden] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -68,22 +70,27 @@ export function PushPrompt({ lang }: { lang: 'en' | 'ko' }) {
             <>
               <div className="pp-title">{t('Notifications are blocked', '알림이 차단되어 있어요')}</div>
               <div className="pp-sub">
-                {isAndroid
-                  ? t(
-                      'You will miss group invites and messages. Tap the icon left of the address bar → Permissions → Notifications → Allow. (Installed app: hold the Doreham icon → App info → Notifications.)',
-                      '그룹 초대와 메시지를 놓칠 수 있어요. 주소창 왼쪽 아이콘 → 권한 → 알림 → 허용을 눌러 주세요. (앱으로 설치했다면: 도레함 아이콘을 길게 누름 → 앱 정보 → 알림)',
-                    )
-                  : t(
-                      'You will miss group invites and messages. Click the icon left of the address bar and allow notifications for doreham.co.kr.',
-                      '그룹 초대와 메시지를 놓칠 수 있어요. 주소창 왼쪽 아이콘을 눌러 doreham.co.kr 알림을 허용해 주세요.',
-                    )}
+                {(venue
+                  ? t('You will miss venue approvals and event sign-ups. ', '가게 승인과 이벤트 참여 소식을 놓칠 수 있어요. ')
+                  : t('You will miss group invites and messages. ', '그룹 초대와 메시지를 놓칠 수 있어요. ')) +
+                  (isAndroid
+                    ? t(
+                        'Tap the icon left of the address bar → Permissions → Notifications → Allow. (Installed app: hold the Doreham icon → App info → Notifications.)',
+                        '주소창 왼쪽 아이콘 → 권한 → 알림 → 허용을 눌러 주세요. (앱으로 설치했다면: 도레함 아이콘을 길게 누름 → 앱 정보 → 알림)',
+                      )
+                    : t(
+                        'Click the icon left of the address bar and allow notifications for doreham.co.kr.',
+                        '주소창 왼쪽 아이콘을 눌러 doreham.co.kr 알림을 허용해 주세요.',
+                      ))}
               </div>
             </>
           ) : (
             <>
               <div className="pp-title">{t('Turn on notifications', '알림을 켜 주세요')}</div>
               <div className="pp-sub">
-                {t('So you never miss a group invite, a message or a quest reminder.', '그룹 초대, 메시지, 퀘스트 알림을 놓치지 않도록요.')}
+                {venue
+                  ? t('So you know when your venue is approved and when people join your events.', '가게 승인과 이벤트 참여 소식을 바로 받을 수 있어요.')
+                  : t('So you never miss a group invite, a message or a quest reminder.', '그룹 초대, 메시지, 퀘스트 알림을 놓치지 않도록요.')}
               </div>
             </>
           )}

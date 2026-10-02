@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { isVenueAccount, MEET_PEOPLE_HREF } from '@/lib/accountType';
 import {LanguagesAndMbtiStep} from './steps/LanguagesAndMbtiStep'
 import { LocationStep } from './steps/LocationStep';
 import { InterestsStep } from './steps/InterestsStep';
@@ -42,6 +43,12 @@ export default function OnboardingPage() {
 
     if (profile?.onboarding_completed) {
       router.push('/home');
+      return;
+    }
+
+    // Venue account making a friend profile: gender, birthday and the rest come first.
+    if (isVenueAccount(profile)) {
+      router.replace(MEET_PEOPLE_HREF);
       return;
     }
 
@@ -136,7 +143,7 @@ export default function OnboardingPage() {
     );
   }
 
-  if (!user || profile?.onboarding_completed) return null;
+  if (!user || profile?.onboarding_completed || isVenueAccount(profile)) return null;
 
   const progress = (currentStep / TOTAL_STEPS) * 100;
 

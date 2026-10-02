@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
 import { computeZodiacSign } from '../onboarding/lib/zodiac';
+import { forgetSignupAs, isVenueAccount, recalledSignupAs, signupAsFromUrl, type AccountType } from '@/lib/accountType';
 
 type SignupData = {
   display_name: string;
@@ -29,11 +31,18 @@ const INITIAL_DATA: SignupData = {
 };
 
 const TOTAL_STEPS = 8;
+/** Same as the database rule (profiles.profile_age_check). */
+const MIN_AGE = 19;
+
+/** 'choose' = the first screen: meet people, or register a venue. */
+type Path = 'choose' | AccountType;
 
 export default function SignupPage() {
   const router = useRouter();
   const { user, profile, loading } = useUser();
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang, setLang] = useLang();
+  const [path, setPath] = useState<Path | null>(null); // null until we know who this is
+  const [upgrading, setUpgrading] = useState(false); // a venue account making its friend profile
   const [step, setStep] = useState(1);
   const [data, setData] = useState<SignupData>(INITIAL_DATA);
   const [saving, setSaving] = useState(false);
@@ -41,21 +50,30 @@ export default function SignupPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
-    document.body.setAttribute('data-lang', lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  useEffect(() => {
     if (loading) return;
+    const asParam = signupAsFromUrl();
     if (!user) {
-      router.push('/sign-in');
+      router.push(asParam ? `/sign-in?as=${asParam}` : '/sign-in');
       return;
     }
-    // If already completed, redirect
     if (profile?.basic_signup_completed) {
-      router.push('/home?welcome=true');
+      // "Meet people too" from a venue account: the member steps, keeping the name they gave.
+      if (isVenueAccount(profile) && asParam === 'member') {
+        /* eslint-disable react-hooks/set-state-in-effect -- set once when the account is known */
+        setUpgrading(true);
+        setTermsAccepted(true); // agreed when the account was made
+        setData((prev) => (prev.display_name ? prev : { ...prev, display_name: profile.display_name ?? '' }));
+        setPath('member');
+        /* eslint-enable react-hooks/set-state-in-effect */
+        return;
+      }
+      forgetSignupAs();
+      if (isVenueAccount(profile)) router.push('/venues/my');
+      else router.push(asParam === 'venue' ? '/venues' : '/home?welcome=true');
       return;
     }
+    // First time here: the landing page's "Register your venue" goes straight to the venue path.
+    setPath((prev) => prev ?? asParam ?? recalledSignupAs() ?? 'choose');
     // Prefill display_name from Google if available
     if (user.user_metadata?.full_name && !data.display_name) {
       setData((prev) => ({ ...prev, display_name: user.user_metadata.full_name }));
@@ -68,9 +86,19 @@ export default function SignupPage() {
     setError(null);
   }
 
+  function choose(p: AccountType) {
+    setPath(p);
+    setStep(1);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const nameOk = data.display_name.trim().length >= 2 && termsAccepted;
+
   function canProceed(): boolean {
+    if (path === 'venue') return nameOk;
     switch (step) {
-      case 1: return data.display_name.trim().length >= 2 && termsAccepted;
+      case 1: return nameOk;
       case 2: return data.gender !== '';
       case 3: return data.date_of_birth.length === 10 && isValidAge(data.date_of_birth);
       case 4: return data.exercise_frequency !== '';
@@ -86,17 +114,34 @@ export default function SignupPage() {
     const d = new Date(dob);
     if (isNaN(d.getTime())) return false;
     const age = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    return age >= 16 && age <= 100;
+    return age >= MIN_AGE && age <= 100;
   }
 
   async function handleNext() {
     if (!canProceed()) return;
+    if (path === 'venue') {
+      await saveVenueAccount();
+      return;
+    }
     if (step < TOTAL_STEPS) {
       setStep(step + 1);
       return;
     }
     // Last step — save everything
     await saveSignup();
+  }
+
+  function handleBack() {
+    setError(null);
+    if (path === 'member' && step > 1) {
+      setStep(step - 1);
+      return;
+    }
+    if (upgrading) {
+      router.push('/venues/my');
+      return;
+    }
+    setPath('choose');
   }
 
   async function saveSignup() {
@@ -116,6 +161,7 @@ export default function SignupPage() {
       drinking_habits: data.drinking_habits,
       smoking_habits: data.smoking_habits,
       children_status: data.children_status,
+      account_type: 'member',
       basic_signup_completed: true,
       onboarding_completed: false,
     });
@@ -126,10 +172,44 @@ export default function SignupPage() {
       return;
     }
 
+    forgetSignupAs();
     router.push('/home?welcome=true');
   }
 
-  if (loading) {
+  /** Venue owner: just a name and the terms, then straight to registering the venue. */
+  async function saveVenueAccount() {
+    setSaving(true);
+    setError(null);
+
+    // update, not upsert: the row already exists (made at sign-in) and an insert would need a birthday.
+    const { data: rows, error: err } = await supabase
+      .from('profiles')
+      .update({
+        display_name: data.display_name.trim(),
+        account_type: 'venue',
+        basic_signup_completed: true,
+        onboarding_completed: false,
+      })
+      .eq('id', user!.id)
+      .select('id');
+
+    if (err || !rows || rows.length === 0) {
+      setError(err?.message ?? (lang === 'ko' ? '저장하지 못했어요. 다시 시도해 주세요.' : "Couldn't save. Please try again."));
+      setSaving(false);
+      return;
+    }
+
+    forgetSignupAs();
+    // Welcome notification + email for venue owners (non-blocking).
+    fetch('/api/emails/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang }),
+    }).catch(() => {});
+    router.push('/venues?welcome=1');
+  }
+
+  if (loading || (user && !path)) {
     return (
       <main className="loading-wrap">
         <div className="loader" />
@@ -159,55 +239,62 @@ export default function SignupPage() {
       </header>
 
       <main className="wrap main-wrap">
-        {/* Progress bar */}
-        <div className="progress-wrap">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
+        {/* Progress bar (the member steps only) */}
+        {path === 'member' && (
+          <div className="progress-wrap">
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
+            </div>
+            <div className="progress-label">
+              {lang === 'ko' ? `단계 ${step} / ${TOTAL_STEPS}` : `Step ${step} of ${TOTAL_STEPS}`}
+            </div>
           </div>
-          <div className="progress-label">
-            {lang === 'ko' ? `단계 ${step} / ${TOTAL_STEPS}` : `Step ${step} of ${TOTAL_STEPS}`}
-          </div>
-        </div>
+        )}
 
         {error && <div className="error-banner">{error}</div>}
 
         <div className="step-card">
-          {step === 1 && <Step1Name data={data} updateField={updateField} lang={lang} termsAccepted={termsAccepted} setTermsAccepted={setTermsAccepted} />}
-          {step === 2 && <Step2Gender data={data} updateField={updateField} lang={lang} />}
-          {step === 3 && <Step3DOB data={data} updateField={updateField} lang={lang} />}
-          {step === 4 && <Step4Exercise data={data} updateField={updateField} lang={lang} />}
-          {step === 5 && <Step5Education data={data} updateField={updateField} lang={lang} />}
-          {step === 6 && <Step6Drinking data={data} updateField={updateField} lang={lang} />}
-          {step === 7 && <Step7Smoking data={data} updateField={updateField} lang={lang} />}
-          {step === 8 && <Step8Children data={data} updateField={updateField} lang={lang} />}
+          {path === 'choose' && <ChoosePath lang={lang} onChoose={choose} />}
+          {path === 'venue' && (
+            <Step1Name data={data} updateField={updateField} lang={lang} termsAccepted={termsAccepted} setTermsAccepted={setTermsAccepted} venue />
+          )}
+          {path === 'member' && (
+            <>
+              {step === 1 && (
+                <Step1Name data={data} updateField={updateField} lang={lang} termsAccepted={termsAccepted} setTermsAccepted={setTermsAccepted} hideTerms={upgrading} />
+              )}
+              {step === 2 && <Step2Gender data={data} updateField={updateField} lang={lang} />}
+              {step === 3 && <Step3DOB data={data} updateField={updateField} lang={lang} />}
+              {step === 4 && <Step4Exercise data={data} updateField={updateField} lang={lang} />}
+              {step === 5 && <Step5Education data={data} updateField={updateField} lang={lang} />}
+              {step === 6 && <Step6Drinking data={data} updateField={updateField} lang={lang} />}
+              {step === 7 && <Step7Smoking data={data} updateField={updateField} lang={lang} />}
+              {step === 8 && <Step8Children data={data} updateField={updateField} lang={lang} />}
+            </>
+          )}
         </div>
 
-        <div className="actions">
-          {step > 1 ? (
-            <button
-              type="button"
-              className="btn-back"
-              onClick={() => setStep(step - 1)}
-              disabled={saving}
-            >
+        {path !== 'choose' && (
+          <div className="actions">
+            <button type="button" className="btn-back" onClick={handleBack} disabled={saving}>
               {lang === 'ko' ? '← 이전' : '← Back'}
             </button>
-          ) : (
-            <div />
-          )}
-          <button
-            type="button"
-            className="btn-next"
-            onClick={handleNext}
-            disabled={!canProceed() || saving}
-          >
-            {saving
-              ? (lang === 'ko' ? '저장 중…' : 'Saving…')
-              : step === TOTAL_STEPS
-              ? (lang === 'ko' ? '완료 →' : 'Finish →')
-              : (lang === 'ko' ? '다음 →' : 'Next →')}
-          </button>
-        </div>
+            <button
+              type="button"
+              className="btn-next"
+              onClick={handleNext}
+              disabled={!canProceed() || saving}
+            >
+              {saving
+                ? (lang === 'ko' ? '저장 중…' : 'Saving…')
+                : path === 'venue'
+                ? (lang === 'ko' ? '가게 등록으로 →' : 'Continue to your venue →')
+                : step === TOTAL_STEPS
+                ? (lang === 'ko' ? '완료 →' : 'Finish →')
+                : (lang === 'ko' ? '다음 →' : 'Next →')}
+            </button>
+          </div>
+        )}
       </main>
 
       <style jsx>{`
@@ -225,6 +312,7 @@ export default function SignupPage() {
         .progress-label { text-align: right; margin-top: 8px; font-size: 13px; color: var(--ink-60); font-weight: 600; }
         .error-banner { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; }
         .step-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 32px; margin-bottom: 20px; }
+        @media (max-width: 480px) { .main-wrap { padding: 24px 16px 80px; } .step-card { padding: 24px 20px; } }
         .actions { display: flex; justify-content: space-between; gap: 12px; }
         .btn-back { background: transparent; border: 1px solid var(--ink-12); padding: 12px 24px; border-radius: 999px; font-family: var(--body); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; }
         .btn-back:hover { background: var(--ink); color: var(--paper); }
@@ -239,31 +327,113 @@ export default function SignupPage() {
 
 // ============ STEP COMPONENTS ============
 
+/** First screen: why are you here? (Venue owners skip the friend profile.) */
+function ChoosePath({ lang, onChoose }: { lang: 'en' | 'ko'; onChoose: (p: AccountType) => void }) {
+  const ko = lang === 'ko';
+  const options: { value: AccountType; emoji: string; title: string; sub: string }[] = [
+    {
+      value: 'member',
+      emoji: '👋',
+      title: ko ? '사람들 만나기' : 'Meet people',
+      sub: ko ? '근처 사람들과 소그룹, 이벤트, 봉사 퀘스트에 함께해요.' : 'Join small groups, events and 봉사 volunteer quests with people near you.',
+    },
+    {
+      value: 'venue',
+      emoji: '🏪',
+      title: ko ? '가게 등록하기' : 'Register my venue',
+      sub: ko
+        ? '카페, 식당, 가게 사장님이라면. 가게를 소개하고 이벤트를 열어요. 성격 질문은 없어요.'
+        : 'For café, restaurant and shop owners. List your place and host events. No personality questions.',
+    },
+  ];
+  return (
+    <div>
+      <h2 className="step-title">{ko ? '도레함에 어떻게 오셨어요?' : 'What brings you to Doreham?'}</h2>
+      <p className="step-sub">{ko ? '다른 하나는 나중에 해도 돼요.' : 'You can do the other one later.'}</p>
+      <div className="paths">
+        {options.map((o) => (
+          <button key={o.value} type="button" className="path" onClick={() => onChoose(o.value)}>
+            <span className="path-emoji" aria-hidden="true">{o.emoji}</span>
+            <span className="path-text">
+              <span className="path-title">{o.title}</span>
+              <span className="path-sub">{o.sub}</span>
+            </span>
+            <span className="path-arrow" aria-hidden="true">→</span>
+          </button>
+        ))}
+      </div>
+      <style jsx>{`
+        .step-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--ink); }
+        .step-sub { font-size: 16px; color: var(--ink-60); margin: 0 0 24px; }
+        .paths { display: grid; gap: 12px; }
+        .path { display: flex; align-items: center; gap: 14px; width: 100%; padding: 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 16px; cursor: pointer; text-align: left; font-family: var(--body); color: var(--ink); transition: border-color 0.15s, transform 0.12s; }
+        .path:hover { border-color: var(--persimmon); transform: translateY(-1px); }
+        .path:focus-visible { outline: 3px solid rgba(255, 106, 61, 0.3); outline-offset: 2px; }
+        .path-emoji { width: 48px; height: 48px; flex: none; border-radius: 14px; background: #fff; display: grid; place-items: center; font-size: 26px; }
+        .path-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .path-title { font-weight: 800; font-size: 17px; }
+        .path-sub { font-size: 14px; color: var(--ink-60); line-height: 1.45; }
+        .path-arrow { color: var(--persimmon); font-weight: 800; font-size: 18px; }
+        @media (max-width: 480px) {
+          .path { padding: 14px; gap: 12px; }
+          .path-emoji { width: 42px; height: 42px; font-size: 22px; }
+          .path-arrow { display: none; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+
 type StepProps = {
   data: SignupData;
   updateField: <K extends keyof SignupData>(field: K, value: SignupData[K]) => void;
   lang: 'en' | 'ko';
 };
 
-function Step1Name({ data, updateField, lang, termsAccepted, setTermsAccepted }: StepProps & { termsAccepted: boolean; setTermsAccepted: (v: boolean) => void }) {
+function Step1Name({
+  data,
+  updateField,
+  lang,
+  termsAccepted,
+  setTermsAccepted,
+  venue = false,
+  hideTerms = false,
+}: StepProps & { termsAccepted: boolean; setTermsAccepted: (v: boolean) => void; venue?: boolean; hideTerms?: boolean }) {
+  const ko = lang === 'ko';
   return (
     <div>
       <h2 className="step-title">
-        {lang === 'ko' ? '이름을 알려주세요 👋' : "What should we call you? 👋"}
+        {venue ? (ko ? '반가워요, 사장님! 🏪' : 'Welcome! Who is registering? 🏪') : ko ? '이름을 알려주세요 👋' : "What should we call you? 👋"}
       </h2>
       <p className="step-sub">
-        {lang === 'ko' ? '다른 사용자에게 보이는 이름입니다.' : "This is how you'll appear to others."}
+        {venue
+          ? ko
+            ? '사장님 또는 담당자 이름이에요. 가게 이름은 다음 화면에서 입력해요.'
+            : "Your name, as the owner or manager. You'll add your venue's name on the next screen."
+          : ko
+          ? '다른 사용자에게 보이는 이름입니다.'
+          : "This is how you'll appear to others."}
       </p>
       <input
         type="text"
         value={data.display_name}
         onChange={(e) => updateField('display_name', e.target.value)}
-        placeholder={lang === 'ko' ? '예: 소피아' : 'e.g. Sophia'}
+        placeholder={venue ? (ko ? '예: 김민수' : 'e.g. Minsu Kim') : ko ? '예: 소피아' : 'e.g. Sophia'}
         className="input"
         maxLength={30}
         autoFocus
       />
 
+      {venue && (
+        <p className="venue-note">
+          {ko
+            ? '성격 질문은 없어요. 다음은 가게 정보(사진, 영업시간, 메뉴)예요. 도레함이 확인한 뒤 공개돼요.'
+            : 'No personality questions. Next you add your venue (photos, hours, menu); Doreham checks it before it goes live.'}
+        </p>
+      )}
+
+      {!hideTerms && (
       <label className="terms-check">
         <input
           type="checkbox"
@@ -284,12 +454,14 @@ function Step1Name({ data, updateField, lang, termsAccepted, setTermsAccepted }:
           )}
         </span>
       </label>
+      )}
 
       <style jsx>{`
         .step-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--ink); }
         .step-sub { font-size: 16px; color: var(--ink-60); margin: 0 0 24px; }
         .input { width: 100%; padding: 14px 18px; border: 1px solid var(--ink-12); border-radius: 12px; background: #fff; font-family: var(--body); font-size: 16px; color: var(--ink); outline: none; }
         .input:focus { border-color: var(--persimmon); }
+        .venue-note { margin: 14px 0 0; font-size: 13.5px; color: var(--ink-60); line-height: 1.5; }
         .terms-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 20px; cursor: pointer; padding: 12px; background: var(--paper-2); border-radius: 12px; }
         .terms-check input { margin-top: 3px; cursor: pointer; accent-color: var(--persimmon); width: 16px; height: 16px; flex-shrink: 0; }
         .terms-text { font-size: 14px; color: var(--ink); line-height: 1.5; }
@@ -357,7 +529,7 @@ function Step3DOB({ data, updateField, lang }: StepProps) {
         value={data.date_of_birth}
         onChange={(e) => updateField('date_of_birth', e.target.value)}
         className="input"
-        max={new Date(Date.now() - 16 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
+        max={new Date(Date.now() - MIN_AGE * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
       />
       {zodiac && (
         <div className="zodiac-preview">

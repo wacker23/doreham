@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <h1>{lang === 'ko' ? '이용 약관' : 'Terms of Service'}</h1>
         <p className="last-updated">
-          {lang === 'ko' ? '최종 업데이트: 2026년 10월 1일' : 'Last updated: October 1, 2026'}
+          {lang === 'ko' ? '최종 업데이트: 2026년 10월 2일' : 'Last updated: October 2, 2026'}
         </p>
 
         {/* Summary card */}
@@ -76,6 +76,7 @@ export default function TermsPage() {
               <li>Google 계정을 통해 로그인합니다. 계정 보안은 본인이 책임집니다.</li>
               <li>사진은 실제 본인의 사진을 사용하시고 부적절한 이미지는 금지됩니다.</li>
               <li>한 사람당 하나의 계정만 허용됩니다.</li>
+              <li>가게 사장님은 친구 프로필 없이 &lsquo;가게 계정&rsquo;으로 가입할 수 있습니다. 가게 계정은 매칭과 그룹에 참여하지 않으며, 친구 프로필을 만들면 일반 회원과 똑같이 이용할 수 있습니다.</li>
             </ul>
 
             <h2>4. 사용자 행동 규범</h2>
@@ -133,11 +134,11 @@ export default function TermsPage() {
             <h2>7. 요금</h2>
             <p>도레함은 무료 플랜과 유료 플랜 <strong>Doreham+</strong>(월 ₩4,900 또는 연 ₩39,000)를 운영합니다.</p>
             <ul>
-              <li><strong>무료 플랜</strong>: 한 달(한국 시간 기준)에 매칭 요청 2번, 그룹에 매칭되기, 봉사 퀘스트(무제한), 이벤트 보기·참여, 레벨 한도만큼 이벤트 열기, 채팅·알림·안전 기능. 매칭되지 않고 끝나거나 취소된 요청, 그룹이 성사되지 않은 요청은 횟수에 포함되지 않습니다. 무료 플랜의 그룹 인원은 랜덤(2–5명)이고 카테고리는 선택할 수 없습니다.</li>
-              <li><strong>Doreham+</strong>: 무제한 매칭 요청, 인원·카테고리 선택, 가게 등록, 동시에 열 수 있는 이벤트 2개 추가, 프로필 배지.</li>
+              <li><strong>무료 플랜</strong>: 한 달(한국 시간 기준)에 매칭 요청 2번, 그룹에 매칭되기, 봉사 퀘스트(무제한), 이벤트 보기·참여, 채팅·알림·안전 기능. 매칭되지 않고 끝나거나 취소된 요청, 그룹이 성사되지 않은 요청은 횟수에 포함되지 않습니다. 무료 플랜의 그룹 인원은 랜덤(2–5명)이고 카테고리는 선택할 수 없습니다.</li>
+              <li><strong>Doreham+</strong>: 무제한 매칭 요청, 인원·카테고리 선택, 이벤트 열기(개인 모임 또는 가게 이벤트, 동시에 열 수 있는 수는 레벨에 따라 달라짐), 가게 등록, 프로필 배지.</li>
               <li>온라인 결제는 아직 열리지 않았으며, 그 전까지 도레함이 초기 회원과 제휴 가게에 Doreham+를 무료로 제공할 수 있습니다. 무료 제공이 끝나기 전에 알려드리며, 회원님의 별도 동의 없이 유료로 전환하거나 결제하지 않습니다.</li>
               <li>결제가 시작되면 가격, 자동 갱신 여부와 날짜를 결제 전에 안내하고, 언제든 한 번의 절차로 해지할 수 있게 하며, 청약철회와 환불은 전자상거래법 등 관련 법령에 따릅니다. 요금이 오르는 경우 적용 30일 전에 알리고 다시 동의를 받습니다.</li>
-              <li>Doreham+가 끝나도 이미 등록한 가게와 진행 중인 매칭은 그대로 유지됩니다.</li>
+              <li>Doreham+가 끝나도 이미 등록한 가게, 이미 올린 이벤트와 진행 중인 매칭은 그대로 유지됩니다.</li>
               <li>테스트 기간에는 플랜 제한을 끄고 모든 기능을 모두에게 무료로 제공할 수 있습니다. 제한을 다시 적용하기 전에 앱에서 미리 알려드립니다.</li>
             </ul>
             <p>파트너 가게 방문 시 발생하는 비용은 사용자 부담입니다.</p>
@@ -191,6 +192,7 @@ export default function TermsPage() {
               <li>You sign in via Google. You&apos;re responsible for your account security.</li>
               <li>Use your real photo. Inappropriate images are prohibited.</li>
               <li>One account per person.</li>
+              <li>Venue owners can sign up with a venue account, without a friend profile. Venue accounts are not matched or added to groups; making a friend profile lets you use Doreham like any member.</li>
             </ul>
 
             <h2>4. Community Guidelines</h2>
@@ -248,11 +250,11 @@ export default function TermsPage() {
             <h2>7. Fees</h2>
             <p>Doreham has a free plan and one paid plan, <strong>Doreham+</strong> (₩4,900 a month or ₩39,000 a year).</p>
             <ul>
-              <li><strong>Free plan</strong>: 2 match requests per calendar month (Korea time), being matched into groups, 봉사 volunteer quests (unlimited), seeing and joining events, hosting events up to your level limit, chat, notifications and safety tools. Requests that end with no match, that you cancel, or whose group doesn't come together don't count. On the free plan your group size is random (2–5) and you can't choose categories.</li>
-              <li><strong>Doreham+</strong>: unlimited match requests, choosing group size and categories, registering a venue, 2 extra open events, and a profile badge.</li>
+              <li><strong>Free plan</strong>: 2 match requests per calendar month (Korea time), being matched into groups, 봉사 volunteer quests (unlimited), seeing and joining events, chat, notifications and safety tools. Requests that end with no match, that you cancel, or whose group doesn't come together don't count. On the free plan your group size is random (2–5) and you can't choose categories.</li>
+              <li><strong>Doreham+</strong>: unlimited match requests, choosing group size and categories, hosting events (your own meetups or events at your venue; how many can be open at once depends on your level), registering a venue, and a profile badge.</li>
               <li>Online payment is not open yet. Until it is, Doreham may give Doreham+ for free to early members and partner venues. We will tell you before a free period ends, and we will never switch you to a paid plan or charge you without your separate consent.</li>
               <li>When payment opens, we will show the price, whether it renews automatically and when, before you pay; you can cancel any time in one step; withdrawals and refunds follow Korean law, including the E-Commerce Act. If the price goes up, we will tell you 30 days before and ask for your consent again.</li>
-              <li>If Doreham+ ends, venues you already registered and matches in progress stay as they are.</li>
+              <li>If Doreham+ ends, venues you already registered, events you already posted and matches in progress stay as they are.</li>
               <li>During a test period we may switch the plan limits off so every feature is free for everyone. We will tell you in the app before the limits apply again.</li>
             </ul>
             <p>Costs incurred at partner venues are your responsibility.</p>

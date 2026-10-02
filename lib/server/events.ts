@@ -10,16 +10,18 @@ import { EVENT_CATEGORY_SLUGS, EVENT_REPORT_REASONS } from '@/lib/eventCategorie
 import { KOREAN_CITIES } from '@/lib/cities';
 import { hostLimitForLevel } from '@/lib/points';
 import { levelOf, levelsById } from '@/lib/server/points';
-import { planEventBonus } from '@/lib/server/plan';
+import { getPlan } from '@/lib/server/plan';
 
 /**
  * Community events (Karrot-style city feed).
  * Hosts: users (meetups), venue owners (their own approved venue), Doreham admin (curated, can feature).
+ * Hosting a new event is a Doreham+ feature (open to everyone while the plans are switched off);
+ * venue-only accounts can host too. Joining and commenting need a friend profile, except the host.
  * All writes go through here (service role) so we can validate, translate KO↔EN and moderate.
  */
 
 export const LIMITS = {
-  userUpcoming: 3, // open events one person can host at a time (more from level 3; see hostLimitForLevel)
+  userUpcoming: 3, // personal meetups open at once (more from level 3; see hostLimitForLevel)
   venueUpcoming: 10, // per venue
   minLeadMinutes: 30, // an event must start at least this far ahead
   maxAheadDays: 120,
@@ -89,15 +91,20 @@ type EventRow = {
 
 export async function hostContext(userId: string) {
   const admin = getAdmin();
-  const [{ data: profile }, isAdmin, { data: venues }, { data: frozen }] = await Promise.all([
+  const [{ data: profile }, isAdmin, { data: venues }, { data: frozen }, plan] = await Promise.all([
     admin.from('profiles').select('onboarding_completed, deleted_at, home_district').eq('id', userId).maybeSingle(),
     isAdminUser(userId),
     admin.from('venues').select('id, business_name_display, city').eq('owner_id', userId).eq('is_active', true).is('deactivated_at', null),
     admin.from('user_penalties').select('freeze_until').eq('user_id', userId).gt('freeze_until', new Date().toISOString()).limit(1),
+    getPlan(userId),
   ]);
+  const isFrozen = !!(frozen && frozen.length > 0);
+  // Doreham+ (or the test period, when plans are switched off). Admins host official events regardless.
+  const plusRequired = !isAdmin && !(plan.plus || !plan.enforced);
   return {
-    canHost: !!profile && !profile.deleted_at && !!profile.onboarding_completed && !(frozen && frozen.length > 0),
-    frozen: !!(frozen && frozen.length > 0),
+    canHost: !!profile && !profile.deleted_at && !isFrozen && !plusRequired,
+    frozen: isFrozen,
+    plusRequired,
     onboarded: !!profile?.onboarding_completed,
     homeDistrict: (profile?.home_district as string | null) ?? null,
     isAdmin,
@@ -252,8 +259,9 @@ Reply with JSON only: {"title": "...", "description": "...", "place_name": "..."
 
 export async function createEvent(userId: string, input: EventInput) {
   const ctx = await hostContext(userId);
-  if (!ctx.onboarded) return fail('finish_onboarding', 403);
-  if (!ctx.canHost) return fail(ctx.frozen ? 'account_frozen' : 'cannot_host', 403);
+  if (ctx.frozen) return fail('account_frozen', 403);
+  if (ctx.plusRequired) return fail('plus_required', 403);
+  if (!ctx.canHost) return fail('cannot_host', 403);
   const r = validate(input, ctx);
   if (!r.ok) return r;
 
@@ -267,8 +275,7 @@ export async function createEvent(userId: string, input: EventInput) {
       .eq('host_kind', 'user')
       .eq('status', 'published')
       .gt('starts_at', nowIso);
-    const [level, bonus] = await Promise.all([levelOf(userId), planEventBonus(userId)]);
-    if ((count ?? 0) >= hostLimitForLevel(level) + bonus) return fail('too_many_events', 429);
+    if ((count ?? 0) >= hostLimitForLevel(await levelOf(userId))) return fail('too_many_events', 429);
   } else if (r.value.host_kind === 'venue') {
     const { count } = await admin
       .from('events')
@@ -445,7 +452,8 @@ export async function addComment(userId: string, id: string, bodyRaw: string) {
   if (e.status === 'cancelled') return fail('event_cancelled', 409);
   const admin = getAdmin();
   const { data: me } = await admin.from('profiles').select('onboarding_completed, display_name').eq('id', userId).maybeSingle();
-  if (!me?.onboarding_completed) return fail('finish_onboarding', 403);
+  // The host can always answer on their own event (venue-only accounts have no friend profile).
+  if (!me || (!me.onboarding_completed && e.creator_id !== userId)) return fail('finish_onboarding', 403);
   const { count } = await admin
     .from('event_comments')
     .select('id', { count: 'exact', head: true })

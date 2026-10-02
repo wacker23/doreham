@@ -40,7 +40,7 @@ export async function completeOnboarding(): Promise<
 
   const { error } = await supabase
     .from('profiles')
-    .update({ onboarding_completed: true })
+    .update({ onboarding_completed: true, account_type: 'member' })
     .eq('id', user.id);
 
   if (error) {
