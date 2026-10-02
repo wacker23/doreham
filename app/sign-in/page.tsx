@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useLang } from '@/lib/hooks/useLang';
-import { forgetSignupAs, rememberSignupAs, signupAsFromUrl } from '@/lib/accountType';
+import { useUser } from '@/lib/hooks/useUser';
+import { disablePushForSignOut } from '@/lib/push';
+import { forgetSignupAs, isVenueAccount, rememberSignupAs, signupAsFromUrl } from '@/lib/accountType';
 
 export default function SignInPage() {
   const [lang, setLang] = useLang();
+  const { user, profile } = useUser(); // someone may still be signed in on this browser
   const [busy, setBusy] = useState<null | 'kakao' | 'google'>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Came from "Register your venue": remember it through the Kakao/Google round trip.
@@ -26,6 +29,14 @@ export default function SignInPage() {
   async function handleSignIn(provider: 'kakao' | 'google') {
     setBusy(provider);
     setErrorMsg(null);
+
+    // Start clean: whoever is still signed in on this browser is signed out first, so a sign-in
+    // that doesn't finish (window closed, link expired) can never leave you in the previous account.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await disablePushForSignOut();
+      await supabase.auth.signOut({ scope: 'local' });
+    }
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -103,6 +114,22 @@ export default function SignInPage() {
                 </span>
               </p>
             </>
+          )}
+
+          {user && (
+            <div className="signin-current">
+              <div>
+                {lang === 'ko'
+                  ? `지금 ${profile?.display_name || user.email || ''} 계정으로 로그인되어 있어요.`
+                  : `You're signed in as ${profile?.display_name || user.email || ''}.`}{' '}
+                <a href={isVenueAccount(profile) ? '/venues/my' : '/matches'}>{lang === 'ko' ? '이 계정으로 계속 →' : 'Continue →'}</a>
+              </div>
+              <div className="signin-current-sub">
+                {lang === 'ko'
+                  ? '아래에서 계정을 고르면 이 계정은 먼저 로그아웃돼요.'
+                  : 'Choosing an account below signs this one out first.'}
+              </div>
+            </div>
           )}
 
           <div className="signin-buttons">
@@ -221,6 +248,27 @@ export default function SignInPage() {
         .btn-google:disabled {
           opacity: 0.55;
           cursor: not-allowed;
+        }
+        .signin-current {
+          margin: 0 0 18px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          background: #fff;
+          border: 1px solid var(--ink-12);
+          font-size: 14px;
+          color: var(--ink);
+          line-height: 1.5;
+        }
+        .signin-current a {
+          color: var(--persimmon);
+          font-weight: 700;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        .signin-current-sub {
+          margin-top: 4px;
+          font-size: 12.5px;
+          color: var(--ink-60);
         }
         .signin-error {
           margin-top: 18px;
