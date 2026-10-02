@@ -10,7 +10,11 @@ type Profile = {
   photo_url: string | null;
   onboarding_completed: boolean;
   basic_signup_completed: boolean;
+  /** 'member' (meets people) or 'venue' (only lists a venue). See lib/accountType.ts. */
+  account_type: 'member' | 'venue';
 };
+
+const PROFILE_COLUMNS = 'id, display_name, photo_url, onboarding_completed, basic_signup_completed, account_type';
 
 type UseUserResult = {
   user: User | null;
@@ -38,7 +42,7 @@ export function useUser(): UseUserResult {
       if (user) {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('id, display_name, photo_url, onboarding_completed, basic_signup_completed')
+          .select(PROFILE_COLUMNS)
           .eq('id', user.id)
           .single();
         if (!cancelled) setProfile(profileData);
@@ -53,7 +57,7 @@ export function useUser(): UseUserResult {
         if (session?.user) {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('id, display_name, photo_url, onboarding_completed, basic_signup_completed')
+            .select(PROFILE_COLUMNS)
             .eq('id', session.user.id)
             .single();
           setProfile(profileData);

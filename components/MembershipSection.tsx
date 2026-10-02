@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import {
   FREE_MATCH_REQUESTS_PER_MONTH,
-  PLUS_EXTRA_OPEN_EVENTS,
   PLUS_PRICE_MONTH_WON,
   historyLabel,
   wonLabel,
@@ -82,7 +81,13 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
             </div>
             <div className="ms-row">
               <span>{t('Open events you host', '열어 둔 이벤트')}</span>
-              <b>{t(`${m.events_open} of ${m.events_limit}`, `${m.events_limit}개 중 ${m.events_open}개`)}</b>
+              <b>
+                {open
+                  ? t(`${m.events_open} of ${m.events_limit}`, `${m.events_limit}개 중 ${m.events_open}개`)
+                  : m.events_open > 0
+                    ? t(`${m.events_open} open`, `${m.events_open}개`)
+                    : '—'}
+              </b>
             </div>
             <div className="ms-row">
               <span>{t('Group size & categories', '인원·카테고리 선택')}</span>
@@ -122,7 +127,7 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
                 <li>{t('Unlimited match requests', '무제한 매칭 요청')}</li>
                 <li>{t('Pick the group size and categories', '그룹 인원과 카테고리 고르기')}</li>
                 <li>{t('Register your venue', '가게 등록')}</li>
-                <li>{t(`Host ${PLUS_EXTRA_OPEN_EVENTS} more open events`, `이벤트 ${PLUS_EXTRA_OPEN_EVENTS}개 더 열기`)}</li>
+                <li>{t('Host your own events', '직접 이벤트 열기')}</li>
               </ul>
               <a className="ms-cta" href="/plus">{t('Get Doreham+', 'Doreham+ 시작하기')}</a>
             </div>

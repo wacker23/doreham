@@ -1,14 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-
-type Lang = 'en' | 'ko';
+import { useLang } from '@/lib/hooks/useLang';
+import { forgetSignupAs, rememberSignupAs, signupAsFromUrl } from '@/lib/accountType';
 
 export default function SignInPage() {
-  const [lang, setLang] = useState<Lang>('en');
+  const [lang, setLang] = useLang();
   const [busy, setBusy] = useState<null | 'kakao' | 'google'>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Came from "Register your venue": remember it through the Kakao/Google round trip.
+  const [forVenue, setForVenue] = useState(false);
+
+  useEffect(() => {
+    const as = signupAsFromUrl();
+    if (!as) {
+      forgetSignupAs(); // a plain sign-in: don't carry an older "register my venue" choice
+      return;
+    }
+    rememberSignupAs(as);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the URL after hydration
+    setForVenue(as === 'venue');
+  }, []);
 
   async function handleSignIn(provider: 'kakao' | 'google') {
     setBusy(provider);
@@ -66,16 +79,31 @@ export default function SignInPage() {
 
       <main className="signin-wrap">
         <div className="signin-card">
-          <h1 className="signin-h">
-            <span className="en">Welcome to Doreham</span>
-            <span className="ko lang-ko">도레함에 오신 것을 환영합니다</span>
-          </h1>
-          <p className="signin-sub">
-            <span className="en">Sign in to start finding your people.</span>
-            <span className="ko lang-ko">
-              로그인하고 당신의 사람들을 찾아보세요.
-            </span>
-          </p>
+          {forVenue ? (
+            <>
+              <h1 className="signin-h">
+                <span className="en">Register your venue 🏪</span>
+                <span className="ko lang-ko">가게 등록하기 🏪</span>
+              </h1>
+              <p className="signin-sub">
+                <span className="en">Sign in, add your place, and host events for people nearby. No personality questions.</span>
+                <span className="ko lang-ko">로그인하고 가게를 등록해 근처 사람들을 위한 이벤트를 열어 보세요. 성격 질문은 없어요.</span>
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="signin-h">
+                <span className="en">Welcome to Doreham</span>
+                <span className="ko lang-ko">도레함에 오신 것을 환영합니다</span>
+              </h1>
+              <p className="signin-sub">
+                <span className="en">Sign in to start finding your people.</span>
+                <span className="ko lang-ko">
+                  로그인하고 당신의 사람들을 찾아보세요.
+                </span>
+              </p>
+            </>
+          )}
 
           <div className="signin-buttons">
             <button

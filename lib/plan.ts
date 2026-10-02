@@ -1,12 +1,11 @@
 /**
  * Doreham+ (the one paid plan). Client-safe: constants, labels and the comparison table.
  * Enforcement lives in the database (match requests, venue registration) and in
- * lib/server/events.ts (hosting). Until payments exist, Doreham+ is given by Doreham.
+ * lib/server/events.ts (hosting events). Until payments exist, Doreham+ is given by Doreham.
  */
 
 export const PLUS_NAME = 'Doreham+';
 export const FREE_MATCH_REQUESTS_PER_MONTH = 2;
-export const PLUS_EXTRA_OPEN_EVENTS = 2;
 export const PLUS_PRICE_MONTH_WON = 4900;
 export const PLUS_PRICE_YEAR_WON = 39000;
 
@@ -87,10 +86,10 @@ export const PLAN_ROWS: PlanRow[] = [
   { en: '봉사 volunteer quests', ko: '봉사 퀘스트', free: true, plus: true },
   { en: 'See and join events', ko: '이벤트 보기·참여', free: true, plus: true },
   {
-    en: 'Host events',
-    ko: '이벤트 열기',
-    free: { en: 'Your level limit', ko: '레벨 한도만큼' },
-    plus: { en: `+${PLUS_EXTRA_OPEN_EVENTS} extra open events`, ko: `동시에 ${PLUS_EXTRA_OPEN_EVENTS}개 더` },
+    en: 'Host events (meetups or at your venue)',
+    ko: '이벤트 열기 (모임 또는 가게 이벤트)',
+    free: false,
+    plus: true,
   },
   { en: 'Chat, notifications, safety tools', ko: '채팅, 알림, 안전 기능', free: true, plus: true },
   { en: 'Pick the group size', ko: '그룹 인원 고르기', free: false, plus: true },
@@ -106,8 +105,8 @@ export const PLAN_ERRORS: Record<string, { en: string; ko: string }> = {
     ko: `이번 달 무료 매칭 요청 ${FREE_MATCH_REQUESTS_PER_MONTH}번을 모두 사용했어요. 봉사 퀘스트는 계속 신청할 수 있고, Doreham+로 무제한 요청할 수 있어요.`,
   },
   plus_required: {
-    en: 'Registering a venue is part of Doreham+.',
-    ko: '가게 등록은 Doreham+ 기능이에요.',
+    en: 'This is part of Doreham+.',
+    ko: 'Doreham+ 기능이에요.',
   },
 };
 

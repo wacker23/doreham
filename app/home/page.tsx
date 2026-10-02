@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { isVenueAccount } from '@/lib/accountType';
 import { UserMenu } from '@/components/UserMenu';
 import { NotificationBell } from '@/components/NotificationBell';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
@@ -31,6 +32,12 @@ export default function HomePage() {
     // Signed in but hasn't done basic signup → send to signup
     if (profile && !profile.basic_signup_completed) {
       router.push('/signup');
+      return;
+    }
+
+    // Venue-only account: no friend profile needed; their home is My venues
+    if (profile && isVenueAccount(profile) && !profile.onboarding_completed) {
+      router.push('/venues/my');
       return;
     }
 

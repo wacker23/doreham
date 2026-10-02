@@ -1,7 +1,7 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { createNotification } from '@/lib/notifications';
-import { FREE_MATCH_REQUESTS_PER_MONTH, PLUS_EXTRA_OPEN_EVENTS, type Membership, type PlanHistoryEntry, type PlanStatus } from '@/lib/plan';
+import { FREE_MATCH_REQUESTS_PER_MONTH, type Membership, type PlanHistoryEntry, type PlanStatus } from '@/lib/plan';
 import { hostLimitForLevel } from '@/lib/points';
 import { levelOf } from '@/lib/server/points';
 
@@ -25,11 +25,6 @@ export async function hasPlus(userId: string): Promise<boolean> {
   return (await getPlan(userId)).plus;
 }
 
-/** Extra open events on top of the level limit: Doreham+ members, and everyone during the test period. */
-export async function planEventBonus(userId: string): Promise<number> {
-  const p = await getPlan(userId);
-  return p.plus || !p.enforced ? PLUS_EXTRA_OPEN_EVENTS : 0;
-}
 
 /** The test-period switch (app_settings.plans_enforced). */
 export async function getPlansEnforced(): Promise<boolean> {
@@ -87,11 +82,11 @@ export async function setPlus(
     title_en: '✨ You have Doreham+',
     title_ko: '✨ Doreham+가 적용됐어요',
     body_en: until
-      ? `Unlimited match requests, group size and categories, venue registration and more, until ${until.toLocaleDateString('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', year: 'numeric' })}.`
-      : 'Unlimited match requests, group size and categories, venue registration and more.',
+      ? `Unlimited match requests, group size and categories, hosting events, venue registration and more, until ${until.toLocaleDateString('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', year: 'numeric' })}.`
+      : 'Unlimited match requests, group size and categories, hosting events, venue registration and more.',
     body_ko: until
-      ? `${until.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', year: 'numeric' })}까지 무제한 매칭 요청, 인원·카테고리 선택, 가게 등록 등을 이용할 수 있어요.`
-      : '무제한 매칭 요청, 인원·카테고리 선택, 가게 등록 등을 이용할 수 있어요.',
+      ? `${until.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', year: 'numeric' })}까지 무제한 매칭 요청, 인원·카테고리 선택, 이벤트 열기, 가게 등록 등을 이용할 수 있어요.`
+      : '무제한 매칭 요청, 인원·카테고리 선택, 이벤트 열기, 가게 등록 등을 이용할 수 있어요.',
     action_url: '/plus',
   });
   return { ok: true, expires_at: expires };
@@ -140,7 +135,8 @@ export async function getMembership(userId: string): Promise<Membership> {
     ...plan,
     member_since: since,
     events_open: events.count ?? 0,
-    events_limit: hostLimitForLevel(level) + (plan.plus || !plan.enforced ? PLUS_EXTRA_OPEN_EVENTS : 0),
+    // Hosting is a Doreham+ feature; how many personal meetups can be open at once grows with the level.
+    events_limit: plan.plus || !plan.enforced ? hostLimitForLevel(level) : 0,
     history: rows,
   };
 }

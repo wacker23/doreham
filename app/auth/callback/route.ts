@@ -23,13 +23,16 @@ export async function GET(request: Request) {
         // Check profile status
         const { data: profile } = await supabase
           .from('profiles')
-          .select('basic_signup_completed, onboarding_completed')
+          .select('basic_signup_completed, onboarding_completed, account_type')
           .eq('id', user.id)
           .maybeSingle();
 
         if (!profile || !profile.basic_signup_completed) {
-          // Haven't completed signup yet
+          // Haven't completed signup yet (the first screen asks: meet people, or register a venue)
           redirectTo = '/signup';
+        } else if (profile.account_type === 'venue' && !profile.onboarding_completed) {
+          // Venue-only account: no friend profile needed, straight to their venues
+          redirectTo = '/venues/my';
         } else if (!profile.onboarding_completed) {
           // Signup done but not full onboarding
           redirectTo = '/onboarding';

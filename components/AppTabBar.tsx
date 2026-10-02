@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { appTabs, isTabActive } from '@/lib/appTabs';
+import { isVenueAccount } from '@/lib/accountType';
 
 /**
  * Bottom tab bar for phones and tablets (Matches · Events · Ranking · Me).
@@ -10,13 +11,13 @@ import { appTabs, isTabActive } from '@/lib/appTabs';
  */
 export function AppTabBar({ lang }: { lang: 'en' | 'ko' }) {
   const pathname = usePathname() ?? '';
-  const { user } = useUser();
+  const { user, profile } = useUser();
   if (!user) return null;
 
   return (
     <nav className="app-tabs" aria-label={lang === 'ko' ? '메뉴' : 'Main'}>
       <div className="app-tabs-in">
-        {appTabs(user.id).map((t) => {
+        {appTabs(user.id, isVenueAccount(profile)).map((t) => {
           const active = isTabActive(pathname, t);
           return (
             <a key={t.href} href={t.href} className={`app-tab ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined}>

@@ -11,7 +11,7 @@ import { useLang } from '@/lib/hooks/useLang';
  * Not reviewed by a lawyer yet.
  */
 
-const UPDATED = { en: 'October 1, 2026', ko: '2026년 10월 1일' };
+const UPDATED = { en: 'October 2, 2026', ko: '2026년 10월 2일' };
 const PRIVACY_EMAIL = 'privacy@doreham.co.kr';
 
 export default function PrivacyPage() {
@@ -121,8 +121,8 @@ function English() {
         head={['Kind', 'Items', 'Required?']}
         rows={[
           ['Account', 'Email address and Google account ID (sign-in with Google)', 'Required'],
-          ['Profile', 'Name or nickname, date of birth, gender, spoken languages, home area (neighborhood level); photo, bio and job', 'Required, except photo, bio and job'],
-          ['Personality and interests', 'Big Five test results, MBTI, activity interests', 'Required for matching'],
+          ['Profile', 'Name or nickname, date of birth, gender, spoken languages, home area (neighborhood level); photo, bio and job', 'Required, except photo, bio and job. A venue account (venue owners who only list a venue) gives only a name until it makes a friend profile'],
+          ['Personality and interests', 'Big Five test results, MBTI, activity interests', 'Required for matching (not asked of venue accounts)'],
           ['Lifestyle', 'Exercise, education, drinking, smoking, children', 'Optional'],
           ['Matching and quests', 'Match requests (cities, group size, categories), groups, availability and votes, check-ins (time, distance from the venue, whether you were within 200 m), quest results, strikes, blocks, review tags you give and receive', 'Created as you use the service'],
           ['Messages', 'Group chat messages', 'Created as you use the service'],
@@ -256,8 +256,8 @@ function Korean() {
         head={['구분', '항목', '필수 여부']}
         rows={[
           ['계정', '이메일 주소, Google 계정 식별자 (Google 로그인)', '필수'],
-          ['프로필', '이름 또는 닉네임, 생년월일, 성별, 사용 언어, 거주 지역(동네 수준); 사진, 자기소개, 직업', '필수 (사진·자기소개·직업은 선택)'],
-          ['성격 및 관심사', 'Big Five 검사 결과, MBTI, 활동 관심사', '매칭에 필수'],
+          ['프로필', '이름 또는 닉네임, 생년월일, 성별, 사용 언어, 거주 지역(동네 수준); 사진, 자기소개, 직업', '필수 (사진·자기소개·직업은 선택). 가게만 등록하는 가게 계정은 친구 프로필을 만들기 전까지 이름만 받아요'],
+          ['성격 및 관심사', 'Big Five 검사 결과, MBTI, 활동 관심사', '매칭에 필수 (가게 계정에는 묻지 않음)'],
           ['생활 습관', '운동, 학력, 음주, 흡연, 자녀 여부', '선택'],
           ['매칭 및 퀘스트', '매칭 요청(도시, 인원, 카테고리), 그룹, 가능 시간 및 투표, 체크인(시각, 장소와의 거리, 200m 이내 여부), 퀘스트 결과, 경고, 차단, 주고받은 리뷰 태그', '서비스 이용 과정에서 생성'],
           ['메시지', '그룹 채팅 메시지', '서비스 이용 과정에서 생성'],

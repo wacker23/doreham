@@ -12,15 +12,17 @@ import { PhotosStep } from './steps/PhotosStep';
 import { MenuItemsStep } from './steps/MenuItemsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { uploadPhoto, submitVenue } from './lib/save';
-import type { UiLanguage, VenueFormData, VenueStep, MenuItem } from './lib/types';
+import type { VenueFormData, VenueStep, MenuItem } from './lib/types';
 import { CATEGORY_LABELS, DEFAULT_HOURS, TOTAL_VENUE_STEPS } from './lib/types';
 import { planUnlocked } from '@/lib/plan';
+import { useLang } from '@/lib/hooks/useLang';
 
 export default function VenueRegisterPage() {
   const router = useRouter();
-  const { user, loading } = useUser();
+  const { user, profile, loading } = useUser();
 
-  const [lang, setLang] = useState<UiLanguage>('en');
+  const [lang, setLang] = useLang();
+  const [welcome, setWelcome] = useState(false); // just signed up as a venue owner
   const [currentStep, setCurrentStep] = useState<VenueStep>(1);
   const [formData, setFormData] = useState<Partial<VenueFormData>>({
     hours: DEFAULT_HOURS,
@@ -32,15 +34,15 @@ export default function VenueRegisterPage() {
   const [needsPlus, setNeedsPlus] = useState(false); // registering a venue is a Doreham+ feature
 
   useEffect(() => {
-    document.body.setAttribute('data-lang', lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the URL after hydration
+    setWelcome(new URLSearchParams(window.location.search).get('welcome') === '1');
+  }, []);
 
-  // Auth gate
+  // Auth gate (signing in from here starts the venue-owner sign-up)
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.push('/sign-in?return=/venues');
+      router.push('/sign-in?as=venue');
     }
   }, [user, loading, router]);
 
@@ -274,8 +276,8 @@ export default function VenueRegisterPage() {
                 : 'Thank you for joining Doreham!'}
             </p>
             <div className="success-actions">
-              <a href="/" className="btn-home">
-                {lang === 'ko' ? '홈으로' : 'Back to home'}
+              <a href="/venues/my" className="btn-home">
+                {lang === 'ko' ? '내 가게 보기' : 'See my venues'}
               </a>
             </div>
           </div>
@@ -327,6 +329,21 @@ export default function VenueRegisterPage() {
       </div>
 
       <main className="v-wrap">
+        <div className="v-col">
+        {welcome && currentStep === 1 && (
+          <div className="v-welcome">
+            <strong>
+              {lang === 'ko'
+                ? `도레함에 오신 것을 환영해요${profile?.display_name ? `, ${profile.display_name}님` : ''}! 👋`
+                : `Welcome to Doreham${profile?.display_name ? `, ${profile.display_name}` : ''}! 👋`}
+            </strong>
+            <span>
+              {lang === 'ko'
+                ? '가게를 소개해 주세요. 5분 정도 걸리고, 도레함이 확인한 뒤 공개돼요. 승인되면 가게 이벤트도 열 수 있어요.'
+                : 'Tell us about your place. It takes about 5 minutes, and Doreham checks it before it goes live. Once approved, you can host events there.'}
+            </span>
+          </div>
+        )}
         <div className="v-card">
           {currentStep === 1 && (
             <BasicInfoStep
@@ -388,6 +405,7 @@ export default function VenueRegisterPage() {
             />
           )}
         </div>
+        </div>
       </main>
 
       <style jsx>{`
@@ -402,7 +420,10 @@ export default function VenueRegisterPage() {
         .progress-bar { height: 100%; background: var(--persimmon); transition: width 0.35s ease; }
         .step-indicator { padding: 12px 24px 0; font-size: 13px; color: var(--ink-60); font-weight: 500; }
         .v-wrap { min-height: calc(100vh - 68px - 30px); padding: 24px 24px 60px; display: flex; justify-content: center; }
-        .v-card { max-width: 640px; width: 100%; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 24px; padding: 40px; }
+        .v-col { max-width: 640px; width: 100%; }
+        .v-welcome { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid rgba(15, 157, 119, 0.35); border-left: 4px solid var(--jade); border-radius: 16px; padding: 14px 18px; margin-bottom: 14px; font-size: 14px; color: var(--ink-60); line-height: 1.5; }
+        .v-welcome strong { color: var(--ink); font-size: 15.5px; }
+        .v-card { width: 100%; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 24px; padding: 40px; }
         @media (max-width: 480px) {
           .v-card { padding: 28px 20px; border-radius: 16px; }
         }

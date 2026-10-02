@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
+import { AppHeader } from '@/components/AppHeader';
+import { AppTabBar } from '@/components/AppTabBar';
 import { VenuePerksManager } from '@/components/VenuePerksManager';
 
 type Venue = {
@@ -41,7 +44,7 @@ const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }>
 export default function MyVenuesPage() {
   const router = useRouter();
   const { user, loading } = useUser();
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang, setLang] = useLang();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [venueStats, setVenueStats] = useState<Record<string, any>>({});
   const [complimentTagsMap, setComplimentTagsMap] = useState<Record<string, any>>({});
@@ -49,14 +52,9 @@ export default function MyVenuesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.body.setAttribute('data-lang', lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.push('/sign-in?return=/venues/my');
+      router.push('/sign-in?as=venue');
       return;
     }
     loadMyVenues();
@@ -124,17 +122,7 @@ export default function MyVenuesPage() {
 
   return (
     <>
-      <header className="v-nav">
-        <div className="wrap v-nav-in">
-          <a className="brand" href="/">
-            Doreham <span className="ko-mark">도레함</span>
-          </a>
-          <div className="toggle">
-            <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
-            <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
-          </div>
-        </div>
-      </header>
+      <AppHeader lang={lang} setLang={setLang} />
 
       <main className="wrap main-wrap">
         <div className="page-header">
@@ -247,6 +235,9 @@ export default function MyVenuesPage() {
                           <a href={`/venues/my/${venue.id}/qr`} className="v-action-qr">
                             🔲 {lang === 'ko' ? '오늘의 QR 코드' : "Today's QR code"}
                           </a>
+                          <a href={`/events/new?venue=${venue.id}`} className="v-action-event">
+                            🎉 {lang === 'ko' ? '이 가게에서 이벤트 열기' : 'Host an event here'}
+                          </a>
                         </div>
                         <VenuePerksManager venueId={venue.id} lang={lang} />
                         {venueStats[venue.id] && venueStats[venue.id].review_count > 0 && (
@@ -326,15 +317,10 @@ export default function MyVenuesPage() {
         )}
       </main>
 
+      <AppTabBar lang={lang} />
+
       <style jsx>{`
-        .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
-        .v-nav-in { display: flex; align-items: center; justify-content: space-between; height: 68px; }
-        .brand { display: flex; align-items: baseline; gap: 9px; font-family: var(--display); font-weight: 800; font-size: 20px; text-decoration: none; color: var(--ink); }
-        .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 17px; }
-        .toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
-        .toggle button { border: 0; background: transparent; font-family: var(--body); font-weight: 600; font-size: 13px; padding: 7px 13px; cursor: pointer; color: var(--ink-60); }
-        .toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
-        .main-wrap { padding: 32px 24px 80px; max-width: 900px; }
+        .main-wrap { padding: 32px 24px 96px; max-width: 900px; }
         .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
         h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 4px; letter-spacing: -0.02em; }
         .sub { color: var(--ink-60); margin: 0; }
@@ -378,6 +364,8 @@ export default function MyVenuesPage() {
         .v-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
         .v-action-qr { display: inline-flex; align-items: center; gap: 8px; background: var(--persimmon); color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; transition: transform 0.15s; }
         .v-action-qr:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
+        .v-action-event { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--ink); border: 1px solid var(--ink-12); text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+        .v-action-event:hover { border-color: var(--ink-60); }
         .v-reviews-section { background: #fff; border: 1px solid var(--ink-12); border-radius: 12px; padding: 16px; margin-top: 12px; }
         .v-reviews-header { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 12px; }
         .v-review-count { background: var(--persimmon); color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }

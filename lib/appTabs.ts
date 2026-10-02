@@ -1,7 +1,16 @@
 /** The signed-in app's main sections: bottom tab bar on phones and tablets, header links on computers. */
 export type AppTab = { href: string; match: string; icon: string; en: string; ko: string };
 
-export function appTabs(userId: string): AppTab[] {
+export function appTabs(userId: string, venueAccount = false): AppTab[] {
+  // Venue-only accounts: their venues first; Matches stays (it invites them to meet people too).
+  if (venueAccount) {
+    return [
+      { href: '/venues/my', match: '/venues', icon: '🏪', en: 'My venues', ko: '내 가게' },
+      { href: '/events', match: '/events', icon: '🎉', en: 'Events', ko: '이벤트' },
+      { href: '/matches', match: '/matches', icon: '🌸', en: 'Matches', ko: '매칭' },
+      { href: `/profile/${userId}`, match: `/profile/${userId}`, icon: '👤', en: 'Me', ko: '나' },
+    ];
+  }
   return [
     { href: '/matches', match: '/matches', icon: '🌸', en: 'Matches', ko: '매칭' },
     { href: '/events', match: '/events', icon: '🎉', en: 'Events', ko: '이벤트' },

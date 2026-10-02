@@ -13,6 +13,8 @@ import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
 import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
 import { MembershipSection } from '@/components/MembershipSection';
+import { MeetPeopleCard } from '@/components/MeetPeopleCard';
+import { isVenueAccount } from '@/lib/accountType';
 import { isPlusActive } from '@/lib/plan';
 import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
@@ -42,6 +44,7 @@ type Profile = {
   big_five_agreeableness: number | null;
   big_five_neuroticism: number | null;
   onboarding_completed: boolean;
+  account_type?: string | null;
   job_title: string | null;
   exercise_frequency: string | null;
   education_level: string | null;
@@ -373,9 +376,11 @@ export default function ProfilePage() {
   }
 
   const isOwn = user?.id === profile.id;
+  // Venue-only account: no friend profile (the birthday on file is only a placeholder).
+  const venueOnly = isVenueAccount(profile) && !profile.onboarding_completed;
   const mbti = profile.mbti_type ? MBTI_LABELS[profile.mbti_type] : null;
   const zodiac = profile.zodiac_sign ? ZODIAC[profile.zodiac_sign] : null;
-  const age = profile.date_of_birth ? computeAge(profile.date_of_birth) : null;
+  const age = profile.date_of_birth && !venueOnly ? computeAge(profile.date_of_birth) : null;
   const bigFive = bigFiveLabels(profile, lang);
   const allActivities = [...(profile.activity_preferences ?? []), ...(profile.interests ?? [])];
 
@@ -478,6 +483,9 @@ export default function ProfilePage() {
                 </span>
               )}
             </h1>
+            {venueOnly && (
+              <p className="hero-age">🏪 {lang === 'ko' ? '가게 계정' : 'Venue account'}</p>
+            )}
             {age !== null && (
               <p className="hero-age">
                 {lang === 'ko' ? `${age}세` : `${age} years old`}
@@ -502,6 +510,22 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {venueOnly && isOwn && (
+          <>
+            <MeetPeopleCard lang={lang} />
+            <a className="venue-link" href="/venues/my">
+              <span aria-hidden="true">🏪</span>
+              <span className="venue-link-text">
+                <strong>{lang === 'ko' ? '내 가게' : 'My venues'}</strong>
+                <span>{lang === 'ko' ? '등록 상태, 손님 리뷰, 이벤트 열기' : 'Status, guest reviews, hosting events'}</span>
+              </span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </>
+        )}
+
+        {!venueOnly && (
+        <>
         <ProfileLevel userId={profile.id} lang={lang} isOwn={isOwn} />
 
         {(profile.bio || isOwn) && (
@@ -756,6 +780,9 @@ export default function ProfilePage() {
           </div>
         )}
 
+        </>
+        )}
+
         {isOwn && <MembershipSection lang={lang} />}
         {isOwn && <PrivacyConsentsSection lang={lang} />}
       </main>
@@ -842,6 +869,10 @@ export default function ProfilePage() {
         .edit-pencil { position: absolute; top: 16px; right: 16px; background: #fff; border: 1px solid var(--ink-12); border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; font-size: 15px; transition: transform 0.12s, box-shadow 0.12s; }
         .edit-pencil:hover { transform: scale(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
         .section { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; position: relative; }
+        .venue-link { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 16px 20px; margin-bottom: 12px; text-decoration: none; color: var(--ink); font-size: 22px; }
+        .venue-link:hover { border-color: var(--ink-60); }
+        .venue-link-text { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: var(--ink-60); }
+        .venue-link-text strong { font-size: 15.5px; color: var(--ink); }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .section-header h3 { font-family: var(--display); font-weight: 700; font-size: 14px; margin: 0; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; }
         .bio { color: var(--ink); font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap; }

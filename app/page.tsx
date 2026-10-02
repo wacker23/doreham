@@ -166,7 +166,7 @@ export default function HomePage() {
                 <span className="en">Join Doreham as a venue partner and welcome friendly groups of internationals to your space.</span>
                 <span className="ko lang-ko">도레함 파트너 가게가 되어 국제 친구 그룹을 환영해주세요.</span>
               </p>
-              <a href="/venues" className="cta-btn">
+              <a href="/signup?as=venue" className="cta-btn">
                 <span className="en">Register your venue →</span>
                 <span className="ko lang-ko">가게 등록하기 →</span>
               </a>
