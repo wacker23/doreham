@@ -34,7 +34,7 @@ export function Footer() {
   ];
 
   // The signed-in app (matches, events, ranking, profiles, admin) has no footer; its legal links are in the account menu.
-  const APP_PREFIXES = ['/matches/', '/events', '/leaderboard', '/profile/', '/venues/my', '/admin'];
+  const APP_PREFIXES = ['/matches/', '/events', '/leaderboard', '/profile/', '/venues/', '/admin', '/home', '/plus'];
   const inApp = APP_PREFIXES.some((p) => (pathname ?? '').startsWith(p));
   const isHidden = hiddenPaths.includes(pathname ?? '') || inApp;
 

@@ -71,6 +71,12 @@ export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: '
         @media (max-width: 420px) {
           .app-ko-mark { display: none; }
         }
+        @media (max-width: 360px) {
+          .app-nav-in { gap: 8px; padding: 0 10px; }
+          .app-nav-right { gap: 4px; }
+          .app-brand { font-size: 18px; }
+          .app-toggle button { padding: 6px 8px; }
+        }
         @media (min-width: 900px) {
           .app-nav-in { gap: 20px; }
           .app-links { display: flex; gap: 2px; margin-left: 12px; }

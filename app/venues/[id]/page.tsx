@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { VenuePerksList } from '@/components/VenuePerksList';
+import { useLang } from '@/lib/hooks/useLang';
+import { AppHeader } from '@/components/AppHeader';
+import { AppTabBar } from '@/components/AppTabBar';
 
 type Venue = {
   id: string;
@@ -68,7 +71,7 @@ const WEEKDAYS: { code: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'; e
 export default function VenueDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang, setLang] = useLang();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [venueStats, setVenueStats] = useState<any | null>(null);
   const [complimentTagsMap, setComplimentTagsMap] = useState<Record<string, any>>({});
@@ -79,11 +82,6 @@ export default function VenueDetailPage() {
   const [selectedPhoto, setSelectedPhoto] = useState<number>(0);
 
   const venueId = params?.id as string;
-
-  useEffect(() => {
-    document.body.setAttribute('data-lang', lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
 
   useEffect(() => {
     loadVenue();
@@ -160,11 +158,7 @@ export default function VenueDetailPage() {
   if (error || !venue) {
     return (
       <>
-        <header className="v-nav">
-          <div className="wrap v-nav-in">
-            <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span></a>
-          </div>
-        </header>
+        <AppHeader lang={lang} setLang={setLang} />
         <main className="wrap main-wrap">
           <div className="error-state">
             <div className="error-icon">🔍</div>
@@ -200,15 +194,7 @@ export default function VenueDetailPage() {
 
   return (
     <>
-      <header className="v-nav">
-        <div className="wrap v-nav-in">
-          <a className="brand" href="/">Doreham <span className="ko-mark">도레함</span></a>
-          <div className="toggle">
-            <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
-            <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
-          </div>
-        </div>
-      </header>
+      <AppHeader lang={lang} setLang={setLang} />
 
       <main className="wrap main-wrap">
         <button onClick={() => router.back()} className="back-btn">
@@ -412,6 +398,7 @@ export default function VenueDetailPage() {
           </div>
         )}
       </main>
+      <AppTabBar lang={lang} />
 
       <style jsx>{`
         .v-nav { background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
@@ -421,7 +408,7 @@ export default function VenueDetailPage() {
         .toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
         .toggle button { border: 0; background: transparent; font-family: var(--body); font-weight: 600; font-size: 13px; padding: 7px 13px; cursor: pointer; color: var(--ink-60); }
         .toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
-        .main-wrap { padding: 24px 24px 80px; max-width: 800px; }
+        .main-wrap { padding: 24px 16px 96px; max-width: 800px; }
         .back-btn { background: transparent; border: 0; color: var(--ink-60); font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; padding: 0 0 16px; }
         .back-btn:hover { color: var(--ink); }
         .gallery { margin-bottom: 24px; }
