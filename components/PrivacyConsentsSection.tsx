@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
 
-/** Own-profile card: see and change the volunteer-photo consent (withdrawing deletes the photos). */
-export function PrivacyConsentsSection({ lang }: { lang: 'en' | 'ko' }) {
+/**
+ * The volunteer-photo consent: load it, withdraw it (deletes the photos), or open the
+ * consent form. Used by Settings → "Volunteer quest photos" and by the card below.
+ */
+export function useVolunteerPhotoConsent(lang: 'en' | 'ko') {
   const [agreedAt, setAgreedAt] = useState<string | null | undefined>(undefined); // undefined = loading
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -58,35 +61,52 @@ export function PrivacyConsentsSection({ lang }: { lang: 'en' | 'ko' }) {
     load();
   }
 
+  const status =
+    agreedAt === undefined
+      ? '…'
+      : agreedAt
+        ? t(`Agreed on ${new Date(agreedAt).toLocaleDateString('en-US')}`, `${new Date(agreedAt).toLocaleDateString('ko-KR')} 동의함`)
+        : t('Not agreed', '동의하지 않음');
+
+  const modal = (
+    <VolunteerConsentModal
+      lang={lang}
+      open={modalOpen}
+      onClose={() => setModalOpen(false)}
+      onAgreed={() => {
+        setModalOpen(false);
+        setMessage(null);
+        load();
+      }}
+    />
+  );
+
+  return { agreedAt, busy, message, status, withdraw, review: () => setModalOpen(true), modal };
+}
+
+/** Stand-alone card version of the same consent. */
+export function PrivacyConsentsSection({ lang }: { lang: 'en' | 'ko' }) {
+  const t = (en: string, ko: string) => (lang === 'ko' ? ko : en);
+  const { agreedAt, busy, message, status, withdraw, review, modal } = useVolunteerPhotoConsent(lang);
+
   return (
     <div className="pc-card">
       <h3>{t('Privacy', '개인정보')}</h3>
       <div className="pc-row">
         <div>
           <div className="pc-name">{t('Volunteer quest photos', '봉사 퀘스트 사진')}</div>
-          <div className="pc-sub">
-            {agreedAt === undefined
-              ? '…'
-              : agreedAt
-                ? t(`Agreed on ${new Date(agreedAt).toLocaleDateString('en-US')}`, `${new Date(agreedAt).toLocaleDateString('ko-KR')} 동의함`)
-                : t('Not agreed', '동의하지 않음')}
-          </div>
+          <div className="pc-sub">{status}</div>
         </div>
         {agreedAt ? (
           <button className="pc-btn" disabled={busy} onClick={withdraw}>{t('Withdraw', '철회')}</button>
         ) : agreedAt === null ? (
-          <button className="pc-btn" onClick={() => setModalOpen(true)}>{t('Review', '보기')}</button>
+          <button className="pc-btn" onClick={review}>{t('Review', '보기')}</button>
         ) : null}
       </div>
       {message && <div className="pc-msg">{message}</div>}
       <a className="pc-link" href="/legal/privacy">{t('Privacy policy', '개인정보 처리방침')} →</a>
 
-      <VolunteerConsentModal
-        lang={lang}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onAgreed={() => { setModalOpen(false); load(); }}
-      />
+      {modal}
 
       <style jsx>{`
         .pc-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
