@@ -8,6 +8,7 @@ import {
   wonLabel,
   type Membership,
 } from '@/lib/plan';
+import { Icon } from '@/components/icons/Icon';
 
 /** Own-profile card: your plan, what you've used this month, and your membership history. */
 export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
@@ -49,7 +50,7 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
         <>
           <div className="ms-plan">
             <span className={`ms-pill ${open ? 'plus' : ''}`}>
-              {plus ? '✨ Doreham+' : testPeriod ? t('🎉 Test period', '🎉 테스트 기간') : t('Free plan', '무료 플랜')}
+              {plus ? <><Icon name="plus" size={16} /> Doreham+</> : testPeriod ? <><Icon name="events" size={16} /> {t('Test period', '테스트 기간')}</> : t('Free plan', '무료 플랜')}
             </span>
             <span className="ms-status">
               {testPeriod
@@ -160,7 +161,7 @@ export function MembershipSection({ lang }: { lang: 'en' | 'ko' }) {
         h3 { font-family: var(--display); font-weight: 800; font-size: 16px; margin: 0; }
         .ms-link { font-size: 13px; color: var(--persimmon); font-weight: 700; text-decoration: none; }
         .ms-plan { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .ms-pill { font-weight: 800; font-size: 13px; padding: 5px 12px; border-radius: 999px; background: var(--paper-2); border: 1px solid var(--ink-12); color: var(--ink); }
+        .ms-pill { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; font-size: 13px; padding: 5px 12px; border-radius: 999px; background: var(--paper-2); border: 1px solid var(--ink-12); color: var(--ink); }
         .ms-pill.plus { color: var(--persimmon); background: linear-gradient(135deg, rgba(255, 106, 61, 0.14), rgba(199, 184, 224, 0.3)); border-color: rgba(255, 106, 61, 0.3); }
         .ms-status { font-size: 13.5px; color: var(--ink); font-weight: 600; }
         .ms-sub { font-size: 13px; color: var(--ink-60); margin-top: 6px; }

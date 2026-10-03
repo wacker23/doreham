@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useUser } from '@/lib/hooks/useUser';
 import { disablePushForSignOut } from '@/lib/push';
 import { isVenueAccount, MEET_PEOPLE_HREF } from '@/lib/accountType';
+import { Icon, type IconName } from '@/components/icons/Icon';
 
 type Props = {
   lang: 'en' | 'ko';
@@ -146,7 +147,7 @@ export function UserMenu({ lang }: Props) {
             role="menuitem"
             onClick={() => setMenuOpen(false)}
           >
-            <span className="menu-icon">👤</span>
+            <MenuIcon name="me" />
             <span>
               <span className="en">My profile</span>
               <span className="ko lang-ko">내 프로필</span>
@@ -159,7 +160,7 @@ export function UserMenu({ lang }: Props) {
               role="menuitem"
               onClick={() => setMenuOpen(false)}
             >
-              <span className="menu-icon">👋</span>
+              <MenuIcon name="hello" />
               <span>
                 <span className="en">Meet people too</span>
                 <span className="ko lang-ko">사람들도 만나기</span>
@@ -172,7 +173,7 @@ export function UserMenu({ lang }: Props) {
             role="menuitem"
             onClick={() => setMenuOpen(false)}
           >
-            <span className="menu-icon">🌸</span>
+            <MenuIcon name="matches" />
             <span>
               <span className="en">My matches</span>
               <span className="ko lang-ko">내 매칭</span>
@@ -184,7 +185,7 @@ export function UserMenu({ lang }: Props) {
             role="menuitem"
             onClick={() => setMenuOpen(false)}
           >
-            <span className="menu-icon">🎉</span>
+            <MenuIcon name="events" />
             <span>
               <span className="en">Events</span>
               <span className="ko lang-ko">이벤트</span>
@@ -196,7 +197,7 @@ export function UserMenu({ lang }: Props) {
             role="menuitem"
             onClick={() => setMenuOpen(false)}
           >
-            <span className="menu-icon">🏆</span>
+            <MenuIcon name="ranking" />
             <span>
               <span className="en">Ranking &amp; perks</span>
               <span className="ko lang-ko">랭킹 · 혜택</span>
@@ -208,7 +209,7 @@ export function UserMenu({ lang }: Props) {
             role="menuitem"
             onClick={() => setMenuOpen(false)}
           >
-            <span className="menu-icon">✨</span>
+            <MenuIcon name="plus" />
             <span>Doreham+</span>
           </a>
 
@@ -226,7 +227,7 @@ export function UserMenu({ lang }: Props) {
               role="menuitem"
               onClick={() => setMenuOpen(false)}
             >
-              <span className="menu-icon">🏪</span>
+              <MenuIcon name="venue" />
               <span>
                 <span className="en">My venues ({venueCount})</span>
                 <span className="ko lang-ko">내 가게 ({venueCount})</span>
@@ -240,7 +241,7 @@ export function UserMenu({ lang }: Props) {
             role="menuitem"
             onClick={() => setMenuOpen(false)}
           >
-            <span className="menu-icon">+</span>
+            <MenuIcon name="venue" />
             <span>
               <span className="en">Register a venue</span>
               <span className="ko lang-ko">가게 등록</span>
@@ -257,7 +258,7 @@ export function UserMenu({ lang }: Props) {
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
               >
-                <span className="menu-icon">⚡</span>
+                <MenuIcon name="admin" />
                 <span>Admin · Approvals</span>
               </a>
               <a
@@ -266,7 +267,7 @@ export function UserMenu({ lang }: Props) {
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
               >
-                <span className="menu-icon">✨</span>
+                <MenuIcon name="matches" />
                 <span>Admin · Matches</span>
               </a>
               <a
@@ -275,7 +276,7 @@ export function UserMenu({ lang }: Props) {
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
               >
-                <span className="menu-icon">🎉</span>
+                <MenuIcon name="events" />
                 <span>Admin · Events</span>
               </a>
               <a
@@ -284,7 +285,7 @@ export function UserMenu({ lang }: Props) {
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
               >
-                <span className="menu-icon">💳</span>
+                <MenuIcon name="card" />
                 <span>Admin · Doreham+</span>
               </a>
             </>
@@ -465,5 +466,16 @@ export function UserMenu({ lang }: Props) {
         }
       `}</style>
     </div>
+  );
+}
+
+function MenuIcon({ name }: { name: IconName }) {
+  return (
+    <span className="menu-icon">
+      <Icon name={name} size={20} />
+      <style jsx>{`
+        .menu-icon { width: 24px; display: inline-flex; justify-content: center; flex-shrink: 0; }
+      `}</style>
+    </span>
   );
 }

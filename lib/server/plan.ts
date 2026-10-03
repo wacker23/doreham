@@ -79,8 +79,8 @@ export async function setPlus(
   await createNotification({
     user_id: userId,
     type: 'plus_granted',
-    title_en: '✨ You have Doreham+',
-    title_ko: '✨ Doreham+가 적용됐어요',
+    title_en: 'You have Doreham+',
+    title_ko: 'Doreham+가 적용됐어요',
     body_en: until
       ? `Unlimited match requests, group size and categories, hosting events, venue registration and more, until ${until.toLocaleDateString('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', year: 'numeric' })}.`
       : 'Unlimited match requests, group size and categories, hosting events, venue registration and more.',

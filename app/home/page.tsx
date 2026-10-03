@@ -8,6 +8,7 @@ import { useLang } from '@/lib/hooks/useLang';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTabBar } from '@/components/AppTabBar';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
+import { Icon } from '@/components/icons/Icon';
 
 export default function HomePage() {
   const router = useRouter();
@@ -90,7 +91,7 @@ export default function HomePage() {
 
           <div className="next">
             <a className="next-card" href="/events">
-              <span className="next-ic" aria-hidden="true">🎉</span>
+              <span className="next-ic" aria-hidden="true"><Icon name="events" size={26} /></span>
               <span className="next-text">
                 <strong>{ko ? '이벤트' : 'Events'}</strong>
                 <span>{ko ? '우리 도시에서 열리는 모임을 보거나 직접 열어 보세요.' : "See what's on in your city, or host your own."}</span>
@@ -98,7 +99,7 @@ export default function HomePage() {
               <span className="next-arrow" aria-hidden="true">→</span>
             </a>
             <a className="next-card" href={`/profile/${user.id}`}>
-              <span className="next-ic" aria-hidden="true">📸</span>
+              <span className="next-ic" aria-hidden="true"><Icon name="camera" size={26} /></span>
               <span className="next-text">
                 <strong>{ko ? '내 프로필' : 'Your profile'}</strong>
                 <span>{ko ? '사진을 올리면 그룹 친구들이 알아보기 쉬워요.' : 'Add a photo so your group can recognise you.'}</span>
@@ -137,7 +138,7 @@ export default function HomePage() {
         .next { display: grid; gap: 12px; margin-top: 36px; text-align: left; }
         .next-card { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--ink-12); border-radius: 18px; padding: 16px 18px; text-decoration: none; color: var(--ink); }
         .next-card:hover { border-color: var(--ink-60); }
-        .next-ic { width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--paper-2); display: grid; place-items: center; font-size: 22px; }
+        .next-ic { width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--paper-2); display: grid; place-items: center; }
         .next-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--ink-60); line-height: 1.45; }
         .next-text strong { font-size: 16px; color: var(--ink); }
         .next-arrow { color: var(--persimmon); font-weight: 800; font-size: 18px; }

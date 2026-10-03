@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/Avatar';
 import { levelByNumber } from '@/lib/points';
 import { perkText, type Redemption } from '@/lib/pointsTypes';
+import { SeaArt, levelArt } from '@/components/icons/SeaArt';
 
 /**
  * What a member shows at the counter: the perk, who they are, the venue's code of the day
@@ -33,7 +34,7 @@ export function PerkRedeemSheet({ lang, r, onClose }: { lang: 'en' | 'ko'; r: Re
           <div>
             <div className="pr-name">{r.member.display_name}</div>
             <div className="pr-lv">
-              {lv.emoji} {ko ? `도레함 ${lv.ko}` : `Doreham ${lv.en}`}
+              <SeaArt name={levelArt(lv.n)} size={20} /> {ko ? `도레함 ${lv.ko}` : `Doreham ${lv.en}`}
             </div>
           </div>
         </div>
@@ -66,7 +67,7 @@ export function PerkRedeemSheet({ lang, r, onClose }: { lang: 'en' | 'ko'; r: Re
         .pr-details { font-size: 14px; color: var(--ink-60); }
         .pr-member { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 18px 0 8px; text-align: left; }
         .pr-name { font-weight: 800; font-size: 17px; color: var(--ink); }
-        .pr-lv { font-size: 13.5px; color: var(--ink-60); font-weight: 600; }
+        .pr-lv { display: flex; align-items: center; gap: 5px; font-size: 13.5px; color: var(--ink-60); font-weight: 600; }
         .pr-code-label { font-size: 12px; font-weight: 800; color: var(--ink-60); margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
         .pr-code { font-family: var(--display); font-weight: 800; font-size: 64px; letter-spacing: 0.18em; color: var(--persimmon); line-height: 1.1; margin-left: 0.18em; }
         .pr-clock { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--ink); background: var(--paper-2); border-radius: 999px; padding: 6px 14px; margin-top: 6px; }

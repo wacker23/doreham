@@ -208,8 +208,8 @@ export async function startVolunteerVoting(groupId: string): Promise<'voting' | 
       members.map((uid) => ({
         user_id: uid,
         type: 'availability_reminder' as const,
-        title_en: '🤝 Vote on where to volunteer',
-        title_ko: '🤝 어디서 봉사할지 투표해 주세요',
+        title_en: 'Vote on where to volunteer',
+        title_ko: '어디서 봉사할지 투표해 주세요',
         body_en: `We found ${options.length} volunteer ${options.length === 1 ? 'activity' : 'activities'} for your group. Vote within 24 hours.`,
         body_ko: `그룹이 함께할 수 있는 봉사활동 ${options.length}개를 찾았어요. 24시간 안에 투표해 주세요.`,
         action_url: `/matches/${groupId}/volunteer`,
@@ -245,8 +245,8 @@ export async function onVolunteerSlotLocked(groupId: string, slot: { id: string;
       .from('quests')
       .update({
         volunteer_program_id: programId,
-        title: `🤝 ${program?.title ?? '봉사활동'}`,
-        title_en: `🤝 Volunteer: ${titleEn}`.trim(),
+        title: `${program?.title ?? '봉사활동'}`,
+        title_en: `Volunteer: ${titleEn}`.trim(),
         quest_description: [program?.org_name, program?.place].filter(Boolean).join(' · ') || null,
         description_en:
           [program?.org_name_en || program?.org_name, program?.place_en || program?.place].filter(Boolean).join(' · ') || null,
@@ -261,8 +261,8 @@ export async function onVolunteerSlotLocked(groupId: string, slot: { id: string;
       members.map((uid) => ({
         user_id: uid,
         type: 'quest_scheduled' as const,
-        title_en: `📝 Sign up on 1365: ${formatKst(slot.slot_time, 'en')}`,
-        title_ko: `📝 1365에서 신청하세요: ${formatKst(slot.slot_time, 'ko')}`,
+        title_en: `Sign up on 1365: ${formatKst(slot.slot_time, 'en')}`,
+        title_ko: `1365에서 신청하세요: ${formatKst(slot.slot_time, 'ko')}`,
         body_en: `Your group chose "${titleEn || 'a volunteer activity'}". Sign up on 1365, then tap "I'm registered" by ${formatKst(deadline, 'en')}.`,
         body_ko: `그룹이 "${program?.title ?? '봉사활동'}"을(를) 선택했어요. 1365에서 신청한 뒤 ${formatKst(deadline, 'ko')}까지 "신청 완료"를 눌러 주세요.`,
         action_url: `/matches/${groupId}/volunteer`,
@@ -393,8 +393,8 @@ export async function closeVolunteerSignups() {
         notifs.push({
           user_id: uid,
           type: 'quest_scheduled',
-          title_en: `✅ ${confirmed.length} of you are signed up`,
-          title_ko: `✅ ${confirmed.length}명이 신청을 마쳤어요`,
+          title_en: `${confirmed.length} of you are signed up`,
+          title_ko: `${confirmed.length}명이 신청을 마쳤어요`,
           body_en: "On the day, take one group selfie at the place — that's all we need.",
           body_ko: '당일 봉사 장소에서 단체 사진 한 장만 찍어 주세요 — 그걸로 충분해요.',
           action_url: `/matches/${g.id}/volunteer`,
@@ -533,8 +533,8 @@ async function completeVolunteerQuest(groupId: string, attendees: string[]): Pro
       attendees.map((uid) => ({
         user_id: uid,
         type: 'review_reminder' as const,
-        title_en: '🌟 Thank you for volunteering together!',
-        title_ko: '🌟 함께 봉사해 주셔서 고마워요!',
+        title_en: 'Thank you for volunteering together!',
+        title_ko: '함께 봉사해 주셔서 고마워요!',
         body_en: 'Leave quick tag reviews for your group (open for 14 days). Adding your 1365 certificate is optional.',
         body_ko: '그룹 멤버에게 간단한 태그 리뷰를 남겨 주세요 (14일간 가능). 1365 확인서 등록은 선택이에요.',
         action_url: quest?.id ? `/matches/review/${quest.id}` : '/matches',
@@ -617,8 +617,8 @@ export async function sendVolunteerSignupNudges() {
       need.map((uid) => ({
         user_id: uid,
         type: 'availability_reminder' as const,
-        title_en: '⏰ Confirm your 1365 signup',
-        title_ko: '⏰ 1365 신청을 확인해 주세요',
+        title_en: 'Confirm your 1365 signup',
+        title_ko: '1365 신청을 확인해 주세요',
         body_en: `Tap "I'm registered" by ${formatKst(g.volunteer_signup_deadline as string, 'en')} to keep your spot in the group.`,
         body_ko: `${formatKst(g.volunteer_signup_deadline as string, 'ko')}까지 "신청 완료"를 눌러야 그룹에 남을 수 있어요.`,
         action_url: `/matches/${g.id}/volunteer`,

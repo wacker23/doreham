@@ -3,6 +3,7 @@
 import type { UiLanguage, VenueFormData } from '../lib/types';
 import { CATEGORY_LABELS, WEEKDAY_LABELS, KOREAN_CITIES } from '../lib/types';
 import { formatBusinessNumber } from '../lib/save';
+import { Icon } from '@/components/icons/Icon';
 
 type Props = {
   lang: UiLanguage;
@@ -57,7 +58,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
           />
           <Row
             label={lang === 'ko' ? '업종' : 'Category'}
-            value={catInfo ? `${catInfo.emoji} ${lang === 'ko' ? catInfo.ko : catInfo.en}` : undefined}
+            value={catInfo ? (lang === 'ko' ? catInfo.ko : catInfo.en) : undefined}
           />
           {formData.business_opened_at && (
             <Row
@@ -192,7 +193,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
               <div key={i} className="menu-item">
                 <span className="mi-name">
                   {item.name}
-                  {item.is_signature && ' ⭐'}
+                  {item.is_signature && <> <Icon name="starFilled" size={13} label={lang === 'ko' ? '대표 메뉴' : 'Signature'} /></>}
                 </span>
                 {item.price_won && (
                   <span className="mi-price">₩{item.price_won.toLocaleString()}</span>

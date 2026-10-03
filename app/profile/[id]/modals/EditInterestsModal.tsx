@@ -2,20 +2,22 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
+import { ACTIVITY_ART } from '@/lib/icons';
 
 const ACTIVITIES = [
-  { code: 'conversation_coffee', en: 'Coffee chats', ko: '커피 대화', emoji: '☕' },
-  { code: 'board_games_casual', en: 'Board games', ko: '보드게임', emoji: '🎲' },
-  { code: 'workshops_creative', en: 'Creative workshops', ko: '창작 클래스', emoji: '🏺' },
-  { code: 'active_outdoor', en: 'Active outdoors', ko: '야외 활동', emoji: '🥾' },
-  { code: 'food_dining', en: 'Food & dining', ko: '음식·식사', emoji: '🍜' },
-  { code: 'learning_culture', en: 'Learning culture', ko: '문화 배우기', emoji: '📚' },
-  { code: 'nature_calm', en: 'Nature calm', ko: '자연 힐링', emoji: '🌿' },
-  { code: 'escape_puzzles', en: 'Escape & puzzles', ko: '방탈출·퍼즐', emoji: '🧩' },
-  { code: 'movies_music_shows', en: 'Movies & music', ko: '영화·음악', emoji: '🎬' },
-  { code: 'career_networking', en: 'Career networking', ko: '커리어 네트워킹', emoji: '💼' },
-  { code: 'volunteering_community', en: 'Volunteering', ko: '봉사·커뮤니티', emoji: '🤝' },
-  { code: 'nightlife_social', en: 'Nightlife', ko: '나이트라이프', emoji: '🌃' },
+  { code: 'conversation_coffee', en: 'Coffee chats', ko: '커피 대화' },
+  { code: 'board_games_casual', en: 'Board games', ko: '보드게임' },
+  { code: 'workshops_creative', en: 'Creative workshops', ko: '창작 클래스' },
+  { code: 'active_outdoor', en: 'Active outdoors', ko: '야외 활동' },
+  { code: 'food_dining', en: 'Food & dining', ko: '음식·식사' },
+  { code: 'learning_culture', en: 'Learning culture', ko: '문화 배우기' },
+  { code: 'nature_calm', en: 'Nature calm', ko: '자연 힐링' },
+  { code: 'escape_puzzles', en: 'Escape & puzzles', ko: '방탈출·퍼즐' },
+  { code: 'movies_music_shows', en: 'Movies & music', ko: '영화·음악' },
+  { code: 'career_networking', en: 'Career networking', ko: '커리어 네트워킹' },
+  { code: 'volunteering_community', en: 'Volunteering', ko: '봉사·커뮤니티' },
+  { code: 'nightlife_social', en: 'Nightlife', ko: '나이트라이프' },
 ];
 
 type Props = {
@@ -72,7 +74,7 @@ export function EditInterestsModal({ profile, lang, onClose, onSaved }: Props) {
                 className={`chip ${selected.includes(a.code) ? 'selected' : ''}`}
                 onClick={() => toggle(a.code)}
               >
-                <span>{a.emoji}</span>
+                <CategoryIcon art={ACTIVITY_ART[a.code] ?? 'other'} size={24} />
                 <span>{lang === 'ko' ? a.ko : a.en}</span>
               </button>
             ))}

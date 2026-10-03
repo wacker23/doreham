@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase/client';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTabBar } from '@/components/AppTabBar';
 import { VenuePerksManager } from '@/components/VenuePerksManager';
+import { Icon } from '@/components/icons/Icon';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
+import { reviewTagIcon, venueCategoryArt } from '@/lib/icons';
 
 type Venue = {
   id: string;
@@ -26,19 +29,19 @@ type Venue = {
   discount_offer: string | null;
 };
 
-const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }> = {
-  cafe:              { en: 'Café', ko: '카페', emoji: '☕' },
-  restaurant:        { en: 'Restaurant', ko: '식당', emoji: '🍜' },
-  board_game_cafe:   { en: 'Board game café', ko: '보드게임 카페', emoji: '🎲' },
-  escape_room:       { en: 'Escape room', ko: '방탈출', emoji: '🧩' },
-  bookshop:          { en: 'Bookshop', ko: '서점', emoji: '📚' },
-  workshop_creative: { en: 'Workshop', ko: '원데이 클래스', emoji: '🏺' },
-  active_sports:     { en: 'Sports', ko: '스포츠', emoji: '🥾' },
-  cultural_venue:    { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
-  nature_outdoor:    { en: 'Nature', ko: '자연', emoji: '🌿' },
-  music_movie:       { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
-  bar_club:          { en: 'Bar / Club', ko: '바·클럽', emoji: '🍸' },
-  other:             { en: 'Other', ko: '기타', emoji: '🏪' },
+const CATEGORY_LABELS: Record<string, { en: string; ko: string }> = {
+  cafe:              { en: 'Café', ko: '카페' },
+  restaurant:        { en: 'Restaurant', ko: '식당' },
+  board_game_cafe:   { en: 'Board game café', ko: '보드게임 카페' },
+  escape_room:       { en: 'Escape room', ko: '방탈출' },
+  bookshop:          { en: 'Bookshop', ko: '서점' },
+  workshop_creative: { en: 'Workshop', ko: '원데이 클래스' },
+  active_sports:     { en: 'Sports', ko: '스포츠' },
+  cultural_venue:    { en: 'Cultural venue', ko: '문화 공간' },
+  nature_outdoor:    { en: 'Nature', ko: '자연' },
+  music_movie:       { en: 'Music/Movie', ko: '음악·영화' },
+  bar_club:          { en: 'Bar / Club', ko: '바·클럽' },
+  other:             { en: 'Other', ko: '기타' },
 };
 
 export default function MyVenuesPage() {
@@ -163,7 +166,7 @@ export default function MyVenuesPage() {
 
         {venues.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">🏪</div>
+            <div className="empty-icon"><CategoryIcon art="venue" size={96} /></div>
             <h2>{lang === 'ko' ? '아직 등록된 가게가 없어요' : 'No venues registered yet'}</h2>
             <p>
               {lang === 'ko' ? '가게를 등록하고 도레함 커뮤니티와 연결되세요.' : 'Register your venue and connect with the Doreham community.'}
@@ -199,19 +202,19 @@ export default function MyVenuesPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={venue.photo_urls[0]} alt={venue.business_name_display} className="v-photo" />
                       ) : (
-                        <div className="v-photo-placeholder">{cat?.emoji ?? '🏪'}</div>
+                        <div className="v-photo-placeholder"><CategoryIcon art={venueCategoryArt(venue.category)} size={72} /></div>
                       )}
                       <div className="v-info">
                         <div className="v-name-row">
                           <h2>{venue.business_name_display}</h2>
                           <span className={`status-badge ${venue.is_active ? 'approved' : 'pending'}`}>
                             {venue.is_active
-                              ? (lang === 'ko' ? '✓ 승인됨' : '✓ Approved')
-                              : (lang === 'ko' ? '⏳ 검토 중' : '⏳ Pending review')}
+                              ? <><Icon name="done" size={14} /> {lang === 'ko' ? '승인됨' : 'Approved'}</>
+                              : <><Icon name="pending" size={14} /> {lang === 'ko' ? '검토 중' : 'Pending review'}</>}
                           </span>
                         </div>
                         <p className="v-meta">
-                          {cat?.emoji} {cat ? (lang === 'ko' ? cat.ko : cat.en) : venue.category}
+                          <CategoryIcon art={venueCategoryArt(venue.category)} size={18} /> {cat ? (lang === 'ko' ? cat.ko : cat.en) : venue.category}
                           {' · '}{venue.city}
                           {venue.district && ` · ${venue.district}`}
                         </p>
@@ -221,7 +224,7 @@ export default function MyVenuesPage() {
 
                     <div className="v-manage">
                       <a href={`/venues/my/${venue.id}/edit`} className="v-manage-btn">
-                        ✏️ {lang === 'ko' ? '정보 수정' : 'Edit info'}
+                        <Icon name="edit" size={16} /> {lang === 'ko' ? '정보 수정' : 'Edit info'}
                       </a>
                       <button
                         type="button"
@@ -229,13 +232,13 @@ export default function MyVenuesPage() {
                         onClick={() => removeVenue(venue)}
                         disabled={deleting === venue.id}
                       >
-                        🗑 {deleting === venue.id ? (lang === 'ko' ? '삭제 중…' : 'Deleting…') : lang === 'ko' ? '삭제' : 'Delete'}
+                        <Icon name="trash" size={16} /> {deleting === venue.id ? (lang === 'ko' ? '삭제 중…' : 'Deleting…') : lang === 'ko' ? '삭제' : 'Delete'}
                       </button>
                     </div>
 
                     {venue.is_active ? (
                       <div className="v-active-section">
-                        <div className="v-active-header">{lang === 'ko' ? '📊 활동' : '📊 Activity'}</div>
+                        <div className="v-active-header"><Icon name="stats" size={18} /> {lang === 'ko' ? '활동' : 'Activity'}</div>
                         <div className="v-stats-grid">
                           <div className="v-stat">
                             <div className="stat-label">{lang === 'ko' ? '이번 주 방문' : 'Visits this week'}</div>
@@ -267,17 +270,17 @@ export default function MyVenuesPage() {
                         </div>
                         <div className="v-actions">
                           <a href={`/venues/my/${venue.id}/qr`} className="v-action-qr">
-                            🔲 {lang === 'ko' ? '오늘의 QR 코드' : "Today's QR code"}
+                            <Icon name="qr" size={18} tone="light" /> {lang === 'ko' ? '오늘의 QR 코드' : "Today's QR code"}
                           </a>
                           <a href={`/events/new?venue=${venue.id}`} className="v-action-event">
-                            🎉 {lang === 'ko' ? '이 가게에서 이벤트 열기' : 'Host an event here'}
+                            <Icon name="events" size={18} /> {lang === 'ko' ? '이 가게에서 이벤트 열기' : 'Host an event here'}
                           </a>
                         </div>
                         <VenuePerksManager venueId={venue.id} lang={lang} />
                         {venueStats[venue.id] && venueStats[venue.id].review_count > 0 && (
                           <div className="v-reviews-section">
                             <div className="v-reviews-header">
-                              {lang === 'ko' ? '💬 리뷰' : '💬 Reviews'}
+                              <Icon name="chat" size={18} /> {lang === 'ko' ? '리뷰' : 'Reviews'}
                               <span className="v-review-count">
                                 {venueStats[venue.id].review_count}
                               </span>
@@ -294,7 +297,7 @@ export default function MyVenuesPage() {
                                     if (!tag) return null;
                                     return (
                                       <span key={tagId} className="v-review-tag">
-                                        {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                                        <Icon name={reviewTagIcon(tagId)} size={15} /> {lang === 'ko' ? tag.label_ko : tag.label_en}
                                         <span className="v-tag-count">×{count}</span>
                                       </span>
                                     );
@@ -305,7 +308,7 @@ export default function MyVenuesPage() {
                             {/* Private concerns count (owner only) */}
                             {Object.keys(venueStats[venue.id].concern_counts ?? {}).length > 0 && (
                               <div className="v-concerns-note">
-                                ⚠️ {lang === 'ko'
+                                <Icon name="lock" size={15} /> {lang === 'ko'
                                   ? `${Object.values(venueStats[venue.id].concern_counts).reduce((a: any, b: any) => a + b, 0)}건의 개선 제안 (비공개)`
                                   : `${Object.values(venueStats[venue.id].concern_counts).reduce((a: any, b: any) => a + b, 0)} improvement suggestions (private)`}
                               </div>
@@ -363,7 +366,7 @@ export default function MyVenuesPage() {
         .btn-lg { padding: 14px 32px; font-size: 15px; }
         .error-banner { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; }
         .empty-state { text-align: center; padding: 80px 20px; background: var(--paper-2); border-radius: 24px; }
-        .empty-icon { font-size: 64px; margin-bottom: 20px; }
+        .empty-icon { display: flex; justify-content: center; margin-bottom: 20px; }
         .empty-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 8px; color: var(--ink); }
         .empty-state p { color: var(--ink-60); font-size: 16px; margin: 0 0 32px; max-width: 400px; margin-left: auto; margin-right: auto; }
         .stat-bar { display: flex; gap: 24px; padding: 12px 20px; background: var(--paper-2); border-radius: 12px; margin-bottom: 20px; font-size: 14px; color: var(--ink-60); }
@@ -377,17 +380,17 @@ export default function MyVenuesPage() {
         .venue-card:hover { box-shadow: 0 4px 20px rgba(30, 34, 48, 0.06); }
         .v-card-top { display: flex; gap: 16px; padding: 20px; }
         .v-photo { width: 100px; height: 100px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
-        .v-photo-placeholder { width: 100px; height: 100px; border-radius: 12px; background: var(--paper-2); display: grid; place-items: center; font-size: 40px; flex-shrink: 0; }
+        .v-photo-placeholder { width: 100px; height: 100px; border-radius: 12px; background: var(--paper-2); display: grid; place-items: center; flex-shrink: 0; }
         .v-info { flex: 1; min-width: 0; }
         .v-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
         .v-info h2 { font-family: var(--display); font-weight: 700; font-size: 20px; margin: 0; color: var(--ink); }
-        .status-badge { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+        .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
         .status-badge.pending { background: rgba(255, 165, 0, 0.15); color: #B8620A; }
         .status-badge.approved { background: rgba(15, 157, 119, 0.15); color: var(--jade); }
-        .v-meta { color: var(--ink-60); font-size: 14px; margin: 0 0 4px; }
+        .v-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; color: var(--ink-60); font-size: 14px; margin: 0 0 4px; }
         .v-address { color: var(--ink-60); font-size: 13px; margin: 0; line-height: 1.4; }
         .v-active-section { padding: 16px 20px 20px; border-top: 1px solid var(--ink-12); background: rgba(15, 157, 119, 0.02); }
-        .v-active-header { font-family: var(--display); font-weight: 700; font-size: 14px; margin-bottom: 12px; color: var(--ink); }
+        .v-active-header { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 700; font-size: 14px; margin-bottom: 12px; color: var(--ink); }
         .v-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
         .v-stat { background: #fff; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--ink-12); }
         .stat-label { font-size: 11px; color: var(--ink-60); font-weight: 500; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }

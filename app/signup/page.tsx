@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase/client';
 import { computeZodiacSign, ZODIAC_LABELS } from '../onboarding/lib/zodiac';
 import { BirthdayPicker, isAllowedBirthday, MIN_AGE } from '@/components/BirthdayPicker';
 import { forgetSignupAs, isVenueAccount, recalledSignupAs, signupAsFromUrl, type AccountType } from '@/lib/accountType';
+import { Icon, type IconName } from '@/components/icons/Icon';
+import { lifestyleIcon } from '@/lib/icons';
 
 type SignupData = {
   display_name: string;
@@ -323,16 +325,16 @@ export default function SignupPage() {
 /** First screen: why are you here? (Venue owners skip the friend profile.) */
 function ChoosePath({ lang, onChoose }: { lang: 'en' | 'ko'; onChoose: (p: AccountType) => void }) {
   const ko = lang === 'ko';
-  const options: { value: AccountType; emoji: string; title: string; sub: string }[] = [
+  const options: { value: AccountType; icon: IconName; title: string; sub: string }[] = [
     {
       value: 'member',
-      emoji: '👋',
+      icon: 'matches',
       title: ko ? '사람들 만나기' : 'Meet people',
       sub: ko ? '근처 사람들과 소그룹, 이벤트, 봉사 퀘스트에 함께해요.' : 'Join small groups, events and 봉사 volunteer quests with people near you.',
     },
     {
       value: 'venue',
-      emoji: '🏪',
+      icon: 'venue',
       title: ko ? '가게 등록하기' : 'Register my venue',
       sub: ko
         ? '카페, 식당, 가게 사장님이라면. 가게를 소개하고 이벤트를 열어요. 성격 질문은 없어요.'
@@ -346,7 +348,7 @@ function ChoosePath({ lang, onChoose }: { lang: 'en' | 'ko'; onChoose: (p: Accou
       <div className="paths">
         {options.map((o) => (
           <button key={o.value} type="button" className="path" onClick={() => onChoose(o.value)}>
-            <span className="path-emoji" aria-hidden="true">{o.emoji}</span>
+            <span className="path-emoji" aria-hidden="true"><Icon name={o.icon} size={30} /></span>
             <span className="path-text">
               <span className="path-title">{o.title}</span>
               <span className="path-sub">{o.sub}</span>
@@ -362,14 +364,14 @@ function ChoosePath({ lang, onChoose }: { lang: 'en' | 'ko'; onChoose: (p: Accou
         .path { display: flex; align-items: center; gap: 14px; width: 100%; padding: 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 16px; cursor: pointer; text-align: left; font-family: var(--body); color: var(--ink); transition: border-color 0.15s, transform 0.12s; }
         .path:hover { border-color: var(--persimmon); transform: translateY(-1px); }
         .path:focus-visible { outline: 3px solid rgba(255, 106, 61, 0.3); outline-offset: 2px; }
-        .path-emoji { width: 48px; height: 48px; flex: none; border-radius: 14px; background: #fff; display: grid; place-items: center; font-size: 26px; }
+        .path-emoji { width: 48px; height: 48px; flex: none; border-radius: 14px; background: #fff; display: grid; place-items: center; }
         .path-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
         .path-title { font-weight: 800; font-size: 17px; }
         .path-sub { font-size: 14px; color: var(--ink-60); line-height: 1.45; }
         .path-arrow { color: var(--persimmon); font-weight: 800; font-size: 18px; }
         @media (max-width: 480px) {
           .path { padding: 14px; gap: 12px; }
-          .path-emoji { width: 42px; height: 42px; font-size: 22px; }
+          .path-emoji { width: 42px; height: 42px; }
           .path-arrow { display: none; }
         }
       `}</style>
@@ -397,7 +399,7 @@ function Step1Name({
   return (
     <div>
       <h2 className="step-title">
-        {venue ? (ko ? '반가워요, 사장님! 🏪' : 'Welcome! Who is registering? 🏪') : ko ? '이름을 알려주세요 👋' : "What should we call you? 👋"}
+        {venue ? (ko ? '반가워요, 사장님!' : 'Welcome! Who is registering?') : ko ? '이름을 알려주세요' : 'What should we call you?'}{' '}<Icon name={venue ? 'venue' : 'hello'} size={30} />
       </h2>
       <p className="step-sub">
         {venue
@@ -467,10 +469,10 @@ function Step1Name({
 
 function Step2Gender({ data, updateField, lang }: StepProps) {
   const options = [
-    { code: 'female', en: 'Woman', ko: '여성', emoji: '♀️' },
-    { code: 'male', en: 'Man', ko: '남성', emoji: '♂️' },
-    { code: 'non_binary', en: 'Non-binary', ko: '논바이너리', emoji: '⚧️' },
-    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    { code: 'female', en: 'Woman', ko: '여성' },
+    { code: 'male', en: 'Man', ko: '남성' },
+    { code: 'non_binary', en: 'Non-binary', ko: '논바이너리' },
+    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함' },
   ] as const;
 
   return (
@@ -489,7 +491,7 @@ function Step2Gender({ data, updateField, lang }: StepProps) {
             className={`option ${data.gender === o.code ? 'selected' : ''}`}
             onClick={() => updateField('gender', o.code)}
           >
-            <span className="opt-emoji">{o.emoji}</span>
+            <span className="opt-emoji"><Icon name={lifestyleIcon('gender', o.code) ?? 'noAnswer'} size={26} /></span>
             <span>{lang === 'ko' ? o.ko : o.en}</span>
           </button>
         ))}
@@ -501,7 +503,7 @@ function Step2Gender({ data, updateField, lang }: StepProps) {
         .option { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
         .option:hover { border-color: var(--ink-60); }
         .option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
-        .opt-emoji { font-size: 20px; }
+        .opt-emoji { display: flex; }
       `}</style>
     </div>
   );
@@ -513,7 +515,7 @@ function Step3DOB({ data, updateField, lang }: StepProps) {
   return (
     <div>
       <h2 className="step-title">
-        {lang === 'ko' ? '생년월일을 알려주세요 🎂' : "When's your birthday? 🎂"}
+        {lang === 'ko' ? '생년월일을 알려주세요' : "When's your birthday?"} <Icon name="events" size={30} />
       </h2>
       <p className="step-sub">
         {lang === 'ko'
@@ -524,7 +526,7 @@ function Step3DOB({ data, updateField, lang }: StepProps) {
       {label && (
         <div className="zodiac-preview">
           {lang === 'ko' ? '내 별자리: ' : 'Your zodiac: '}
-          <strong>{label.symbol} {lang === 'ko' ? label.ko : label.en}</strong>
+          <strong><Icon name={zodiac!} size={22} /> {lang === 'ko' ? label.ko : label.en}</strong>
         </div>
       )}
       <style jsx>{`
@@ -538,11 +540,11 @@ function Step3DOB({ data, updateField, lang }: StepProps) {
 
 function Step4Exercise({ data, updateField, lang }: StepProps) {
   const options = [
-    { code: 'never', en: 'Never', ko: '전혀 안 해요', emoji: '🛋️' },
-    { code: 'occasionally', en: 'Occasionally', ko: '가끔', emoji: '🚶' },
-    { code: 'weekly_1_2', en: '1–2 times a week', ko: '주 1–2회', emoji: '🏃' },
-    { code: 'weekly_3_4', en: '3–4 times a week', ko: '주 3–4회', emoji: '💪' },
-    { code: 'daily', en: 'Almost every day', ko: '거의 매일', emoji: '🔥' },
+    { code: 'never', en: 'Never', ko: '전혀 안 해요' },
+    { code: 'occasionally', en: 'Occasionally', ko: '가끔' },
+    { code: 'weekly_1_2', en: '1–2 times a week', ko: '주 1–2회' },
+    { code: 'weekly_3_4', en: '3–4 times a week', ko: '주 3–4회' },
+    { code: 'daily', en: 'Almost every day', ko: '거의 매일' },
   ];
   return (
     <div>
@@ -558,7 +560,7 @@ function Step4Exercise({ data, updateField, lang }: StepProps) {
             className={`option ${data.exercise_frequency === o.code ? 'selected' : ''}`}
             onClick={() => updateField('exercise_frequency', o.code)}
           >
-            <span className="opt-emoji">{o.emoji}</span>
+            <span className="opt-emoji"><Icon name={lifestyleIcon('exercise_frequency', o.code) ?? 'noAnswer'} size={26} /></span>
             <span>{lang === 'ko' ? o.ko : o.en}</span>
           </button>
         ))}
@@ -570,7 +572,7 @@ function Step4Exercise({ data, updateField, lang }: StepProps) {
         .option { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
         .option:hover { border-color: var(--ink-60); }
         .option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
-        .opt-emoji { font-size: 20px; }
+        .opt-emoji { display: flex; }
       `}</style>
     </div>
   );
@@ -578,12 +580,12 @@ function Step4Exercise({ data, updateField, lang }: StepProps) {
 
 function Step5Education({ data, updateField, lang }: StepProps) {
   const options = [
-    { code: 'high_school', en: 'High school', ko: '고등학교', emoji: '🏫' },
-    { code: 'college_student', en: 'College student', ko: '대학생 (재학중)', emoji: '📖' },
-    { code: 'bachelors', en: "Bachelor's degree", ko: '학사 학위', emoji: '🎓' },
-    { code: 'masters', en: "Master's degree", ko: '석사 학위', emoji: '🎓' },
-    { code: 'doctoral', en: 'Doctoral degree', ko: '박사 학위', emoji: '👩‍🔬' },
-    { code: 'other', en: 'Other', ko: '기타', emoji: '✨' },
+    { code: 'high_school', en: 'High school', ko: '고등학교' },
+    { code: 'college_student', en: 'College student', ko: '대학생 (재학중)' },
+    { code: 'bachelors', en: "Bachelor's degree", ko: '학사 학위' },
+    { code: 'masters', en: "Master's degree", ko: '석사 학위' },
+    { code: 'doctoral', en: 'Doctoral degree', ko: '박사 학위' },
+    { code: 'other', en: 'Other', ko: '기타' },
   ];
   return (
     <div>
@@ -597,7 +599,7 @@ function Step5Education({ data, updateField, lang }: StepProps) {
             className={`option ${data.education_level === o.code ? 'selected' : ''}`}
             onClick={() => updateField('education_level', o.code)}
           >
-            <span className="opt-emoji">{o.emoji}</span>
+            <span className="opt-emoji"><Icon name={lifestyleIcon('education_level', o.code) ?? 'noAnswer'} size={26} /></span>
             <span>{lang === 'ko' ? o.ko : o.en}</span>
           </button>
         ))}
@@ -609,7 +611,7 @@ function Step5Education({ data, updateField, lang }: StepProps) {
         .option { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
         .option:hover { border-color: var(--ink-60); }
         .option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
-        .opt-emoji { font-size: 20px; }
+        .opt-emoji { display: flex; }
       `}</style>
     </div>
   );
@@ -617,11 +619,11 @@ function Step5Education({ data, updateField, lang }: StepProps) {
 
 function Step6Drinking({ data, updateField, lang }: StepProps) {
   const options = [
-    { code: 'no', en: "I don't drink", ko: '술을 마시지 않아요', emoji: '🚫' },
-    { code: 'occasionally', en: 'Occasionally', ko: '가끔', emoji: '🍷' },
-    { code: 'socially', en: 'Socially', ko: '사교적으로', emoji: '🥂' },
-    { code: 'regularly', en: 'Regularly', ko: '자주', emoji: '🍺' },
-    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    { code: 'no', en: "I don't drink", ko: '술을 마시지 않아요' },
+    { code: 'occasionally', en: 'Occasionally', ko: '가끔' },
+    { code: 'socially', en: 'Socially', ko: '사교적으로' },
+    { code: 'regularly', en: 'Regularly', ko: '자주' },
+    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함' },
   ];
   return (
     <div>
@@ -635,7 +637,7 @@ function Step6Drinking({ data, updateField, lang }: StepProps) {
             className={`option ${data.drinking_habits === o.code ? 'selected' : ''}`}
             onClick={() => updateField('drinking_habits', o.code)}
           >
-            <span className="opt-emoji">{o.emoji}</span>
+            <span className="opt-emoji"><Icon name={lifestyleIcon('drinking_habits', o.code) ?? 'noAnswer'} size={26} /></span>
             <span>{lang === 'ko' ? o.ko : o.en}</span>
           </button>
         ))}
@@ -647,7 +649,7 @@ function Step6Drinking({ data, updateField, lang }: StepProps) {
         .option { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
         .option:hover { border-color: var(--ink-60); }
         .option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
-        .opt-emoji { font-size: 20px; }
+        .opt-emoji { display: flex; }
       `}</style>
     </div>
   );
@@ -655,12 +657,12 @@ function Step6Drinking({ data, updateField, lang }: StepProps) {
 
 function Step7Smoking({ data, updateField, lang }: StepProps) {
   const options = [
-    { code: 'non_smoker', en: 'Non-smoker', ko: '비흡연자', emoji: '🚭' },
-    { code: 'occasionally', en: 'Occasionally', ko: '가끔', emoji: '🚬' },
-    { code: 'regular', en: 'Regular smoker', ko: '일상 흡연', emoji: '🚬' },
-    { code: 'former', en: 'Former smoker', ko: '금연 중', emoji: '💨' },
-    { code: 'vape', en: 'Vape', ko: '전자담배', emoji: '💨' },
-    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    { code: 'non_smoker', en: 'Non-smoker', ko: '비흡연자' },
+    { code: 'occasionally', en: 'Occasionally', ko: '가끔' },
+    { code: 'regular', en: 'Regular smoker', ko: '일상 흡연' },
+    { code: 'former', en: 'Former smoker', ko: '금연 중' },
+    { code: 'vape', en: 'Vape', ko: '전자담배' },
+    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함' },
   ];
   return (
     <div>
@@ -674,7 +676,7 @@ function Step7Smoking({ data, updateField, lang }: StepProps) {
             className={`option ${data.smoking_habits === o.code ? 'selected' : ''}`}
             onClick={() => updateField('smoking_habits', o.code)}
           >
-            <span className="opt-emoji">{o.emoji}</span>
+            <span className="opt-emoji"><Icon name={lifestyleIcon('smoking_habits', o.code) ?? 'noAnswer'} size={26} /></span>
             <span>{lang === 'ko' ? o.ko : o.en}</span>
           </button>
         ))}
@@ -686,7 +688,7 @@ function Step7Smoking({ data, updateField, lang }: StepProps) {
         .option { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
         .option:hover { border-color: var(--ink-60); }
         .option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
-        .opt-emoji { font-size: 20px; }
+        .opt-emoji { display: flex; }
       `}</style>
     </div>
   );
@@ -694,10 +696,10 @@ function Step7Smoking({ data, updateField, lang }: StepProps) {
 
 function Step8Children({ data, updateField, lang }: StepProps) {
   const options = [
-    { code: 'no_children', en: 'No children', ko: '자녀 없음', emoji: '👤' },
-    { code: 'have_children', en: 'Have children', ko: '자녀 있음', emoji: '👨‍👩‍👧' },
-    { code: 'expecting', en: 'Expecting a child', ko: '임신 중', emoji: '🤰' },
-    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    { code: 'no_children', en: 'No children', ko: '자녀 없음' },
+    { code: 'have_children', en: 'Have children', ko: '자녀 있음' },
+    { code: 'expecting', en: 'Expecting a child', ko: '임신 중' },
+    { code: 'prefer_not_to_say', en: 'Prefer not to say', ko: '답변 안 함' },
   ];
   return (
     <div>
@@ -711,7 +713,7 @@ function Step8Children({ data, updateField, lang }: StepProps) {
             className={`option ${data.children_status === o.code ? 'selected' : ''}`}
             onClick={() => updateField('children_status', o.code)}
           >
-            <span className="opt-emoji">{o.emoji}</span>
+            <span className="opt-emoji"><Icon name={lifestyleIcon('children_status', o.code) ?? 'noAnswer'} size={26} /></span>
             <span>{lang === 'ko' ? o.ko : o.en}</span>
           </button>
         ))}
@@ -723,7 +725,7 @@ function Step8Children({ data, updateField, lang }: StepProps) {
         .option { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--paper-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; font-family: var(--body); font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
         .option:hover { border-color: var(--ink-60); }
         .option.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
-        .opt-emoji { font-size: 20px; }
+        .opt-emoji { display: flex; }
       `}</style>
     </div>
   );

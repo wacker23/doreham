@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import type { UiLanguage, VenueFormData, MenuItem } from '../lib/types';
+import { Icon } from '@/components/icons/Icon';
 
 type Props = {
   lang: UiLanguage;
@@ -210,7 +211,7 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
                 <span className="item-name">{item.name}</span>
                 {item.is_signature && (
                   <span className="sig-badge">
-                    {lang === 'ko' ? '⭐ 시그니처' : '⭐ Signature'}
+                    <Icon name="starFilled" size={12} /> {lang === 'ko' ? '시그니처' : 'Signature'}
                   </span>
                 )}
               </div>
@@ -308,7 +309,7 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
                   checked={formIsSignature}
                   onChange={(e) => setFormIsSignature(e.target.checked)}
                 />
-                <span>{lang === 'ko' ? '⭐ 시그니처 메뉴' : '⭐ Signature item'}</span>
+                <span><Icon name="starFilled" size={16} /> {lang === 'ko' ? '시그니처 메뉴' : 'Signature item'}</span>
               </label>
             </div>
           </div>
@@ -375,7 +376,7 @@ export function MenuItemsStep({ lang, initialData, onNext, onBack, skipStep }: P
         .item-info { flex: 1; min-width: 0; }
         .item-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .item-name { font-weight: 700; font-size: 15px; color: var(--ink); }
-        .sig-badge { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+        .sig-badge { display: inline-flex; align-items: center; gap: 3px; background: rgba(255, 106, 61, 0.1); color: var(--persimmon); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
         .item-name-en { display: block; font-size: 13px; color: var(--ink-60); margin-top: 2px; }
         .item-desc { font-size: 13px; color: var(--ink-60); margin: 4px 0; line-height: 1.4; }
         .item-price { font-weight: 700; font-size: 14px; color: var(--jade); }

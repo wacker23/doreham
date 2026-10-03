@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
 import { UserMenu } from '@/components/UserMenu';
 import { NotificationBell } from '@/components/NotificationBell';
+import { Icon } from '@/components/icons/Icon';
 
 type Lang = 'en' | 'ko';
 type Status = { kind: 'idle' } | { kind: 'ok' } | { kind: 'err'; msg: string };
@@ -390,7 +391,7 @@ export default function HomePage() {
             </div>
             <div className="card safe reveal">
               <span className="badge safe-b">
-                🛡 <span className="en">Built safe</span>
+                <Icon name="shield" size={16} /> <span className="en">Built safe</span>
                 <span className="ko lang-ko">안전하게 설계됨</span>
               </span>
               <h3>

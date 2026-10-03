@@ -7,6 +7,7 @@ import { DeleteAccountSection } from '@/components/DeleteAccountSection';
 import { MembershipSection } from '@/components/MembershipSection';
 import { useVolunteerPhotoConsent } from '@/components/PrivacyConsentsSection';
 import { SITE_URL, SOCIAL_LINKS, SUPPORT_EMAIL } from '@/lib/social';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Own profile → Settings: membership, then grouped rows like a phone app's settings screen
@@ -122,9 +123,9 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
         );
 
   const social: { key: keyof typeof SOCIAL_LINKS; icon: ReactNode; en: string; ko: string }[] = [
-    { key: 'instagram', icon: <IconCamera />, en: 'Instagram', ko: '인스타그램' },
-    { key: 'x', icon: <IconAt />, en: 'X (Twitter)', ko: 'X (트위터)' },
-    { key: 'tiktok', icon: <IconMusic />, en: 'TikTok', ko: '틱톡' },
+    { key: 'instagram', icon: <Icon name="camera" size={20} />, en: 'Instagram', ko: '인스타그램' },
+    { key: 'x', icon: <Icon name="at" size={20} />, en: 'X (Twitter)', ko: 'X (트위터)' },
+    { key: 'tiktok', icon: <Icon name="music" size={20} />, en: 'TikTok', ko: '틱톡' },
   ];
   const soon = <Pill>{t('Coming soon', '준비 중')}</Pill>;
 
@@ -138,7 +139,7 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
         <h3 className="ps-head">{t('Account', '계정')}</h3>
         <div className="ps-card">
           <SettingsRow
-            icon={<IconBell />}
+            icon={<Icon name="bell" size={20} />}
             label={t('Notifications', '알림')}
             right={pushRight}
             onClick={onNotifications}
@@ -147,7 +148,7 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
           {panel === 'notifications' && <div className="ps-panel">{pushHelp}</div>}
 
           <SettingsRow
-            icon={<IconUserPlus />}
+            icon={<Icon name="join" size={20} />}
             label={t('Invite friends', '친구 초대')}
             sub={
               shared === 'copied'
@@ -160,14 +161,14 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
           />
 
           <SettingsRow
-            icon={<IconStar />}
+            icon={<Icon name="plus" size={20} />}
             label={t('My subscription plan', '내 구독 플랜')}
-            right={plusActive ? <Pill tone="plus">✨ Doreham+</Pill> : <Pill tone="plain">{t('Free', '무료')}</Pill>}
+            right={plusActive ? <Pill tone="plus"><Icon name="plus" size={14} /> Doreham+</Pill> : <Pill tone="plain">{t('Free', '무료')}</Pill>}
             href="/plus"
           />
 
           <SettingsRow
-            icon={<IconCard />}
+            icon={<Icon name="card" size={20} />}
             label={t('Payment method', '결제 수단')}
             right={soon}
             onClick={() => toggle('payment')}
@@ -187,9 +188,9 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
       <div className="ps-group" role="group" aria-label={t('Support & privacy', '고객 지원 · 개인정보')}>
         <h3 className="ps-head">{t('Support & privacy', '고객 지원 · 개인정보')}</h3>
         <div className="ps-card">
-          <SettingsRow icon={<IconHelp />} label={t('Help & contact', '도움말 · 문의')} sub={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} />
+          <SettingsRow icon={<Icon name="help" size={20} />} label={t('Help & contact', '도움말 · 문의')} sub={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} />
           <SettingsRow
-            icon={<IconFile />}
+            icon={<Icon name="doc" size={20} />}
             label={t('Legal documents', '약관 및 정책')}
             onClick={() => toggle('legal')}
             expanded={panel === 'legal'}
@@ -201,7 +202,7 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
             </div>
           )}
           <SettingsRow
-            icon={<IconShield />}
+            icon={<Icon name="shield" size={20} />}
             label={t('Volunteer quest photos', '봉사 퀘스트 사진')}
             sub={consent.message ?? consent.status}
             right={
@@ -233,14 +234,14 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
       <div className="ps-group" role="group" aria-label={t('Sign out', '로그아웃')}>
         <div className="ps-card">
           <SettingsRow
-            icon={<IconLogOut />}
+            icon={<Icon name="logout" size={20} />}
             label={busy === 'logout' ? t('Logging out…', '로그아웃 중…') : t('Log out', '로그아웃')}
             onClick={busy === 'logout' ? undefined : logOut}
             chevron={false}
           />
           {canDelete && (
             <SettingsRow
-              icon={<IconTrash />}
+              icon={<Icon name="trash" size={20} />}
               label={t('Delete account', '계정 삭제')}
               onClick={() => toggle('delete')}
               expanded={panel === 'delete'}
@@ -282,7 +283,7 @@ function Pill({ tone, children }: { tone?: 'on' | 'go' | 'warn' | 'plus' | 'plai
     <span className={`pill ${tone ?? ''}`}>
       {children}
       <style jsx>{`
-        .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--paper); color: var(--ink-60); white-space: nowrap; line-height: 1.4; }
+        .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--paper); color: var(--ink-60); white-space: nowrap; line-height: 1.4; }
         .on { background: rgba(15, 157, 119, 0.12); color: var(--jade); }
         .go { background: rgba(255, 106, 61, 0.12); color: var(--persimmon); }
         .warn { background: rgba(214, 69, 69, 0.1); color: #c43c3c; }
@@ -405,84 +406,3 @@ function RowInner({
     </>
   );
 }
-
-// ---- Line icons (20px, stroke) ------------------------------------------------------
-
-function Svg({ children }: { children: ReactNode }) {
-  return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {children}
-    </svg>
-  );
-}
-const IconBell = () => (
-  <Svg>
-    <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-    <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-  </Svg>
-);
-const IconUserPlus = () => (
-  <Svg>
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M19 8v6M22 11h-6" />
-  </Svg>
-);
-const IconStar = () => (
-  <Svg>
-    <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" />
-  </Svg>
-);
-const IconCard = () => (
-  <Svg>
-    <rect x="2" y="5" width="20" height="14" rx="2.5" />
-    <path d="M2 10h20M6 15h4" />
-  </Svg>
-);
-const IconHelp = () => (
-  <Svg>
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
-  </Svg>
-);
-const IconFile = () => (
-  <Svg>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <path d="M14 2v6h6M16 13H8M16 17H8" />
-  </Svg>
-);
-const IconShield = () => (
-  <Svg>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    <path d="M9 12l2 2 4-4" />
-  </Svg>
-);
-const IconCamera = () => (
-  <Svg>
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-    <circle cx="12" cy="13" r="4" />
-  </Svg>
-);
-const IconAt = () => (
-  <Svg>
-    <circle cx="12" cy="12" r="4" />
-    <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.9 7.9" />
-  </Svg>
-);
-const IconMusic = () => (
-  <Svg>
-    <path d="M9 18V5l12-2v13" />
-    <circle cx="6" cy="18" r="3" />
-    <circle cx="18" cy="16" r="3" />
-  </Svg>
-);
-const IconLogOut = () => (
-  <Svg>
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-  </Svg>
-);
-const IconTrash = () => (
-  <Svg>
-    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
-  </Svg>
-);

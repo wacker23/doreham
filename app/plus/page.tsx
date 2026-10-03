@@ -15,6 +15,8 @@ import {
   type PlanRow,
   type PlanStatus,
 } from '@/lib/plan';
+import { Icon } from '@/components/icons/Icon';
+import { SeaArt } from '@/components/icons/SeaArt';
 
 const SUPPORT_EMAIL = 'support@doreham.co.kr';
 
@@ -54,7 +56,7 @@ export default function PlusPage() {
       <AppHeader lang={lang} setLang={setLang} />
       <main className="app-page narrow plus-wrap">
         <div className="plus-hero">
-          <div className="mark" aria-hidden="true">✨</div>
+          <div className="mark" aria-hidden="true"><SeaArt name="plus" size={64} /></div>
           <h1>Doreham+</h1>
           <p className="lead">
             {t(
@@ -69,7 +71,7 @@ export default function PlusPage() {
             <span className="muted">…</span>
           ) : !plan.enforced && !plan.plus ? (
             <>
-              <div className="status-title">🎉 {t('Test period: everything is unlocked', '테스트 기간: 모든 기능이 열려 있어요')}</div>
+              <div className="status-title"><Icon name="events" size={20} /> {t('Test period: everything is unlocked', '테스트 기간: 모든 기능이 열려 있어요')}</div>
               <div className="status-sub">
                 {t(
                   "While we test Doreham, every Doreham+ feature is free for everyone. We'll tell you before the plans start.",
@@ -79,7 +81,7 @@ export default function PlusPage() {
             </>
           ) : plan.plus ? (
             <>
-              <div className="status-title">✨ {t('You have Doreham+', 'Doreham+ 이용 중')}</div>
+              <div className="status-title"><Icon name="plus" size={20} /> {t('You have Doreham+', 'Doreham+ 이용 중')}</div>
               <div className="status-sub">{until ? t(`Until ${until}`, `${until}까지`) : t('No end date', '기간 제한 없음')}</div>
             </>
           ) : (
@@ -146,12 +148,12 @@ export default function PlusPage() {
       <style jsx>{`
         .plus-wrap { padding-bottom: 96px; }
         .plus-hero { text-align: center; margin: 8px 0 20px; }
-        .mark { font-size: 34px; }
+        .mark { display: flex; }
         h1 { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -0.02em; margin: 4px 0 6px; color: var(--ink); }
         .lead { color: var(--ink-60); font-size: 15.5px; line-height: 1.55; margin: 0 auto; max-width: 46ch; }
         .status { background: #fff; border: 1px solid var(--ink-12); border-radius: 18px; padding: 16px 20px; margin-bottom: 16px; text-align: center; }
         .status.on { border-color: rgba(255, 106, 61, 0.35); background: linear-gradient(135deg, rgba(255, 106, 61, 0.07), rgba(199, 184, 224, 0.12)); }
-        .status-title { font-weight: 800; font-size: 16px; color: var(--ink); }
+        .status-title { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 16px; color: var(--ink); }
         .status-sub { font-size: 13.5px; color: var(--ink-60); margin-top: 2px; }
         .muted { color: var(--ink-60); }
         .table { background: #fff; border: 1px solid var(--ink-12); border-radius: 18px; overflow: hidden; }

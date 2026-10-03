@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
 
 type Phase = 'availability' | 'voting' | 'scheduled' | 'cancelled';
 
@@ -474,7 +475,7 @@ export default function AvailabilityPage() {
         </header>
         <main className="wrap main-wrap">
           <div className="error-state">
-            <div className="error-icon">🔒</div>
+            <div className="error-icon"><Icon name="lock" size={52} /></div>
             <h2>{error}</h2>
             <button onClick={() => router.push('/matches')} className="btn-primary">
               {lang === 'ko' ? '← 내 그룹으로' : '← Back to matches'}
@@ -488,7 +489,7 @@ export default function AvailabilityPage() {
           .ko-mark { color: var(--ink-60); font-weight: 700; font-size: 17px; }
           .main-wrap { padding: 60px 24px; max-width: 500px; }
           .error-state { text-align: center; padding: 60px 20px; background: var(--paper-2); border-radius: 24px; }
-          .error-icon { font-size: 56px; margin-bottom: 20px; }
+          .error-icon { display: flex; justify-content: center; margin-bottom: 20px; }
           .error-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 24px; }
           .btn-primary { background: var(--persimmon); color: #fff; border: 0; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; }
         `}</style>
@@ -508,7 +509,7 @@ export default function AvailabilityPage() {
               {phase === 'scheduled' && (lang === 'ko' ? '퀘스트 확정' : 'Quest confirmed')}
               {phase === 'cancelled' && (lang === 'ko' ? '매칭 취소됨' : 'Match cancelled')}
             </div>
-            <div className="header-sub">📍 {venueName}</div>
+            <div className="header-sub"><Icon name="location" size={14} /> {venueName}</div>
           </div>
           <div className="toggle">
             <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
@@ -522,10 +523,10 @@ export default function AvailabilityPage() {
         {/* ==================== PHASE: SCHEDULED ==================== */}
         {phase === 'scheduled' && scheduledAt && (
           <div className="scheduled-hero">
-            <div className="scheduled-icon">🎉</div>
+            <div className="scheduled-icon"><Icon name="events" size={72} /></div>
             <h2>{lang === 'ko' ? '만날 날이 정해졌어요!' : "You're on!"}</h2>
             <div className="scheduled-time">{formatSlotFull(scheduledAt, lang)}</div>
-            <div className="scheduled-venue">📍 {venueName}</div>
+            <div className="scheduled-venue"><Icon name="location" size={18} /> {venueName}</div>
             <a href={`/venues/${venueId}`} className="btn-secondary">
               {lang === 'ko' ? '장소 정보 보기' : 'View venue details'}
             </a>
@@ -535,7 +536,7 @@ export default function AvailabilityPage() {
         {/* ==================== PHASE: CANCELLED ==================== */}
         {phase === 'cancelled' && (
           <div className="cancelled-hero">
-            <div className="cancelled-icon">😔</div>
+            <div className="cancelled-icon"><Icon name="sad" size={64} /></div>
             <h2>{lang === 'ko' ? '매칭이 취소되었어요' : 'Match cancelled'}</h2>
             <p>
               {lang === 'ko'
@@ -744,7 +745,7 @@ export default function AvailabilityPage() {
         .back-btn { background: transparent; border: 0; font-size: 24px; color: var(--ink); cursor: pointer; padding: 8px 12px; font-weight: 300; }
         .header-info { flex: 1; min-width: 0; }
         .header-title { font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--ink); }
-        .header-sub { font-size: 12px; color: var(--ink-60); margin-top: 2px; }
+        .header-sub { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-60); margin-top: 2px; }
         .toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
         .toggle button { border: 0; background: transparent; font-family: var(--body); font-weight: 600; font-size: 12px; padding: 6px 10px; cursor: pointer; color: var(--ink-60); }
         .toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
@@ -752,16 +753,16 @@ export default function AvailabilityPage() {
 
         /* Scheduled hero */
         .scheduled-hero { text-align: center; padding: 60px 20px; background: linear-gradient(135deg, rgba(15, 157, 119, 0.08), rgba(255, 106, 61, 0.05)); border: 1px solid rgba(15, 157, 119, 0.2); border-radius: 24px; }
-        .scheduled-icon { font-size: 72px; margin-bottom: 16px; }
+        .scheduled-icon { display: flex; justify-content: center; margin-bottom: 16px; }
         .scheduled-hero h2 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 16px; color: var(--ink); }
         .scheduled-time { font-family: var(--display); font-weight: 700; font-size: 24px; color: var(--jade); margin-bottom: 8px; }
-        .scheduled-venue { font-size: 16px; color: var(--ink-60); margin-bottom: 24px; }
+        .scheduled-venue { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 16px; color: var(--ink-60); margin-bottom: 24px; }
         .btn-secondary { display: inline-block; background: transparent; border: 1px solid var(--ink-12); color: var(--ink); padding: 10px 22px; border-radius: 999px; font-weight: 600; font-size: 14px; text-decoration: none; }
         .btn-secondary:hover { background: var(--paper-2); }
 
         /* Cancelled */
         .cancelled-hero { text-align: center; padding: 60px 20px; background: var(--paper-2); border-radius: 24px; }
-        .cancelled-icon { font-size: 64px; margin-bottom: 16px; }
+        .cancelled-icon { display: flex; justify-content: center; margin-bottom: 16px; }
         .cancelled-hero h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 12px; color: var(--ink); }
         .cancelled-hero p { color: var(--ink-60); font-size: 15px; margin: 0 0 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
         .btn-primary { background: var(--persimmon); color: #fff; border: 0; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; }

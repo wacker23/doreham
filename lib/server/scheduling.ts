@@ -130,8 +130,8 @@ export async function computeCandidates(groupId: string) {
       members.map((uid) => ({
         user_id: uid,
         type: 'availability_reminder' as const,
-        title_en: '🗳️ Time to vote on your meetup time',
-        title_ko: '🗳️ 만날 시간을 투표해 주세요',
+        title_en: 'Time to vote on your meetup time',
+        title_ko: '만날 시간을 투표해 주세요',
         body_en: `We found ${candidates.length} time${candidates.length === 1 ? '' : 's'} that work for everyone. Vote within 24 hours.`,
         body_ko: `모두가 가능한 시간 ${candidates.length}개를 찾았어요. 24시간 안에 투표해 주세요.`,
         action_url: `/matches/${groupId}/availability`,
@@ -240,8 +240,8 @@ export async function lockQuestDate(groupId: string) {
       members.map((uid) => ({
         user_id: uid,
         type: 'quest_scheduled' as const,
-        title_en: `📅 It's set: ${formatKst(winning.slot_time, 'en')}`,
-        title_ko: `📅 확정: ${formatKst(winning.slot_time, 'ko')}`,
+        title_en: `It's set: ${formatKst(winning.slot_time, 'en')}`,
+        title_ko: `확정: ${formatKst(winning.slot_time, 'ko')}`,
         body_en: "Your meetup time is locked in. Check in with the venue's QR code when you arrive.",
         body_ko: '만남 시간이 확정되었어요. 도착하면 매장의 QR 코드로 체크인하세요.',
         action_url: '/matches',
@@ -310,8 +310,8 @@ async function closeGroup(groupId: string) {
         attendees.map((uid) => ({
           user_id: uid,
           type: 'review_reminder' as const,
-          title_en: '🌟 How was your meetup?',
-          title_ko: '🌟 만남은 어땠나요?',
+          title_en: 'How was your meetup?',
+          title_ko: '만남은 어땠나요?',
           body_en: 'Leave quick tag reviews for your group and the venue (open for 14 days).',
           body_ko: '그룹 멤버와 장소에 간단한 태그 리뷰를 남겨 주세요 (14일간 가능).',
           action_url: `/matches/review/${quest.id}`,
@@ -344,8 +344,8 @@ async function closeGroup(groupId: string) {
         cameAlone.map((uid) => ({
           user_id: uid,
           type: 'match_cancelled' as const,
-          title_en: "😔 Your group didn't make it",
-          title_ko: '😔 그룹 멤버들이 오지 않았어요',
+          title_en: "Your group didn't make it",
+          title_ko: '그룹 멤버들이 오지 않았어요',
           body_en: "Thanks for showing up. The others missed the meetup and got a no-show strike. You can request a new group any time.",
           body_ko: '와 주셔서 고마워요. 오지 않은 멤버에게는 불참 경고가 부과됐어요. 언제든 새 그룹을 요청할 수 있어요.',
           action_url: '/matches',
@@ -454,8 +454,8 @@ export async function sendCheckInReminders() {
       members.map((uid) => ({
         user_id: uid,
         type: 'check_in_reminder' as const,
-        title_en: volunteer ? '🤝 Volunteering starts soon' : '📍 Your meetup starts soon',
-        title_ko: volunteer ? '🤝 곧 봉사활동이 시작돼요' : '📍 곧 만남이 시작돼요',
+        title_en: volunteer ? 'Volunteering starts soon' : 'Your meetup starts soon',
+        title_ko: volunteer ? '곧 봉사활동이 시작돼요' : '곧 만남이 시작돼요',
         body_en: volunteer
           ? `Starts ${formatKst(g.quest_scheduled_at as string, 'en')}. When you're together, take one group selfie in the app.`
           : `Starts ${formatKst(g.quest_scheduled_at as string, 'en')}. Check in with the venue QR when you arrive.`,
@@ -513,8 +513,8 @@ export async function sendQuestDayReminders() {
       members.map((uid) => ({
         user_id: uid,
         type: 'quest_day_reminder' as const,
-        title_en: `🗓️ Your meetup at ${venueName} is coming up!`,
-        title_ko: `🗓️ 곧 ${venueName}에서 만나요!`,
+        title_en: `Your meetup at ${venueName} is coming up!`,
+        title_ko: `곧 ${venueName}에서 만나요!`,
         body_en: q?.quest_type === 'volunteer'
           ? `${formatKst(g.quest_scheduled_at as string, 'en')} — volunteering at ${venueName}. Take one group selfie in the app when you're together.`
           : `${formatKst(g.quest_scheduled_at as string, 'en')} — scan the QR at ${venueName} to check in when you arrive.`,
@@ -565,8 +565,8 @@ export async function sendAvailabilityNudges() {
       need.map((uid) => ({
         user_id: uid,
         type: 'availability_reminder' as const,
-        title_en: '⏰ Your group is waiting for you',
-        title_ko: '⏰ 그룹이 기다리고 있어요',
+        title_en: 'Your group is waiting for you',
+        title_ko: '그룹이 기다리고 있어요',
         body_en: "Pick your available times — your group can't schedule without you!",
         body_ko: '가능한 시간을 선택해 주세요 — 여러분 없이는 일정을 잡을 수 없어요!',
         action_url: `/matches/${g.id}/availability`,

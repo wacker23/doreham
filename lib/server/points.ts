@@ -44,8 +44,8 @@ export async function syncPoints(opts: { force?: boolean } = {}) {
     ups.push({
       user_id: t.user_id as string,
       type: 'level_up',
-      title_en: `${after.emoji} Level up: you're a ${after.en} now!`,
-      title_ko: `${after.emoji} 레벨 업! 이제 ${after.ko}예요`,
+      title_en: `Level up: you're a ${after.en} now!`,
+      title_ko: `레벨 업! 이제 ${after.ko}예요`,
       body_en: unlock ? `Unlocked: ${unlock.en}` : 'See your new perks.',
       body_ko: unlock ? `새로 열림: ${unlock.ko}` : '새 혜택을 확인해 보세요.',
       action_url: '/leaderboard?tab=me',
@@ -78,8 +78,8 @@ export async function snapshotPreviousMonth() {
     rows.map((r) => ({
       user_id: r.user_id,
       type: 'monthly_rank' as const,
-      title_en: `🏆 You finished #${r.rank} in Korea for ${monthEn}!`,
-      title_ko: `🏆 ${m}월 전국 ${r.rank}위를 했어요!`,
+      title_en: `You finished #${r.rank} in Korea for ${monthEn}!`,
+      title_ko: `${m}월 전국 ${r.rank}위를 했어요!`,
       body_en: 'You earned the Top 10 badge. A new month has started, good luck!',
       body_ko: '톱 10 배지를 받았어요. 새 달이 시작됐어요. 이번 달도 화이팅!',
       action_url: '/leaderboard',

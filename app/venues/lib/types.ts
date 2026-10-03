@@ -1,3 +1,4 @@
+import type { CategoryArt } from '@/lib/icons';
 // Shared types for venue registration flow
 // Matches the actual venues table schema in Supabase
 
@@ -82,19 +83,19 @@ export type VenueFormData = {
 export type VenueStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export const TOTAL_VENUE_STEPS = 7;
 
-export const CATEGORY_LABELS: Record<VenueCategory, { en: string; ko: string; emoji: string; needsMenu: boolean }> = {
-  cafe:              { en: 'Café / Coffee shop',       ko: '카페 / 커피숍',       emoji: '☕', needsMenu: true },
-  restaurant:        { en: 'Restaurant',                ko: '식당',                emoji: '🍜', needsMenu: true },
-  board_game_cafe:   { en: 'Board game café',           ko: '보드게임 카페',       emoji: '🎲', needsMenu: false },
-  escape_room:       { en: 'Escape room',               ko: '방탈출',              emoji: '🧩', needsMenu: false },
-  bookshop:          { en: 'Bookshop',                  ko: '서점',                emoji: '📚', needsMenu: false },
-  workshop_creative: { en: 'Workshop / Creative class', ko: '원데이 클래스 / 공방',emoji: '🏺', needsMenu: false },
-  active_sports:     { en: 'Sports / Active',           ko: '스포츠 · 액티비티',   emoji: '🥾', needsMenu: false },
-  cultural_venue:    { en: 'Cultural venue',            ko: '문화 공간',           emoji: '🎨', needsMenu: false },
-  nature_outdoor:    { en: 'Nature / Outdoor',          ko: '자연 · 야외',         emoji: '🌿', needsMenu: false },
-  music_movie:       { en: 'Music / Movie',             ko: '음악 · 영화',         emoji: '🎬', needsMenu: false },
-  bar_club:          { en: 'Bar / Club',                ko: '바 · 클럽',           emoji: '🍸', needsMenu: true },
-  other:             { en: 'Other',                     ko: '기타',                emoji: '🏪', needsMenu: false },
+export const CATEGORY_LABELS: Record<VenueCategory, { en: string; ko: string; art: CategoryArt; needsMenu: boolean }> = {
+  cafe:              { en: 'Café / Coffee shop',       ko: '카페 / 커피숍',       art: 'coffee', needsMenu: true },
+  restaurant:        { en: 'Restaurant',                ko: '식당',                art: 'food', needsMenu: true },
+  board_game_cafe:   { en: 'Board game café',           ko: '보드게임 카페',       art: 'game', needsMenu: false },
+  escape_room:       { en: 'Escape room',               ko: '방탈출',              art: 'puzzle', needsMenu: false },
+  bookshop:          { en: 'Bookshop',                  ko: '서점',                art: 'books', needsMenu: false },
+  workshop_creative: { en: 'Workshop / Creative class', ko: '원데이 클래스 / 공방',art: 'makethings', needsMenu: false },
+  active_sports:     { en: 'Sports / Active',           ko: '스포츠 · 액티비티',   art: 'adventure', needsMenu: false },
+  cultural_venue:    { en: 'Cultural venue',            ko: '문화 공간',           art: 'makethings', needsMenu: false },
+  nature_outdoor:    { en: 'Nature / Outdoor',          ko: '자연 · 야외',         art: 'nature', needsMenu: false },
+  music_movie:       { en: 'Music / Movie',             ko: '음악 · 영화',         art: 'movie', needsMenu: false },
+  bar_club:          { en: 'Bar / Club',                ko: '바 · 클럽',           art: 'nightout', needsMenu: true },
+  other:             { en: 'Other',                     ko: '기타',                art: 'venue', needsMenu: false },
 };
 
 export const DEFAULT_HOURS: WeekHours = {

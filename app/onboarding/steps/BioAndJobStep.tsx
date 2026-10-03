@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { OnboardingFormData, UiLanguage } from '../lib/types';
+import { Icon } from '@/components/icons/Icon';
 
 type Props = {
   lang: UiLanguage;
@@ -26,7 +27,7 @@ export function BioAndJobStep({ lang, initialData, onNext, onBack, saving }: Pro
   return (
     <form onSubmit={handleSubmit} noValidate>
       <h2 className="step-title">
-        {lang === 'ko' ? '자기소개 ✨' : 'About you ✨'}
+        {lang === 'ko' ? '자기소개' : 'About you'} <Icon name="sparkle" size={26} />
       </h2>
       <p className="step-sub">
         {lang === 'ko'

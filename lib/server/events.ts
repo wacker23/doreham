@@ -339,8 +339,8 @@ export async function updateEvent(userId: string, id: string, input: EventInput)
         people.map((uid) => ({
           user_id: uid,
           type: 'event_updated' as const,
-          title_en: `📅 "${e.title}" changed`,
-          title_ko: `📅 "${e.title}" 일정이 바뀌었어요`,
+          title_en: `"${e.title}" changed`,
+          title_ko: `"${e.title}" 일정이 바뀌었어요`,
           body_en: `Now: ${when} · ${place}`,
           body_ko: `변경: ${whenKo} · ${place}`,
           action_url: `/events/${id}`,
@@ -367,8 +367,8 @@ export async function cancelEvent(userId: string, id: string) {
       people.map((uid) => ({
         user_id: uid,
         type: 'event_cancelled' as const,
-        title_en: `❌ "${e.title}" was cancelled`,
-        title_ko: `❌ "${e.title}" 이벤트가 취소됐어요`,
+        title_en: `"${e.title}" was cancelled`,
+        title_ko: `"${e.title}" 이벤트가 취소됐어요`,
         body_en: 'The host cancelled this event. Find another one on the Events page.',
         body_ko: '주최자가 이벤트를 취소했어요. 이벤트 페이지에서 다른 이벤트를 찾아보세요.',
         action_url: '/events',
@@ -435,8 +435,8 @@ export async function setGoing(userId: string, id: string, going: boolean) {
       await createNotification({
         user_id: e.creator_id,
         type: 'event_joined',
-        title_en: `🙋 ${name} is going to "${e.title}"`,
-        title_ko: `🙋 ${name}님이 "${e.title}"에 참여해요`,
+        title_en: `${name} is going to "${e.title}"`,
+        title_ko: `${name}님이 "${e.title}"에 참여해요`,
         action_url: `/events/${id}`,
       });
     });
@@ -469,8 +469,8 @@ export async function addComment(userId: string, id: string, bodyRaw: string) {
       await createNotification({
         user_id: e.creator_id,
         type: 'event_comment',
-        title_en: `💬 ${name} commented on "${e.title}"`,
-        title_ko: `💬 ${name}님이 "${e.title}"에 댓글을 남겼어요`,
+        title_en: `${name} commented on "${e.title}"`,
+        title_ko: `${name}님이 "${e.title}"에 댓글을 남겼어요`,
         body_en: body.slice(0, 120),
         body_ko: body.slice(0, 120),
         action_url: `/events/${id}`,
@@ -827,8 +827,8 @@ export async function sendEventReminders() {
       people.map((uid) => ({
         user_id: uid,
         type: 'event_reminder' as const,
-        title_en: `⏰ Today: ${e.title}`,
-        title_ko: `⏰ 오늘: ${e.title}`,
+        title_en: `Today: ${e.title}`,
+        title_ko: `오늘: ${e.title}`,
         body_en: `${formatKst(e.starts_at as string, 'en')} · ${e.place_name}`,
         body_ko: `${formatKst(e.starts_at as string, 'ko')} · ${e.place_name}`,
         action_url: `/events/${e.id}`,

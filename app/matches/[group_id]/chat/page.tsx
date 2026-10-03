@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
 
 const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
@@ -168,7 +169,7 @@ export default function ChatPage() {
       setGroupInfo({
         venue_id: questData.venue_id,
         venue_name: (questData as any).quest_type === 'volunteer'
-          ? `🤝 ${(lang === 'en' ? (questData as any).program?.title_en : null) ?? (questData as any).program?.title ?? (lang === 'ko' ? '봉사활동' : 'Volunteering')}`
+          ? `${(lang === 'en' ? (questData as any).program?.title_en : null) ?? (questData as any).program?.title ?? (lang === 'ko' ? '봉사활동' : 'Volunteering')}`
           : ((questData as any).venue?.business_name_display ?? ''),
       });
     }
@@ -329,7 +330,7 @@ export default function ChatPage() {
         </header>
         <main className="wrap main-wrap">
           <div className="error-state">
-            <div className="error-icon">🔒</div>
+            <div className="error-icon"><Icon name="lock" size={52} /></div>
             <h2>{error}</h2>
             <button onClick={() => router.push('/matches')} className="btn-primary">
               {lang === 'ko' ? '← 내 그룹으로' : '← Back to matches'}
@@ -343,7 +344,7 @@ export default function ChatPage() {
           .ko-mark { color: var(--ink-60); font-weight: 700; font-size: 17px; }
           .main-wrap { padding: 60px 24px; max-width: 500px; }
           .error-state { text-align: center; padding: 60px 20px; background: var(--paper-2); border-radius: 24px; }
-          .error-icon { font-size: 56px; margin-bottom: 20px; }
+          .error-icon { display: flex; justify-content: center; margin-bottom: 20px; }
           .error-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 24px; }
           .btn-primary { background: var(--persimmon); color: #fff; border: 0; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; }
         `}</style>
@@ -365,7 +366,7 @@ export default function ChatPage() {
             </div>
             {groupInfo && (
               <a href={`/venues/${groupInfo.venue_id}`} className="header-sub">
-                📍 {groupInfo.venue_name}
+                <Icon name="location" size={14} /> {groupInfo.venue_name}
               </a>
             )}
           </div>
@@ -376,7 +377,7 @@ export default function ChatPage() {
       <main className="messages-wrap">
         {messages.length === 0 ? (
           <div className="empty-chat">
-            <div className="empty-icon">💬</div>
+            <div className="empty-icon"><Icon name="chat" size={52} /></div>
             <p>
               {lang === 'ko'
                 ? '아직 메시지가 없어요. 첫 인사를 보내보세요!'
@@ -510,7 +511,7 @@ export default function ChatPage() {
             className="send-btn"
             aria-label={lang === 'ko' ? '전송' : 'Send'}
           >
-            {sending ? '…' : '➤'}
+            {sending ? '…' : <Icon name="send" size={22} tone="light" />}
           </button>
         </div>
       </footer>
@@ -542,7 +543,7 @@ export default function ChatPage() {
                 setContextMenu(null);
               }}
             >
-              ✏ {lang === 'ko' ? '수정' : 'Edit'}
+              <Icon name="edit" size={16} /> {lang === 'ko' ? '수정' : 'Edit'}
             </button>
           )}
         </div>
@@ -555,12 +556,12 @@ export default function ChatPage() {
         .back-btn { background: transparent; border: 0; font-size: 24px; color: var(--ink); cursor: pointer; padding: 8px 12px; font-weight: 300; }
         .header-info { flex: 1; min-width: 0; }
         .header-title { font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .header-sub { display: block; font-size: 12px; color: var(--ink-60); text-decoration: none; margin-top: 2px; }
+        .header-sub { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-60); text-decoration: none; margin-top: 2px; }
         .header-sub:hover { color: var(--persimmon); }
         .header-count { font-size: 13px; color: var(--ink-60); background: var(--paper-2); padding: 4px 10px; border-radius: 999px; font-weight: 600; }
         .messages-wrap { flex: 1; overflow-y: auto; background: var(--paper-2); padding: 20px 24px; }
         .empty-chat { text-align: center; padding: 80px 20px; color: var(--ink-60); }
-        .empty-icon { font-size: 56px; margin-bottom: 16px; }
+        .empty-icon { display: flex; justify-content: center; margin-bottom: 16px; }
         .empty-chat p { font-size: 15px; max-width: 300px; margin: 0 auto; line-height: 1.5; }
         .messages-list { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 4px; }
         .msg-row { display: flex; gap: 8px; align-items: flex-end; }

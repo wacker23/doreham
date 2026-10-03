@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
 
 type Venue = {
   id: string;
@@ -102,13 +103,13 @@ export default function VenueQrPage() {
   if (error) {
     return (
       <main className="err-wrap">
-        <div className="err-icon">⚠️</div>
+        <div className="err-icon"><Icon name="warning" size={48} /></div>
         <h1>{lang === 'ko' ? '접근 오류' : 'Access error'}</h1>
         <p>{error}</p>
         <a href="/venues/my" className="btn-back">{lang === 'ko' ? '내 매장으로' : 'Back to my venues'}</a>
         <style jsx>{`
           .err-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-          .err-icon { font-size: 48px; margin-bottom: 16px; }
+          .err-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 8px; }
           p { color: var(--ink-60); margin: 0 0 24px; }
           .btn-back { background: var(--ink); color: var(--paper); text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; }
@@ -128,13 +129,13 @@ export default function VenueQrPage() {
       <header className="qr-header no-print">
         <a href="/venues/my" className="back-btn">←</a>
         <div className="header-title">{lang === 'ko' ? '오늘의 QR 코드' : "Today's QR"}</div>
-        <button onClick={printQr} className="print-btn">🖨️ {lang === 'ko' ? '인쇄' : 'Print'}</button>
+        <button onClick={printQr} className="print-btn"><Icon name="print" size={16} tone="light" /> {lang === 'ko' ? '인쇄' : 'Print'}</button>
       </header>
 
       <div className="content">
         <div className="print-card">
           <div className="brand">
-            <div className="brand-mark">🌸 Doreham / 도레함</div>
+            <div className="brand-mark"><Icon name="matches" size={20} /> Doreham / 도레함</div>
           </div>
 
           <h1 className="venue-name">{venue.business_name_display}</h1>
@@ -148,7 +149,7 @@ export default function VenueQrPage() {
 
           <div className="instructions">
             <p className="inst-title">
-              {lang === 'ko' ? '📱 스캔 방법' : '📱 How to scan'}
+              <Icon name="qr" size={16} /> {lang === 'ko' ? '스캔 방법' : 'How to scan'}
             </p>
             <p className="inst-body">
               {lang === 'ko'
@@ -165,7 +166,7 @@ export default function VenueQrPage() {
         </div>
 
         <div className="tips no-print">
-          <h3>{lang === 'ko' ? '💡 안내' : '💡 Tips'}</h3>
+          <h3><Icon name="tip" size={18} /> {lang === 'ko' ? '안내' : 'Tips'}</h3>
           <ul>
             <li>
               {lang === 'ko'
@@ -191,11 +192,11 @@ export default function VenueQrPage() {
         .qr-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
         .back-btn { text-decoration: none; color: var(--ink); font-size: 20px; }
         .header-title { font-family: var(--display); font-weight: 800; font-size: 17px; flex: 1; }
-        .print-btn { background: var(--ink); color: var(--paper); border: 0; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; cursor: pointer; }
+        .print-btn { display: inline-flex; align-items: center; gap: 5px; background: var(--ink); color: var(--paper); border: 0; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; cursor: pointer; }
         .content { max-width: 520px; margin: 0 auto; padding: 24px 20px; }
         .print-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 36px 24px; text-align: center; }
         .brand { margin-bottom: 8px; }
-        .brand-mark { font-family: var(--display); font-weight: 800; font-size: 14px; color: var(--persimmon); letter-spacing: 0.02em; }
+        .brand-mark { display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 14px; color: var(--persimmon); letter-spacing: 0.02em; }
         .venue-name { font-family: var(--display); font-weight: 800; font-size: 26px; color: var(--ink); margin: 8px 0 24px; }
         .qr-box { display: flex; justify-content: center; margin-bottom: 20px; }
         .qr-image { width: 300px; height: 300px; max-width: 80vw; max-height: 80vw; }

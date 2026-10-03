@@ -70,8 +70,8 @@ export async function issueStrike(userId: string, reason: StrikeReason, notes: s
     await createNotification({
       user_id: userId,
       type: 'strike_issued',
-      title_en: `⚠️ You received strike #${strikeNumber}`,
-      title_ko: `⚠️ ${strikeNumber}번째 경고를 받았어요`,
+      title_en: `You received strike #${strikeNumber}`,
+      title_ko: `${strikeNumber}번째 경고를 받았어요`,
       body_en: bodyEn,
       body_ko: bodyKo,
       action_url: '/matches',

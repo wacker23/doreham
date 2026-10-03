@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import type { UiLanguage, VenueFormData } from '../lib/types';
+import { Icon } from '@/components/icons/Icon';
 
 type Props = {
   lang: UiLanguage;
@@ -178,7 +179,7 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
 
       <div className="hint-box">
         <div className="hint-title">
-          {lang === 'ko' ? '💡 좋은 사진을 위한 팁' : '💡 Tips for great photos'}
+          <Icon name="tip" size={18} /> {lang === 'ko' ? '좋은 사진을 위한 팁' : 'Tips for great photos'}
         </div>
         <ul>
           <li>
@@ -224,7 +225,7 @@ export function PhotosStep({ lang, initialData, onNext, onBack }: Props) {
         .info { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-60); margin-bottom: 12px; }
         .err { display: block; margin-bottom: 12px; font-size: 13px; color: var(--persimmon); font-weight: 500; }
         .hint-box { background: var(--paper-2); border-radius: 12px; padding: 16px 18px; margin-bottom: 24px; }
-        .hint-title { font-weight: 600; font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+        .hint-title { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; color: var(--ink); margin-bottom: 8px; }
         .hint-box ul { margin: 0; padding-left: 20px; }
         .hint-box li { font-size: 13.5px; color: var(--ink-60); line-height: 1.6; }
         .actions { margin-top: 20px; display: flex; justify-content: space-between; gap: 12px; }

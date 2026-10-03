@@ -976,3 +976,24 @@ footer {
 @media (min-width: 900px) {
   .app-page { padding: 36px 24px 72px; }
 }
+
+/* ---------- Doreham sea icons (components/icons) ---------- */
+.dh-ic { display: inline-block; flex: none; vertical-align: -0.2em; overflow: visible; }
+.dh-ic * { fill: none; stroke: var(--ic-line, #1B2838); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.dh-ic .c { fill: var(--ic-fill, #FBF7F0); }
+.dh-ic .a { stroke: var(--ic-accent, #F05A28); }
+.dh-ic .af { fill: var(--ic-accent, #F05A28); stroke: none; }
+.dh-ic .n { fill: var(--ic-line, #1B2838); stroke: none; }
+.dh-ic .pk { fill: #F5C2C7; }
+.dh-ic .lv { fill: #C7B8E0; }
+.dh-ic .q { fill: #CFE6F0; }
+.dh-ic .bl { fill: #B8C8EA; }
+.dh-ic .o { fill: #FFD3BD; }
+.dh-ic .ns { stroke: none; }
+.dh-ic.on { --ic-fill: #FFE1D3; }
+.dh-ic.off { --ic-line: #7C8190; --ic-accent: #7C8190; }
+.dh-ic.off .c, .dh-ic.off .pk, .dh-ic.off .lv, .dh-ic.off .o { fill: none; }
+.dh-ic.light { --ic-line: #FFFFFF; --ic-accent: #FFFFFF; --ic-fill: transparent; }
+.dh-art.locked { filter: grayscale(1); opacity: 0.4; }
+.dh-cat { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex: none; vertical-align: middle; }
+.dh-cat img { flex: none; max-width: none; }

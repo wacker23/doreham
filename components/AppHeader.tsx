@@ -7,6 +7,7 @@ import { PushPrompt } from '@/components/PushPrompt';
 import { useUser } from '@/lib/hooks/useUser';
 import { appTabs, isTabActive } from '@/lib/appTabs';
 import { isVenueAccount } from '@/lib/accountType';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Top bar for signed-in app pages: brand, main sections (computers only; phones and tablets
@@ -29,7 +30,7 @@ export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: '
               const active = isTabActive(pathname, t);
               return (
                 <a key={t.href} href={t.href} className={active ? 'on' : ''} aria-current={active ? 'page' : undefined}>
-                  <span aria-hidden="true">{t.icon}</span> {lang === 'ko' ? t.ko : t.en}
+                  <Icon name={t.icon} size={20} tone={active ? 'on' : 'off'} /> {lang === 'ko' ? t.ko : t.en}
                 </a>
               );
             })}
@@ -82,7 +83,7 @@ export function AppHeader({ lang, setLang }: { lang: 'en' | 'ko'; setLang: (l: '
           .app-links { display: flex; gap: 2px; margin-left: 12px; }
           .app-links a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 999px; text-decoration: none; color: var(--ink-60); font-weight: 700; font-size: 14.5px; white-space: nowrap; transition: background 0.12s, color 0.12s; }
           .app-links a:hover { background: rgba(30, 34, 48, 0.06); color: var(--ink); }
-          .app-links a.on { background: var(--ink); color: var(--paper); }
+          .app-links a.on { background: #FFFFFF; color: var(--ink); box-shadow: 0 0 0 1px var(--ink-12); }
         }
       `}</style>
     </header>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { disablePushForSignOut } from '@/lib/push';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Delete the account for good (type a word to confirm).
@@ -71,7 +72,7 @@ export function DeleteAccountSection({
             '도레함과 함께해 주셔서 고마워요. 같은 구글 계정으로 언제든 새 회원으로 다시 가입할 수 있어요.',
           )}
         </p>
-        <button type="button" className="da-btn" onClick={finish}>{t('OK, goodbye 👋', '확인 👋')}</button>
+        <button type="button" className="da-btn" onClick={finish}>{t('OK, goodbye', '확인')} <Icon name="hello" size={18} tone="light" /></button>
         <style jsx>{`
           .da-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
           .da-card.embedded { border: 0; border-radius: 0; padding: 4px 18px 18px; margin: 0; }

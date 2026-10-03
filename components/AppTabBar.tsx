@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { appTabs, isTabActive } from '@/lib/appTabs';
 import { isVenueAccount } from '@/lib/accountType';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Bottom tab bar for phones and tablets (Matches · Events · Ranking · Me).
@@ -21,7 +22,7 @@ export function AppTabBar({ lang }: { lang: 'en' | 'ko' }) {
           const active = isTabActive(pathname, t);
           return (
             <a key={t.href} href={t.href} className={`app-tab ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined}>
-              <span className="app-tab-icon" aria-hidden="true">{t.icon}</span>
+              <span className="app-tab-icon"><Icon name={t.icon} size={26} tone={active ? 'on' : 'off'} /></span>
               <span className="app-tab-label">{lang === 'ko' ? t.ko : t.en}</span>
             </a>
           );
@@ -32,8 +33,8 @@ export function AppTabBar({ lang }: { lang: 'en' | 'ko' }) {
         .app-tabs-in { display: flex; justify-content: space-around; max-width: 560px; margin: 0 auto; }
         .app-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0; text-decoration: none; color: var(--ink-60); font-size: 11.5px; font-weight: 600; border-radius: 12px; }
         .app-tab.active { color: var(--ink); }
-        .app-tab.active .app-tab-icon { transform: scale(1.12); }
-        .app-tab-icon { font-size: 21px; line-height: 1.1; transition: transform 0.15s; }
+        .app-tab.active .app-tab-icon { transform: scale(1.06); }
+        .app-tab-icon { display: flex; line-height: 1; transition: transform 0.15s; }
         @media (min-width: 900px) {
           .app-tabs { display: none; }
         }

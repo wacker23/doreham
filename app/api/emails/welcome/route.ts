@@ -41,8 +41,8 @@ export async function POST(request: Request) {
     await createNotification({
       user_id: userId,
       type: 'welcome',
-      title_en: `Welcome to Doreham${name ? `, ${name}` : ''}! 🏪`,
-      title_ko: `도레함에 오신 것을 환영해요${name ? `, ${name}님` : ''}! 🏪`,
+      title_en: `Welcome to Doreham${name ? `, ${name}` : ''}!`,
+      title_ko: `도레함에 오신 것을 환영해요${name ? `, ${name}님` : ''}!`,
       body_en: 'Add your venue so people nearby can find it. Once it is approved, you can host events there.',
       body_ko: '가게를 등록하면 근처 사람들이 찾을 수 있어요. 승인되면 가게에서 이벤트도 열 수 있어요.',
       action_url: actionUrl,
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
   await createNotification({
     user_id: userId,
     type: 'welcome',
-    title_en: `Welcome to Doreham${name ? `, ${name}` : ''}! 🌸`,
-    title_ko: `도레함에 오신 것을 환영해요${name ? `, ${name}님` : ''}! 🌸`,
+    title_en: `Welcome to Doreham${name ? `, ${name}` : ''}!`,
+    title_ko: `도레함에 오신 것을 환영해요${name ? `, ${name}님` : ''}!`,
     body_en: "You're all set. Head to Matches to find your first group of friends.",
     body_ko: '준비 완료! 매칭 페이지에서 첫 그룹을 찾아보세요.',
     action_url: actionUrl,

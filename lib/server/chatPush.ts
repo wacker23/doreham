@@ -31,8 +31,8 @@ export async function pushChatMessage(groupId: string, senderId: string, content
     const messages: PushMessage[] = recipients.map((user_id) => ({
       user_id,
       type: 'chat_message',
-      title_en: `💬 ${name ?? 'New message'} · Group chat`,
-      title_ko: `💬 ${name ?? '새 메시지'} · 그룹 채팅`,
+      title_en: `${name ?? 'New message'} · Group chat`,
+      title_ko: `${name ?? '새 메시지'} · 그룹 채팅`,
       body_en: body,
       body_ko: body,
       action_url: `/matches/${groupId}/chat`,

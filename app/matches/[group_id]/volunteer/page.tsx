@@ -7,6 +7,7 @@ import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
 import { volunteerCategoryLabel } from '@/lib/volunteerCategories';
 import { VolunteerConsentModal } from '@/components/VolunteerConsentModal';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Volunteer quest page (봉사 퀘스트):
@@ -173,12 +174,12 @@ export default function VolunteerQuestPage() {
   if (!view) {
     return (
       <main className="err-wrap">
-        <div className="err-icon">⚠️</div>
+        <div className="err-icon"><Icon name="warning" size={48} /></div>
         <p>{error ?? t('Something went wrong.', '문제가 생겼어요.')}</p>
         <a href="/matches" className="btn-back">{t('Back to matches', '매칭으로 돌아가기')}</a>
         <style jsx>{`
           .err-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-          .err-icon { font-size: 48px; margin-bottom: 12px; }
+          .err-icon { display: flex; justify-content: center; margin-bottom: 12px; }
           .btn-back { background: var(--ink); color: var(--paper); text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; }
         `}</style>
       </main>
@@ -281,7 +282,7 @@ export default function VolunteerQuestPage() {
       setSelfieFile(null);
       setNotice(kind === 'group_selfie'
         ? (data.completed
-            ? t('🎉 Quest complete! Thank you for volunteering together.', '🎉 퀘스트 완료! 함께 봉사해 주셔서 고마워요.')
+            ? t('Quest complete! Thank you for volunteering together.', '퀘스트 완료! 함께 봉사해 주셔서 고마워요.')
             : t('Photo uploaded.', '사진을 올렸어요.'))
         : t('Certificate added. Thank you!', '확인서를 등록했어요. 고마워요!'));
       await load();
@@ -310,10 +311,10 @@ export default function VolunteerQuestPage() {
       <div className="program">
         {category && <div className="program-cat">{category}</div>}
         <div className="program-title">{title}</div>
-        {slotTime && <div className="program-when">📅 {fmt(slotTime, lang, DAY_TIME)}{p.act_end_hour != null ? ` – ${p.act_end_hour}:00` : ''}</div>}
+        {slotTime && <div className="program-when"><Icon name="date" size={16} /> {fmt(slotTime, lang, DAY_TIME)}{p.act_end_hour != null ? ` – ${p.act_end_hour}:00` : ''}</div>}
         {place && (
           <div className="program-line">
-            📍 {place}
+            <Icon name="location" size={15} /> {place}
             {english && p.place && p.place !== place && <div className="program-ko">{p.place}</div>}
             {p.lat != null && p.lng != null && (
               // Exact spot from 1365's coordinates. No coordinates → no link (the 1365 page has a map).
@@ -328,9 +329,9 @@ export default function VolunteerQuestPage() {
             )}
           </div>
         )}
-        {org && <div className="program-line">🏢 {org}</div>}
+        {org && <div className="program-line"><Icon name="work" size={15} /> {org}</div>}
         {spots != null && (
-          <div className="program-line">👥 {t(`${spots} spots left on 1365`, `1365 잔여 ${spots}자리`)}</div>
+          <div className="program-line"><Icon name="people" size={15} /> {t(`${spots} spots left on 1365`, `1365 잔여 ${spots}자리`)}</div>
         )}
         {description && (
           <div className="program-desc">
@@ -362,7 +363,7 @@ export default function VolunteerQuestPage() {
     <main className="vq-wrap">
       <header className="vq-header">
         <a href="/matches" className="back-btn">←</a>
-        <div className="header-title">🤝 {t('Volunteer quest', '봉사 퀘스트')}</div>
+        <div className="header-title"><Icon name="volunteer" size={20} /> {t('Volunteer quest', '봉사 퀘스트')}</div>
         <div className="lang-toggle">
           <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
           <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>EN</button>
@@ -375,7 +376,7 @@ export default function VolunteerQuestPage() {
 
         {view.me_left && (
           <section className="card center">
-            <div className="big-emoji">👋</div>
+            <div className="big-emoji"><Icon name="hello" size={48} /></div>
             <h2>{t("You're no longer in this volunteer group", '이 봉사 그룹에서 나왔어요')}</h2>
             <p className="hint">{t('You can request a new quest any time.', '언제든 새 퀘스트를 요청할 수 있어요.')}</p>
             <a href="/matches" className="btn btn-ink">{t('Back to matches', '매칭으로 돌아가기')}</a>
@@ -386,7 +387,7 @@ export default function VolunteerQuestPage() {
         {/* ---------------- waiting ---------------- */}
         {group.phase === 'availability' && (
           <section className="card center">
-            <div className="big-emoji">⏳</div>
+            <div className="big-emoji"><Icon name="pending" size={48} /></div>
             <h2>{group.is_pending_invites ? t('Waiting for everyone to accept', '모두의 수락을 기다리는 중') : t('Finding activities for your group…', '그룹에 맞는 봉사활동을 찾는 중…')}</h2>
           </section>
         )}
@@ -411,7 +412,7 @@ export default function VolunteerQuestPage() {
                 <div key={s.id} className={`card option ${mine ? 'mine' : ''}`}>
                   {programBlock(p, s.slot_time)}
                   <div className="option-foot">
-                    <span className="votes">🗳️ {count}</span>
+                    <span className="votes"><Icon name="vote" size={16} /> {count}</span>
                     <button className={`btn ${mine ? 'btn-outline' : 'btn-jade'}`} disabled={busy || mine} onClick={() => vote(s.id)}>
                       {mine ? t('Your vote ✓', '내 투표 ✓') : t('Vote for this', '여기에 투표')}
                     </button>
@@ -462,7 +463,7 @@ export default function VolunteerQuestPage() {
                   </details>
                 )}
                 {me.signed_up ? (
-                  <div className="done">✅ {t("You're registered", '신청 완료')}</div>
+                  <div className="done"><Icon name="done" size={18} /> {t("You're registered", '신청 완료')}</div>
                 ) : (
                   <>
                     <button className="btn btn-ink block" disabled={busy} onClick={() => signup('registered')}>
@@ -505,7 +506,7 @@ export default function VolunteerQuestPage() {
                 </p>
                 {selfieNotYet && group.quest_scheduled_at && (
                   <div className="window">
-                    ⏱️ {t('Opens', '열리는 시간')} {fmt(new Date(new Date(group.quest_scheduled_at).getTime() - view.windows.selfie_opens_before_min * 60_000).toISOString(), lang, DAY_TIME)}
+                    <Icon name="time" size={16} /> {t('Opens', '열리는 시간')} {fmt(new Date(new Date(group.quest_scheduled_at).getTime() - view.windows.selfie_opens_before_min * 60_000).toISOString(), lang, DAY_TIME)}
                   </div>
                 )}
                 {selfieOpen && (
@@ -537,7 +538,7 @@ export default function VolunteerQuestPage() {
                     />
                     {selfieFile ? (
                       <>
-                        <div className="picked">🖼️ {selfieFile.name}
+                        <div className="picked"><Icon name="image" size={16} /> {selfieFile.name}
                           <button className="btn-link" disabled={busy} onClick={() => selfieInput.current?.click()}>{t('Retake', '다시 찍기')}</button>
                         </div>
                         <button className="btn btn-jade block" disabled={busy} onClick={() => upload('group_selfie', selfieFile)}>
@@ -546,7 +547,7 @@ export default function VolunteerQuestPage() {
                       </>
                     ) : (
                       <button className="btn btn-jade block" disabled={busy} onClick={() => selfieInput.current?.click()}>
-                        📸 {t('Take the group selfie', '단체 사진 찍기')}
+                        <Icon name="camera" size={20} tone="light" /> {t('Take the group selfie', '단체 사진 찍기')}
                       </button>
                     )}
                   </>
@@ -560,7 +561,7 @@ export default function VolunteerQuestPage() {
         {group.phase === 'completed' && (
           <section>
             <div className="card center">
-              <div className="big-emoji">🌟</div>
+              <div className="big-emoji"><Icon name="star" size={48} /></div>
               <h2>{t('You volunteered together!', '함께 봉사했어요!')}</h2>
               {chosenProgram && (
                 <p className="hint">{lang === 'en' && chosenProgram.title_en ? chosenProgram.title_en : chosenProgram.title}</p>
@@ -589,7 +590,7 @@ export default function VolunteerQuestPage() {
               )}
             </p>
             {myCert ? (
-              <div className="done">✅ {t('Certificate added', '확인서 등록 완료')}</div>
+              <div className="done"><Icon name="done" size={18} /> {t('Certificate added', '확인서 등록 완료')}</div>
             ) : (
               <>
                 <input
@@ -610,7 +611,7 @@ export default function VolunteerQuestPage() {
         {/* ---------------- cancelled ---------------- */}
         {group.phase === 'cancelled' && (
           <section className="card center">
-            <div className="big-emoji">😔</div>
+            <div className="big-emoji"><Icon name="sad" size={48} /></div>
             <h2>{t('This volunteer quest was closed', '이번 봉사 퀘스트는 종료되었어요')}</h2>
             <p className="hint">{t('You can request a new quest any time.', '언제든 새 퀘스트를 요청할 수 있어요.')}</p>
             <a href="/matches" className="btn btn-ink">{t('Back to matches', '매칭으로 돌아가기')}</a>
@@ -618,7 +619,7 @@ export default function VolunteerQuestPage() {
         )}
 
         {group.phase !== 'cancelled' && (
-          <a href={`/matches/${groupId}/chat`} className="btn btn-outline block">💬 {t('Group chat', '그룹 채팅')}</a>
+          <a href={`/matches/${groupId}/chat`} className="btn btn-outline block"><Icon name="chat" size={18} /> {t('Group chat', '그룹 채팅')}</a>
         )}
         </>)}
       </div>
@@ -639,7 +640,7 @@ export default function VolunteerQuestPage() {
         .vq-wrap { min-height: 100vh; background: var(--paper); }
         .vq-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: rgba(245, 242, 235, 0.9); border-bottom: 1px solid var(--ink-12); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
         .back-btn { text-decoration: none; color: var(--ink); font-size: 20px; }
-        .header-title { font-family: var(--display); font-weight: 800; font-size: 17px; flex: 1; }
+        .header-title { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 17px; flex: 1; }
         .lang-toggle { display: flex; gap: 4px; }
         .lang-toggle button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--ink-60); }
         .lang-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
@@ -652,11 +653,11 @@ export default function VolunteerQuestPage() {
         .card.soft { background: var(--paper-2); }
         .card.center { text-align: center; }
         .card.option.mine { border-color: var(--jade); box-shadow: 0 0 0 2px rgba(15, 157, 119, 0.15); }
-        .big-emoji { font-size: 44px; }
+        .big-emoji { display: flex; justify-content: center; }
         .label { font-size: 12px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
         .vq-wrap :global(.program-title) { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--ink); margin-bottom: 6px; line-height: 1.35; }
-        .vq-wrap :global(.program-when) { font-weight: 700; color: var(--jade); font-size: 14px; margin-bottom: 6px; }
-        .vq-wrap :global(.program-line) { color: var(--ink-60); font-size: 13.5px; margin-bottom: 3px; }
+        .vq-wrap :global(.program-when) { display: flex; align-items: center; gap: 5px; font-weight: 700; color: var(--jade); font-size: 14px; margin-bottom: 6px; }
+        .vq-wrap :global(.program-line) { display: flex; align-items: center; gap: 5px; color: var(--ink-60); font-size: 13.5px; margin-bottom: 3px; }
         .vq-wrap :global(.program-desc) { color: var(--ink-60); font-size: 13px; line-height: 1.55; margin-top: 8px; white-space: pre-line; }
         .vq-wrap :global(.program-cat) { display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--jade); background: rgba(15, 157, 119, 0.08); border-radius: 999px; padding: 3px 10px; margin-bottom: 8px; }
         .vq-wrap :global(.program-ko) { font-size: 12.5px; color: var(--ink-60); margin: 2px 0 0 20px; }
@@ -670,7 +671,7 @@ export default function VolunteerQuestPage() {
         .howto li { margin-bottom: 6px; }
         .vq-wrap :global(.link-1365) { display: inline-block; font-size: 13px; font-weight: 700; color: var(--jade); text-decoration: none; }
         .option-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
-        .votes { font-weight: 700; color: var(--ink-60); }
+        .votes { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--ink-60); }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; text-decoration: none; }
         .btn.block { display: flex; width: 100%; margin-top: 10px; box-sizing: border-box; }
         .btn:disabled { opacity: 0.55; cursor: default; }
@@ -678,7 +679,7 @@ export default function VolunteerQuestPage() {
         .btn-ink { background: var(--ink); color: var(--paper); }
         .btn-outline { background: #fff; color: var(--ink); border: 1.5px solid var(--ink-12); }
         .btn-text { display: block; width: 100%; margin-top: 10px; background: transparent; border: 0; color: var(--ink-60); font-size: 13px; text-decoration: underline; cursor: pointer; }
-        .done { margin-top: 12px; font-weight: 700; color: var(--jade); }
+        .done { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-weight: 700; color: var(--jade); }
         .members { display: flex; flex-direction: column; gap: 10px; }
         .member { display: flex; align-items: center; gap: 10px; }
         .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
 
 type Props = {
   profile: { id: string; photo_url: string | null; display_name: string };
@@ -224,7 +225,7 @@ export function EditPhotoModal({ profile, lang, onClose, onSaved }: Props) {
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
           >
-            📷 {lang === 'ko' ? '사진 선택' : 'Choose photo'}
+            <Icon name="camera" size={18} /> {lang === 'ko' ? '사진 선택' : 'Choose photo'}
           </button>
           {profile.photo_url && (
             <button
@@ -233,7 +234,7 @@ export function EditPhotoModal({ profile, lang, onClose, onSaved }: Props) {
               onClick={handleRemove}
               disabled={uploading}
             >
-              🗑 {lang === 'ko' ? '삭제' : 'Remove'}
+              <Icon name="trash" size={18} /> {lang === 'ko' ? '삭제' : 'Remove'}
             </button>
           )}
         </div>
@@ -273,10 +274,10 @@ export function EditPhotoModal({ profile, lang, onClose, onSaved }: Props) {
         .preview { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 4px solid var(--paper-2); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .preview-fallback { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 72px; }
         .upload-actions { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
-        .btn-choose { background: var(--paper-2); border: 1px solid var(--ink-12); padding: 10px 20px; border-radius: 999px; font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; color: var(--ink); }
-        .btn-choose:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
-        .btn-remove { background: transparent; border: 1px solid rgba(255, 106, 61, 0.3); color: var(--persimmon); padding: 10px 20px; border-radius: 999px; font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; }
-        .btn-remove:hover:not(:disabled) { background: var(--persimmon); color: #fff; }
+        .btn-choose { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-2); border: 1px solid var(--ink-12); padding: 10px 20px; border-radius: 999px; font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; color: var(--ink); }
+        .btn-choose:hover:not(:disabled) { background: #fff; border-color: var(--ink-60); }
+        .btn-remove { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid rgba(255, 106, 61, 0.3); color: var(--persimmon); padding: 10px 20px; border-radius: 999px; font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; }
+        .btn-remove:hover:not(:disabled) { background: rgba(255, 106, 61, 0.08); }
         .hint { color: var(--ink-60); font-size: 13px; text-align: center; margin: 0 0 20px; }
         .error-msg { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
         .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; padding-top: 20px; border-top: 1px solid var(--ink-12); }

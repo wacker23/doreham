@@ -7,7 +7,7 @@ import { levelOf } from '@/lib/server/points';
 import { kstDateString } from '@/lib/server/time';
 
 /**
- * Partner-venue perks for Doreham levels ("10% off drinks for 🐠 Fish and up").
+ * Partner-venue perks for Doreham levels ("10% off drinks for Fish and up").
  * Owners create them for their approved venues; members use one at the counter, at most once a day each.
  * The member's screen shows the venue's code of the day, which the owner also sees in "My venues",
  * so staff can tell a live screen from an old screenshot.

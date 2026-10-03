@@ -490,21 +490,15 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
     return { action: 'error', pass: pass.pass, error: `members insert failed: ${memErr.message}` };
   }
 
-  const catEmoji: Record<string, string> = {
-    cafe: '☕', restaurant: '🍜', board_game_cafe: '🎲', escape_room: '🧩',
-    bookshop: '📚', workshop_creative: '🏺', active_sports: '🥾',
-    cultural_venue: '🎨', nature_outdoor: '🌿', music_movie: '🎬', bar_club: '🍸', other: '🏪',
-  };
   const questExpires = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
   if (venue) {
-    const emoji = catEmoji[String(venue.category)] ?? '🌟';
     await admin.from('quests').insert({
       group_id: group.id,
       quest_type: 'venue',
       venue_id: venue.id,
-      title: `${emoji} ${venue.business_name_display}에서 만나기`,
-      title_en: `${emoji} Meet up at ${venue.business_name_display}`,
+      title: `${venue.business_name_display}에서 만나기`,
+      title_en: `Meet up at ${venue.business_name_display}`,
       quest_description: `${venue.business_name_display}에서 함께 시간을 보내세요.`,
       description_en: `Spend time together at ${venue.business_name_display}.`,
       status: 'proposed',
@@ -515,8 +509,8 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
       group_id: group.id,
       quest_type: 'volunteer',
       venue_id: null,
-      title: '🤝 함께 봉사하기',
-      title_en: '🤝 Volunteer together',
+      title: '함께 봉사하기',
+      title_en: 'Volunteer together',
       quest_description: '1365 자원봉사 활동 중 하나를 함께 골라 참여해요.',
       description_en: 'Pick a 1365 volunteer activity together and do it as a group.',
       status: 'proposed',
@@ -543,8 +537,8 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
     const notifs: NotificationPayload[] = picked.map((p) => ({
       user_id: p.profile.id,
       type: 'match_invite',
-      title_en: "💌 You've been invited to a group!",
-      title_ko: '💌 새로운 그룹 초대가 왔어요!',
+      title_en: "You've been invited to a group!",
+      title_ko: '새로운 그룹 초대가 왔어요!',
       body_en: isVolunteer
         ? `Volunteer together as a group. Accept within ${INVITE_TIMEOUT_HOURS} hours to join.`
         : `Meet up at ${venueName}. Accept within ${INVITE_TIMEOUT_HOURS} hours to join.`,
@@ -557,8 +551,8 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
     notifs.push({
       user_id: req.user_id,
       type: 'match_found',
-      title_en: '🎉 We found your group!',
-      title_ko: '🎉 그룹을 찾았어요!',
+      title_en: 'We found your group!',
+      title_ko: '그룹을 찾았어요!',
       body_en: isVolunteer
         ? `We invited ${picked.length} ${picked.length === 1 ? 'person' : 'people'} to volunteer with you. We'll tell you when they accept.`
         : `We invited ${picked.length} ${picked.length === 1 ? 'person' : 'people'} to meet at ${venueName}. We'll tell you when they accept.`,

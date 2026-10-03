@@ -103,10 +103,10 @@ export async function GET() {
         group_id: quest.group_id,
         venue_id: quest.venue_id,
         venue_name: isVolunteer
-          ? `🤝 ${(quest as any).program?.title ?? '봉사활동'}`
+          ? `${(quest as any).program?.title ?? '봉사활동'}`
           : ((quest.venue as any)?.business_name_display ?? '?'),
         // English title for volunteer quests (1365 is Korean-only); null means "use venue_name".
-        venue_name_en: isVolunteer && (quest as any).program?.title_en ? `🤝 ${(quest as any).program.title_en}` : null,
+        venue_name_en: isVolunteer && (quest as any).program?.title_en ? `${(quest as any).program.title_en}` : null,
         completed_at: quest.completed_at,
         unreviewed_members: unreviewedMembers.map((m: any) => ({
           user_id: m.user_id,

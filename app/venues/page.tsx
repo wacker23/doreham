@@ -16,6 +16,8 @@ import type { VenueFormData, VenueStep, MenuItem } from './lib/types';
 import { CATEGORY_LABELS, DEFAULT_HOURS, TOTAL_VENUE_STEPS } from './lib/types';
 import { planUnlocked } from '@/lib/plan';
 import { useLang } from '@/lib/hooks/useLang';
+import { Icon } from '@/components/icons/Icon';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
 export default function VenueRegisterPage() {
   const router = useRouter();
@@ -181,7 +183,7 @@ export default function VenueRegisterPage() {
         </header>
         <main className="limit-wrap">
           <div className="limit-card">
-            <div className="limit-icon">🏪</div>
+            <div className="limit-icon"><CategoryIcon art="venue" size={88} /></div>
             <h1>{lang === 'ko' ? '가게 등록은 Doreham+ 기능이에요' : 'Registering a venue is part of Doreham+'}</h1>
             <p>
               {lang === 'ko'
@@ -200,7 +202,7 @@ export default function VenueRegisterPage() {
           .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 17px; }
           .limit-wrap { min-height: calc(100vh - 68px); display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
           .limit-card { max-width: 480px; text-align: center; background: var(--paper-2); border-radius: 24px; padding: 48px 32px; border: 1px solid var(--ink-12); }
-          .limit-icon { font-size: 56px; margin-bottom: 16px; }
+          .limit-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0 0 12px; }
           p { color: var(--ink-60); font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
           .btn-primary { display: inline-block; background: var(--persimmon); color: #fff; padding: 12px 28px; border-radius: 999px; font-weight: 700; text-decoration: none; }
@@ -219,7 +221,7 @@ export default function VenueRegisterPage() {
         </header>
         <main className="limit-wrap">
           <div className="limit-card">
-            <div className="limit-icon">🏪</div>
+            <div className="limit-icon"><CategoryIcon art="venue" size={88} /></div>
             <h1>{lang === 'ko' ? '등록 한도에 도달했어요' : 'Venue limit reached'}</h1>
             <p>
               {lang === 'ko'
@@ -238,7 +240,7 @@ export default function VenueRegisterPage() {
           .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 17px; }
           .limit-wrap { min-height: calc(100vh - 68px); display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
           .limit-card { max-width: 480px; text-align: center; background: var(--paper-2); border-radius: 24px; padding: 48px 32px; border: 1px solid var(--ink-12); }
-          .limit-icon { font-size: 56px; margin-bottom: 16px; }
+          .limit-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0 0 12px; }
           p { color: var(--ink-60); font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
           .btn-primary { display: inline-block; background: var(--persimmon); color: #fff; padding: 12px 28px; border-radius: 999px; font-weight: 700; text-decoration: none; }
@@ -334,8 +336,9 @@ export default function VenueRegisterPage() {
           <div className="v-welcome">
             <strong>
               {lang === 'ko'
-                ? `도레함에 오신 것을 환영해요${profile?.display_name ? `, ${profile.display_name}님` : ''}! 👋`
-                : `Welcome to Doreham${profile?.display_name ? `, ${profile.display_name}` : ''}! 👋`}
+                ? `도레함에 오신 것을 환영해요${profile?.display_name ? `, ${profile.display_name}님` : ''}!`
+                : `Welcome to Doreham${profile?.display_name ? `, ${profile.display_name}` : ''}!`}{' '}
+              <Icon name="hello" size={20} />
             </strong>
             <span>
               {lang === 'ko'
