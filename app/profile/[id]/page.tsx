@@ -12,10 +12,8 @@ import { EditLifestyleModal } from './modals/EditLifestyleModal';
 import { EditLanguagesModal } from './modals/EditLanguagesModal';
 import { EditInterestsModal } from './modals/EditInterestsModal';
 import { EditPhotoModal } from './modals/EditPhotoModal';
-import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
-import { MembershipSection } from '@/components/MembershipSection';
 import { MeetPeopleCard } from '@/components/MeetPeopleCard';
-import { DeleteAccountSection } from '@/components/DeleteAccountSection';
+import { ProfileSettings } from '@/components/ProfileSettings';
 import { isVenueAccount } from '@/lib/accountType';
 import { isPlusActive } from '@/lib/plan';
 import { AppTabBar } from '@/components/AppTabBar';
@@ -781,9 +779,13 @@ export default function ProfilePage() {
         </>
         )}
 
-        {isOwn && <MembershipSection lang={lang} />}
-        {isOwn && <PrivacyConsentsSection lang={lang} />}
-        {isOwn && profile.role !== 'admin' && <DeleteAccountSection lang={lang} />}
+        {isOwn && (
+          <ProfileSettings
+            lang={lang}
+            plusActive={isPlusActive(profile.subscription_tier, profile.subscription_expires_at)}
+            canDelete={profile.role !== 'admin'}
+          />
+        )}
       </main>
 
       <AppTabBar lang={lang} />
@@ -860,7 +862,8 @@ export default function ProfilePage() {
           box-shadow: 0 4px 12px rgba(255, 106, 61, 0.4);
         }
         .avatar-fallback { background: var(--persimmon); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 42px; }
-        .hero-info { flex: 1; }
+        .hero-info { flex: 1; min-width: 0; }
+        .hero-edit { position: absolute; top: 16px; right: 16px; }
         .hero-info h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .plus-badge { font-size: 12px; font-weight: 800; color: var(--persimmon); background: linear-gradient(135deg, rgba(255, 106, 61, 0.14), rgba(199, 184, 224, 0.3)); padding: 4px 10px; border-radius: 999px; text-decoration: none; letter-spacing: 0.01em; vertical-align: middle; }
         .you-tag { font-size: 12px; font-weight: 700; color: var(--persimmon); background: rgba(255, 106, 61, 0.15); padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -876,8 +879,8 @@ export default function ProfilePage() {
         .section-header h3 { font-family: var(--display); font-weight: 700; font-size: 14px; margin: 0; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; }
         .bio { color: var(--ink); font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap; }
         .placeholder-text { color: var(--ink-60); font-style: italic; font-size: 14px; margin: 0; }
-        .personality-row { display: flex; gap: 12px; flex-wrap: wrap; }
-        .personality-card { background: var(--paper-2); padding: 14px 20px; border-radius: 12px; min-width: 120px; text-align: center; }
+        .personality-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .personality-card { background: var(--paper-2); padding: 14px 16px; border-radius: 12px; text-align: center; }
         .card-code { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--persimmon); margin-bottom: 4px; }
         .card-symbol { font-size: 28px; margin-bottom: 4px; }
         .card-label { font-size: 12px; color: var(--ink-60); font-weight: 600; }
@@ -904,9 +907,13 @@ export default function ProfilePage() {
         .review-tag.vibe { background: rgba(122, 88, 168, 0.08); border-color: rgba(122, 88, 168, 0.2); color: #7A58A8; }
         .tag-count { background: rgba(0,0,0,0.05); padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; }
         @media (max-width: 640px) {
-          .profile-hero { flex-direction: column; text-align: center; padding-top: 60px; }
-          .hero-info h1 { justify-content: center; }
+          .profile-hero { flex-direction: column; text-align: center; padding: 36px 20px 24px; gap: 16px; }
+          .hero-info h1 { justify-content: center; font-size: 28px; }
           .hero-avatar { width: 100px; height: 100px; }
+        }
+        @media (max-width: 480px) {
+          .main-wrap { padding: 16px 16px 96px; }
+          .section { padding: 18px; }
         }
       `}</style>
     </>
