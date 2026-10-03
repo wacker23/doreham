@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/server/auth';
+import { jsonError, publicError, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 
 
@@ -111,6 +111,6 @@ export async function GET(
       },
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'quest-questions'), 500);
   }
 }

@@ -1,7 +1,7 @@
 // Server-only. Moved from app/api/emails/welcome/route.ts (Sep 28 2026) so it is
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
 
 /**
  * Server helper (formerly POST /api/emails/welcome)
@@ -31,7 +31,7 @@ export async function sendWelcomeEmail(params: { user_id: string }): Promise<Ema
     if (!profile || !email) return emailResult({ error: 'User not found' }, { status: 404 });
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
-    const name = profile.display_name || (lang === 'ko' ? '친구' : 'friend');
+    const name = escapeHtml(profile.display_name || (lang === 'ko' ? '친구' : 'friend'));
 
     const subject = lang === 'ko'
       ? `🌸 도레함에 오신 것을 환영해요, ${name}님!`
@@ -92,7 +92,7 @@ export async function sendWelcomeEmail(params: { user_id: string }): Promise<Ema
     const sent = await getResend().emails.send({
       from: EMAIL_FROM_BRANDED,
       to: email,
-      subject,
+      subject: cleanSubject(subject),
       html,
     });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });
@@ -103,10 +103,6 @@ export async function sendWelcomeEmail(params: { user_id: string }): Promise<Ema
     return emailResult({ error: e.message ?? 'Unknown' }, { status: 500 });
   }
 }
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
-}
-
 /** Venue owners who signed up without a friend profile: how to get their place listed. */
 export async function sendVenueWelcomeEmail(params: { user_id: string; lang: 'en' | 'ko' }): Promise<EmailResult> {
   try {
@@ -149,7 +145,7 @@ export async function sendVenueWelcomeEmail(params: { user_id: string; lang: 'en
   </p>
 </div>`;
 
-    const sent = await getResend().emails.send({ from: EMAIL_FROM_BRANDED, to: email, subject, html });
+    const sent = await getResend().emails.send({ from: EMAIL_FROM_BRANDED, to: email, subject: cleanSubject(subject), html });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });
     return emailResult({ ok: true });
   } catch (e: unknown) {

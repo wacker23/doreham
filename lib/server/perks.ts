@@ -1,5 +1,5 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { isAdminUser } from '@/lib/server/auth';
 import { translateFields } from '@/lib/server/aiGateway';
@@ -35,10 +35,20 @@ type PerkRow = {
 type Fail = { ok: false; error: string; status: number };
 const fail = (error: string, status = 400): Fail => ({ ok: false, error, status });
 
-/** Four-digit code for a venue and Korean date. */
-export function codeOfTheDay(venueId: string, date = kstDateString()) {
-  const secret = process.env.PERK_CODE_SECRET || process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'doreham';
-  const h = createHash('sha256').update(`${secret}:${venueId}:${date}`).digest();
+/** A perk already used today shows its code again only this long after first use (a closed screen can be reopened; a screenshot shared hours later can't be). */
+const REUSE_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * Four-digit code for a venue and Korean date: HMAC with a server secret (PERK_CODE_SECRET, or
+ * CRON_SECRET when that isn't set). No secret → no code (never a guessable built-in key).
+ */
+export function codeOfTheDay(venueId: string, date = kstDateString()): string | null {
+  const secret = process.env.PERK_CODE_SECRET || process.env.CRON_SECRET;
+  if (!secret) {
+    console.error('[perks] PERK_CODE_SECRET / CRON_SECRET is not set: no perk codes');
+    return null;
+  }
+  const h = createHmac('sha256', secret).update(`perk-code:${venueId}:${date}`).digest();
   return String(h.readUInt32BE(0) % 10000).padStart(4, '0');
 }
 
@@ -152,11 +162,16 @@ export async function redeemPerk(viewerId: string, perkId: string) {
     .eq('kst_date', today)
     .maybeSingle();
 
+  const redeemedAt = (rec?.redeemed_at as string) ?? new Date().toISOString();
+  const windowOver = again && Date.now() - Date.parse(redeemedAt) > REUSE_WINDOW_MS;
+  const code = windowOver ? null : codeOfTheDay(perk.venue_id, today);
+  if (!windowOver && !code) return fail('not_configured', 503);
   return {
     ok: true as const,
     already_used_today: again,
-    redeemed_at: (rec?.redeemed_at as string) ?? new Date().toISOString(),
-    code: codeOfTheDay(perk.venue_id, today),
+    redeemed_at: redeemedAt,
+    /** null once the perk was used today and the reuse window is over. */
+    code,
     perk: { id: perk.id, title: perk.title, details: perk.details, title_tr: perk.title_tr, details_tr: perk.details_tr, source_lang: perk.source_lang, translated_to: perk.translated_to, min_level: perk.min_level },
     venue: { id: v.id as string, name: v.business_name_display as string },
     member: { display_name: (me.display_name as string) ?? '', photo_url: (me.photo_url as string | null) ?? null, level },

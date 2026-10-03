@@ -3,10 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
-import { supabase } from '@/lib/supabase/client';
 import { Icon } from '@/components/icons/Icon';
-
-const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
 type Venue = {
   id: string;
@@ -60,7 +57,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function AdminVenuesPage() {
   const router = useRouter();
-  const { user, loading } = useUser();
+  const { user, profile, loading } = useUser();
 
   const [venues, setVenues] = useState<Venue[]>([]);
   const [menuItemsByVenue, setMenuItemsByVenue] = useState<Record<string, MenuItem[]>>({});
@@ -79,51 +76,34 @@ export default function AdminVenuesPage() {
       router.push('/sign-in?return=/admin/venues');
       return;
     }
-    if (user.id !== ADMIN_USER_ID) {
+    if (!profile) return; // still loading the profile
+    if (profile.role !== 'admin') {
       router.push('/');
       return;
     }
     loadVenues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loading, router]);
+  }, [user, profile, loading, router]);
 
   async function loadVenues() {
     setLoadingVenues(true);
     setError(null);
 
-    const { data: venuesData, error: venuesError } = await supabase
-      .from('venues')
-      .select('*')
-      .eq('is_active', false)
-      .is('deactivated_at', null)
-      .order('created_at', { ascending: true });
-
-    if (venuesError) {
-      setError(venuesError.message);
+    // Pending venues include the owner's contact details, so they come from the server (admin only).
+    const res = await fetch('/api/admin/venues');
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body) {
+      setError(body?.error ?? 'Could not load venues.');
       setLoadingVenues(false);
       return;
     }
-
-    setVenues(venuesData ?? []);
-
-    // Load menu items for all these venues
-    if (venuesData && venuesData.length > 0) {
-      const venueIds = venuesData.map((v) => v.id);
-      const { data: menuData } = await supabase
-        .from('venue_menu_items')
-        .select('*')
-        .in('venue_id', venueIds);
-
-      if (menuData) {
-        const grouped: Record<string, MenuItem[]> = {};
-        for (const item of menuData) {
-          if (!grouped[item.venue_id]) grouped[item.venue_id] = [];
-          grouped[item.venue_id].push(item);
-        }
-        setMenuItemsByVenue(grouped);
-      }
+    setVenues((body.venues ?? []) as Venue[]);
+    const grouped: Record<string, MenuItem[]> = {};
+    for (const item of (body.menu_items ?? []) as MenuItem[]) {
+      if (!grouped[item.venue_id]) grouped[item.venue_id] = [];
+      grouped[item.venue_id].push(item);
     }
-
+    setMenuItemsByVenue(grouped);
     setLoadingVenues(false);
   }
 
@@ -131,31 +111,17 @@ export default function AdminVenuesPage() {
     setProcessingId(venue.id);
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from('venues')
-      .update({
-        is_active: true,
-        claim_verified_at: new Date().toISOString(),
-      })
-      .eq('id', venue.id);
-
-    if (updateError) {
-      setError(`Approval failed: ${updateError.message}`);
+    // Approve + email the owner (server side; the address comes from the venue record).
+    const res = await fetch('/api/admin/venues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve', venue_id: venue.id }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setError(`Approval failed: ${body?.error ?? res.status}`);
       setProcessingId(null);
       return;
-    }
-
-    // Send approval email (fire and forget)
-    if (venue.contact_email) {
-      fetch('/api/emails/venue-approved', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: venue.contact_email,
-          venueName: venue.business_name_display,
-          venueId: venue.id,
-        }),
-      }).catch((e) => console.error('Email failed (non-fatal):', e));
     }
 
     setSuccessMessage(`✓ ${venue.business_name_display} approved`);
@@ -176,31 +142,15 @@ export default function AdminVenuesPage() {
     setProcessingId(venue.id);
     setError(null);
 
-    // Send rejection email FIRST (before we delete, so we have the info)
-    if (venue.contact_email) {
-      try {
-        await fetch('/api/emails/venue-rejected', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: venue.contact_email,
-            venueName: venue.business_name_display,
-            reason: rejectReason.trim(),
-          }),
-        });
-      } catch (e) {
-        console.error('Rejection email failed:', e);
-      }
-    }
-
-    // Delete the venue (CASCADE removes menu items)
-    const { error: deleteError } = await supabase
-      .from('venues')
-      .delete()
-      .eq('id', venue.id);
-
-    if (deleteError) {
-      setError(`Rejection failed: ${deleteError.message}`);
+    // Server emails the owner first, then removes the venue (and its photos).
+    const res = await fetch('/api/admin/venues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reject', venue_id: venue.id, reason: rejectReason.trim() }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setError(`Rejection failed: ${body?.error ?? res.status}`);
       setProcessingId(null);
       return;
     }
@@ -215,7 +165,7 @@ export default function AdminVenuesPage() {
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
-  if (loading || (user && user.id !== ADMIN_USER_ID)) {
+  if (loading || (user && profile?.role !== 'admin')) {
     return (
       <main className="loading-wrap">
         <div className="loader" />

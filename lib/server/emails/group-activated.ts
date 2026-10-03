@@ -1,7 +1,7 @@
 // Server-only. Moved from app/api/emails/group-activated/route.ts (Sep 28 2026) so it is
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
 
 export async function sendGroupActivatedEmail(params: { user_id: string; group_id: string; venue_name?: string; other_member_names?: string[] }): Promise<EmailResult> {
   try {
@@ -24,7 +24,10 @@ export async function sendGroupActivatedEmail(params: { user_id: string; group_i
     if (!profile || !email) return emailResult({ error: 'User not found' }, { status: 404 });
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
-    const names = (other_member_names ?? []).filter(Boolean).join(', ');
+    // Names and venue names are user-written: escape before they go into the HTML.
+    const names = (other_member_names ?? []).filter(Boolean).map(escapeHtml).join(', ');
+    const name = escapeHtml(profile.display_name ?? '');
+    const venueName = venue_name ? escapeHtml(venue_name) : '';
 
     const subject = lang === 'ko'
       ? `✨ ${profile.display_name}님, 매칭이 확정되었어요!`
@@ -35,12 +38,12 @@ export async function sendGroupActivatedEmail(params: { user_id: string; group_i
 <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1E2230;">
   <h1 style="font-size: 24px; font-weight: 800; margin: 0 0 16px;">✨ 매칭 확정!</h1>
   <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-    안녕하세요 ${profile.display_name}님,<br><br>
+    안녕하세요 ${name}님,<br><br>
     모든 멤버가 초대를 수락했어요. 이제 만날 시간을 정할 차례예요!
   </p>
   <div style="background: rgba(15, 157, 119, 0.08); border-radius: 12px; padding: 20px; margin: 24px 0;">
     ${names ? `<p style="margin: 0 0 8px; font-weight: 700;">👥 여러분의 그룹</p><p style="margin: 0 0 16px; color: #666;">${names}</p>` : ''}
-    ${venue_name ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 만날 장소</p><p style="margin: 0; color: #666;">${venue_name}</p>` : ''}
+    ${venueName ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 만날 장소</p><p style="margin: 0; color: #666;">${venueName}</p>` : ''}
   </div>
   <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
     앱에서 <strong>가능한 시간</strong>을 선택해주세요. 모두가 선택하면 최적의 시간이 자동으로 결정돼요.
@@ -56,12 +59,12 @@ export async function sendGroupActivatedEmail(params: { user_id: string; group_i
 <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1E2230;">
   <h1 style="font-size: 24px; font-weight: 800; margin: 0 0 16px;">✨ Your match is confirmed!</h1>
   <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-    Hi ${profile.display_name},<br><br>
+    Hi ${name},<br><br>
     Everyone accepted the invite. Now it's time to figure out when to meet!
   </p>
   <div style="background: rgba(15, 157, 119, 0.08); border-radius: 12px; padding: 20px; margin: 24px 0;">
     ${names ? `<p style="margin: 0 0 8px; font-weight: 700;">👥 Your group</p><p style="margin: 0 0 16px; color: #666;">${names}</p>` : ''}
-    ${venue_name ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 Meeting spot</p><p style="margin: 0; color: #666;">${venue_name}</p>` : ''}
+    ${venueName ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 Meeting spot</p><p style="margin: 0; color: #666;">${venueName}</p>` : ''}
   </div>
   <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
     Head to the app and pick <strong>your availability</strong>. Once everyone picks, the best time gets locked in automatically.
@@ -77,7 +80,7 @@ export async function sendGroupActivatedEmail(params: { user_id: string; group_i
     const sent = await getResend().emails.send({
       from: EMAIL_FROM_BRANDED,
       to: email,
-      subject,
+      subject: cleanSubject(subject),
       html,
     });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });

@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import Script from 'next/script';
 import type { UiLanguage, VenueFormData } from '../lib/types';
 import { KOREAN_CITIES } from '../lib/types';
 import { Icon } from '@/components/icons/Icon';
+
+/** Daum (Kakao) address search, loaded only on the screens that use it. */
+const DAUM_POSTCODE_SRC = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
 type Props = {
   lang: UiLanguage;
@@ -122,6 +126,7 @@ export function LocationStep({ lang, initialData, onNext, onBack }: Props) {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      <Script src={DAUM_POSTCODE_SRC} strategy="afterInteractive" />
       <h2 className="step-title">
         {lang === 'ko' ? '가게 위치' : 'Location'}
       </h2>

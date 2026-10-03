@@ -31,6 +31,29 @@ const LATEST_DAYS_AHEAD = 14;
 const DEFAULT_START_HOUR = 10;
 
 export const PROOF_BUCKET = 'volunteer-proofs';
+const MAX_PROOFS_PER_KIND = 5;
+
+/** True when the file's first bytes match the type the browser claimed (JPEG, PNG, WebP, HEIC/HEIF, PDF). */
+function sniffMatches(b: Uint8Array, type: string): boolean {
+  const at = (i: number, ...v: number[]) => v.every((x, k) => b[i + k] === x);
+  const ascii = (i: number, s: string) => [...s].every((c, k) => b[i + k] === c.charCodeAt(0));
+  switch (type) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return at(0, 0xff, 0xd8, 0xff);
+    case 'image/png':
+      return at(0, 0x89, 0x50, 0x4e, 0x47);
+    case 'image/webp':
+      return ascii(0, 'RIFF') && ascii(8, 'WEBP');
+    case 'image/heic':
+    case 'image/heif':
+      return ascii(4, 'ftyp') && ['heic', 'heix', 'hevc', 'heim', 'heis', 'mif1', 'msf1'].some((brand) => ascii(8, brand));
+    case 'application/pdf':
+      return ascii(0, '%PDF-');
+    default:
+      return false;
+  }
+}
 
 type ProgramRow = {
   id: string;
@@ -465,6 +488,18 @@ export async function recordVolunteerProof(opts: {
     if (![...IMAGE_TYPES, 'application/pdf'].includes(opts.file.type)) return { ok: false, error: 'unsupported_file', status: 400 };
   }
   if (opts.file.size > 10 * 1024 * 1024) return { ok: false, error: 'file_too_large', status: 400 };
+  const bytes = new Uint8Array(await opts.file.arrayBuffer());
+  // The browser's file type is only a claim: check the file really is that kind of image/PDF.
+  if (!sniffMatches(bytes, opts.file.type)) return { ok: false, error: 'unsupported_file', status: 400 };
+
+  // A handful of uploads per person per kind is plenty (stops storage being filled up).
+  const { count: mine } = await admin
+    .from('volunteer_proofs')
+    .select('id', { count: 'exact', head: true })
+    .eq('group_id', opts.groupId)
+    .eq('user_id', opts.userId)
+    .eq('kind', opts.kind);
+  if ((mine ?? 0) >= MAX_PROOFS_PER_KIND) return { ok: false, error: 'too_many_uploads', status: 429 };
 
   // Only people who are (or were, at completion) in the group can be tagged; the uploader is always in.
   const eligible = new Set(
@@ -478,12 +513,14 @@ export async function recordVolunteerProof(opts: {
 
   const ext = opts.file.type === 'application/pdf' ? 'pdf' : (opts.file.type.split('/')[1] ?? 'jpg').replace('jpeg', 'jpg');
   const path = `${opts.groupId}/${opts.kind}/${randomUUID()}.${ext}`;
-  const bytes = new Uint8Array(await opts.file.arrayBuffer());
   const { error: upErr } = await admin.storage.from(PROOF_BUCKET).upload(path, bytes, {
     contentType: opts.file.type,
     upsert: false,
   });
-  if (upErr) return { ok: false, error: `upload_failed: ${upErr.message}`, status: 500 };
+  if (upErr) {
+    console.error('[volunteer] proof upload failed:', upErr);
+    return { ok: false, error: 'upload_failed', status: 500 };
+  }
 
   const { data: quest } = await admin.from('quests').select('id').eq('group_id', opts.groupId).maybeSingle();
   const { data: proof, error: insErr } = await admin
@@ -495,12 +532,16 @@ export async function recordVolunteerProof(opts: {
       kind: opts.kind,
       storage_path: path,
       tagged_user_ids: tagged,
-      latitude: Number.isFinite(opts.latitude as number) ? opts.latitude : null,
-      longitude: Number.isFinite(opts.longitude as number) ? opts.longitude : null,
+      // Location is not stored: group-mates can read proof rows, and nothing uses it.
+      latitude: null,
+      longitude: null,
     })
     .select('id')
     .single();
-  if (insErr || !proof) return { ok: false, error: `save_failed: ${insErr?.message}`, status: 500 };
+  if (insErr || !proof) {
+    console.error('[volunteer] proof save failed:', insErr);
+    return { ok: false, error: 'save_failed', status: 500 };
+  }
 
   let completed = false;
   if (opts.kind === 'group_selfie' && group.phase === 'scheduled' && tagged.length >= MIN_GROUP_SIZE) {
@@ -656,7 +697,7 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
   if (!me || !isAccepted(me)) return { ok: false as const, status: 403, error: 'not_a_member' };
   const completedAt = (group.completed_at as string | null) ?? null;
   // Someone who left before the end still sees the outcome, but not the group's photos.
-  const meLeft = group.phase !== 'cancelled' && !inAtEnd(me, completedAt);
+  const meLeft = !inAtEnd(me, completedAt);
 
   const [{ data: quest }, { data: slots }, { data: votes }, { data: proofs }] = await Promise.all([
     admin.from('quests').select('id, status, volunteer_program_id').eq('group_id', groupId).maybeSingle(),
@@ -685,7 +726,9 @@ export async function getVolunteerQuestView(userId: string, groupId: string) {
     : { data: [] };
 
   const signed = await Promise.all(
-    (meLeft ? [] : proofs ?? []).map(async (p) => {
+    // Group selfies are shared with the group; a 1365 certificate (name, birthday, record) is
+    // only ever shown to the person who uploaded it.
+    (meLeft ? [] : (proofs ?? []).filter((p) => p.kind === 'group_selfie' || p.user_id === userId)).map(async (p) => {
       const { data } = await admin.storage.from(PROOF_BUCKET).createSignedUrl(p.storage_path as string, 60 * 60);
       return { ...p, url: data?.signedUrl ?? null };
     }),

@@ -39,21 +39,27 @@ export function PerkRedeemSheet({ lang, r, onClose }: { lang: 'en' | 'ko'; r: Re
           </div>
         </div>
 
-        <div className="pr-code-label">{ko ? '오늘의 코드' : "Today's code"}</div>
-        <div className="pr-code" aria-label={r.code.split('').join(' ')}>
-          {r.code}
-        </div>
-        <div className="pr-clock">
-          <span className="dot" aria-hidden="true" /> {date} · {clock}
-        </div>
+        {r.code ? (
+          <>
+            <div className="pr-code-label">{ko ? '오늘의 코드' : "Today's code"}</div>
+            <div className="pr-code" aria-label={r.code.split('').join(' ')}>
+              {r.code}
+            </div>
+            <div className="pr-clock">
+              <span className="dot" aria-hidden="true" /> {date} · {clock}
+            </div>
 
-        <p className="pr-note">
-          {ko
-            ? '직원에게 이 화면을 보여 주세요. 코드는 매일 바뀌고, 가게의 “내 가게” 화면에 같은 코드가 보여요.'
-            : "Show this screen to staff. The code changes every day and matches the one on the venue's dashboard."}
-        </p>
-        {r.already_used_today && (
-          <p className="pr-again">{ko ? '오늘 이미 사용한 혜택이에요. 같은 화면을 다시 보여 드려요.' : "You already used this perk today. Here's the same screen again."}</p>
+            <p className="pr-note">
+              {ko
+                ? '직원에게 이 화면을 보여 주세요. 코드는 매일 바뀌고, 가게의 “내 가게” 화면에 같은 코드가 보여요.'
+                : "Show this screen to staff. The code changes every day and matches the one on the venue's dashboard."}
+            </p>
+            {r.already_used_today && (
+              <p className="pr-again">{ko ? '오늘 이미 사용한 혜택이에요. 같은 화면을 다시 보여 드려요.' : "You already used this perk today. Here's the same screen again."}</p>
+            )}
+          </>
+        ) : (
+          <p className="pr-again">{ko ? '오늘 이미 사용한 혜택이에요. 내일 다시 사용할 수 있어요.' : 'You already used this perk today. You can use it again tomorrow.'}</p>
         )}
         <button className="pr-close" onClick={onClose}>
           {ko ? '닫기' : 'Done'}

@@ -2,7 +2,7 @@ import 'server-only';
 import { after } from 'next/server';
 import { createHash, randomUUID } from 'node:crypto';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { isAdminUser } from '@/lib/server/auth';
+import { isAdminUser, isUuid } from '@/lib/server/auth';
 import { createNotification, createNotifications } from '@/lib/notifications';
 import { chatJson, detectLang, gatewayToken } from '@/lib/server/aiGateway';
 import { formatKst, kstDateString } from '@/lib/server/time';
@@ -380,8 +380,12 @@ export async function cancelEvent(userId: string, id: string) {
 }
 
 /** Admin: feature/unfeature, hide/restore. */
+const MODERATION_ACTIONS = new Set(['feature', 'unfeature', 'hide', 'restore']);
+
 export async function moderateEvent(userId: string, id: string, action: 'feature' | 'unfeature' | 'hide' | 'restore', reason?: string) {
   if (!(await isAdminUser(userId))) return fail('not_admin', 403);
+  if (!MODERATION_ACTIONS.has(action)) return fail('bad_action');
+  reason = clean(reason, 200) || undefined;
   const admin = getAdmin();
   const patch: Record<string, unknown> =
     action === 'feature' ? { is_featured: true }
@@ -495,7 +499,16 @@ export async function reportEvent(userId: string, id: string, input: { reason?: 
   const e = await loadEvent(id);
   if (!e) return fail('not_found', 404);
   const admin = getAdmin();
-  const commentId = input.comment_id || null;
+  // Reports count only from people with a finished profile (throwaway sign-ups can't gang up).
+  const { data: reporter } = await admin.from('profiles').select('onboarding_completed, deleted_at').eq('id', userId).maybeSingle();
+  if (!reporter?.onboarding_completed || reporter.deleted_at) return fail('finish_onboarding', 403);
+  const commentId = isUuid(input.comment_id) ? input.comment_id : null;
+  if (input.comment_id && !commentId) return fail('not_found', 404);
+  if (commentId) {
+    // The comment must belong to this event.
+    const { data: c } = await admin.from('event_comments').select('id').eq('id', commentId).eq('event_id', id).maybeSingle();
+    if (!c) return fail('not_found', 404);
+  }
   const { error } = await admin.from('event_reports').insert({
     event_id: id,
     comment_id: commentId,
@@ -511,7 +524,8 @@ export async function reportEvent(userId: string, id: string, input: { reason?: 
   const { count } = await q;
   if ((count ?? 0) >= LIMITS.hideAfterReports) {
     if (commentId) await admin.from('event_comments').update({ deleted_at: new Date().toISOString() }).eq('id', commentId);
-    else if (e.status === 'published') await admin.from('events').update({ status: 'hidden', hidden_reason: 'reports' }).eq('id', id);
+    // Official Doreham events are never hidden automatically; they go to the admin queue only.
+    else if (e.status === 'published' && e.host_kind !== 'admin') await admin.from('events').update({ status: 'hidden', hidden_reason: 'reports' }).eq('id', id);
   }
   return { ok: true as const };
 }

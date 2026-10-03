@@ -1,7 +1,7 @@
 // Server-only. Moved from app/api/emails/match-invite/route.ts (Sep 28 2026) so it is
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
 
 export async function sendMatchInviteEmail(params: { user_id: string; group_id: string; venue_name?: string; other_member_names?: string[] }): Promise<EmailResult> {
   try {
@@ -27,7 +27,10 @@ export async function sendMatchInviteEmail(params: { user_id: string; group_id: 
     }
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
-    const names = (other_member_names ?? []).filter(Boolean).join(', ');
+    // Names and venue names are user-written: escape before they go into the HTML.
+    const names = (other_member_names ?? []).filter(Boolean).map(escapeHtml).join(', ');
+    const name = escapeHtml(profile.display_name ?? '');
+    const venueName = venue_name ? escapeHtml(venue_name) : '';
 
     const subject = lang === 'ko'
       ? `🎉 ${profile.display_name}님, 새로운 매칭에 초대되었어요!`
@@ -38,12 +41,12 @@ export async function sendMatchInviteEmail(params: { user_id: string; group_id: 
 <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1E2230;">
   <h1 style="font-size: 24px; font-weight: 800; margin: 0 0 16px;">🎉 매칭 초대!</h1>
   <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-    안녕하세요 ${profile.display_name}님,<br><br>
+    안녕하세요 ${name}님,<br><br>
     Doreham에서 새로운 매칭에 초대되었어요.
   </p>
   <div style="background: #F5F2EB; border-radius: 12px; padding: 20px; margin: 24px 0;">
     ${names ? `<p style="margin: 0 0 8px; font-weight: 700;">👥 함께할 멤버</p><p style="margin: 0 0 16px; color: #666;">${names}</p>` : ''}
-    ${venue_name ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 만날 장소</p><p style="margin: 0; color: #666;">${venue_name}</p>` : ''}
+    ${venueName ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 만날 장소</p><p style="margin: 0; color: #666;">${venueName}</p>` : ''}
   </div>
   <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
     24시간 안에 수락 또는 거절해주세요. 시간이 지나면 초대가 만료됩니다.
@@ -53,19 +56,19 @@ export async function sendMatchInviteEmail(params: { user_id: string; group_id: 
   </a>
   <p style="font-size: 12px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E1D8;">
     Doreham / 도레함 · 한국의 이민자를 위한 우정 앱<br>
-    <a href="${APP_URL}/settings/notifications" style="color: #999;">알림 설정</a>
+    <a href="${APP_URL}/profile/${user_id}" style="color: #999;">알림 설정</a>
   </p>
 </div>`
       : `
 <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1E2230;">
   <h1 style="font-size: 24px; font-weight: 800; margin: 0 0 16px;">🎉 You've been invited!</h1>
   <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-    Hi ${profile.display_name},<br><br>
+    Hi ${name},<br><br>
     You've been invited to join a new match on Doreham.
   </p>
   <div style="background: #F5F2EB; border-radius: 12px; padding: 20px; margin: 24px 0;">
     ${names ? `<p style="margin: 0 0 8px; font-weight: 700;">👥 Your group</p><p style="margin: 0 0 16px; color: #666;">${names}</p>` : ''}
-    ${venue_name ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 Meeting spot</p><p style="margin: 0; color: #666;">${venue_name}</p>` : ''}
+    ${venueName ? `<p style="margin: 0 0 8px; font-weight: 700;">📍 Meeting spot</p><p style="margin: 0; color: #666;">${venueName}</p>` : ''}
   </div>
   <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
     Please accept or decline within 24 hours. Invites expire after that.
@@ -75,14 +78,14 @@ export async function sendMatchInviteEmail(params: { user_id: string; group_id: 
   </a>
   <p style="font-size: 12px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E1D8;">
     Doreham / 도레함 · Friendship app for immigrants in Korea<br>
-    <a href="${APP_URL}/settings/notifications" style="color: #999;">Notification settings</a>
+    <a href="${APP_URL}/profile/${user_id}" style="color: #999;">Notification settings</a>
   </p>
 </div>`;
 
     const sent = await getResend().emails.send({
       from: EMAIL_FROM_BRANDED,
       to: email,
-      subject,
+      subject: cleanSubject(subject),
       html,
     });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });

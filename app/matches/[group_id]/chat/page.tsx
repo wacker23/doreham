@@ -6,7 +6,6 @@ import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
 import { Icon } from '@/components/icons/Icon';
 
-const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
 type Message = {
   id: string;
@@ -29,7 +28,7 @@ type GroupMember = {
 export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, loading: authLoading } = useUser();
+  const { user, profile, loading: authLoading } = useUser();
   const [lang, setLang] = useState<'en' | 'ko'>('en');
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,7 +48,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const groupId = params?.group_id as string;
-  const isAdmin = user?.id === ADMIN_USER_ID;
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     document.body.setAttribute('data-lang', lang);

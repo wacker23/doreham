@@ -467,6 +467,8 @@ export default function MatchesPage() {
         setError(lang === 'ko' ? '매칭을 요청하려면 먼저 프로필을 완성해 주세요.' : 'Finish your profile first to request a match.');
       } else if (err.message.includes('account_frozen')) {
         setError(lang === 'ko' ? '현재 계정이 일시 정지되어 있습니다.' : 'Your account is currently frozen.');
+      } else if (err.message.includes('too_many_requests')) {
+        setError(lang === 'ko' ? '24시간 동안 매칭 요청은 5번까지 할 수 있어요. 잠시 후 다시 시도해 주세요.' : 'You can make up to 5 match requests in 24 hours. Please try again later.');
       } else if (err.message.includes('consent_required')) {
         setHasVolunteerConsent(false);
         askConsent(() => submitMatchRequest(true));
@@ -474,7 +476,8 @@ export default function MatchesPage() {
         setError(planError(err.message, lang));
         loadPlan();
       } else {
-        setError(err.message);
+        console.error('match request failed:', err);
+        setError(lang === 'ko' ? '요청하지 못했어요. 다시 시도해 주세요.' : "Couldn't send the request. Please try again.");
       }
       setSubmittingRequest(false);
       return;

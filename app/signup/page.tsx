@@ -145,8 +145,9 @@ export default function SignupPage() {
 
     const zodiac = computeZodiacSign(data.date_of_birth);
 
-    const { error: err } = await supabase.from('profiles').upsert({
-      id: user!.id,
+    // The profile row already exists (made at sign-in), so this is an update; an insert is the
+    // fallback. (No upsert: the birthday column can be written but not read back from the browser.)
+    const fields = {
       display_name: data.display_name.trim(),
       gender: data.gender,
       date_of_birth: data.date_of_birth,
@@ -159,10 +160,16 @@ export default function SignupPage() {
       account_type: 'member',
       basic_signup_completed: true,
       onboarding_completed: false,
-    });
+    };
+    const { data: rows, error: updErr } = await supabase.from('profiles').update(fields).eq('id', user!.id).select('id');
+    let err = updErr;
+    if (!err && (!rows || rows.length === 0)) {
+      ({ error: err } = await supabase.from('profiles').insert({ id: user!.id, ...fields }));
+    }
 
     if (err) {
-      setError(err.message);
+      console.error('signup save failed:', err);
+      setError(lang === 'ko' ? '저장하지 못했어요. 다시 시도해 주세요.' : "Couldn't save. Please try again.");
       setSaving(false);
       return;
     }

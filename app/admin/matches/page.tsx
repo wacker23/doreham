@@ -8,7 +8,6 @@ import { Icon } from '@/components/icons/Icon';
 import { stripEmoji, venueCategoryArt } from '@/lib/icons';
 import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
-const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
 type Profile = {
   id: string;
@@ -186,7 +185,7 @@ function generateQuestTitleAndDescription(venue: Venue, menuItems: MenuItem[]) {
 
 export default function AdminMatchesPage() {
   const router = useRouter();
-  const { user, loading } = useUser();
+  const { user, profile, loading } = useUser();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -214,10 +213,11 @@ export default function AdminMatchesPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.push('/sign-in?return=/admin/matches'); return; }
-    if (user.id !== ADMIN_USER_ID) { router.push('/'); return; }
+    if (!profile) return; // still loading the profile
+    if (profile.role !== 'admin') { router.push('/'); return; }
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loading, router]);
+  }, [user, profile, loading, router]);
 
   async function loadAll() {
     setLoadingData(true);
@@ -541,7 +541,7 @@ export default function AdminMatchesPage() {
     }
   }
 
-  if (loading || (user && user.id !== ADMIN_USER_ID)) {
+  if (loading || (user && profile?.role !== 'admin')) {
     return (
       <main className="loading-wrap">
         <div className="loader" />

@@ -1,4 +1,5 @@
 import 'server-only';
+import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { createClient as createSessionClient } from '@/lib/supabase/server';
@@ -15,8 +16,21 @@ import { getAdmin } from '@/lib/server/supabaseAdmin';
 export type AuthOk = { ok: true; user: User };
 export type AuthFail = { ok: false; response: NextResponse };
 
+const ERROR_CODE = /^[a-z][a-z0-9_]{1,60}$/;
+
+/**
+ * JSON error response. Server errors (5xx) only ever carry one of our short codes: a message
+ * like "save_failed: duplicate key value violates …" is logged here and sent as "save_failed",
+ * anything else as "server_error", so database/storage internals never reach the browser.
+ */
 export function jsonError(message: string, status: number, extra?: Record<string, unknown>) {
-  return NextResponse.json({ error: message, ...(extra ?? {}) }, { status });
+  let error = message;
+  if (status >= 500 && !ERROR_CODE.test(message)) {
+    console.error(`[api ${status}]`, message);
+    const prefix = message.split(':')[0].trim();
+    error = ERROR_CODE.test(prefix) ? prefix : 'server_error';
+  }
+  return NextResponse.json({ error, ...(extra ?? {}) }, { status });
 }
 
 /** Returns the signed-in user, or a 401 response. */
@@ -61,7 +75,10 @@ export function isCronRequest(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
   const header = request.headers.get('authorization') ?? '';
-  return header === `Bearer ${secret}`;
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const given = Buffer.from(header);
+  // Constant-time compare so the secret can't be guessed byte by byte from response times.
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
 /** Cron routes: allow Vercel Cron, or a signed-in admin (manual trigger from the admin UI / console). */
@@ -70,6 +87,18 @@ export async function requireCronOrAdmin(request: Request): Promise<{ ok: true; 
   const admin = await requireAdmin();
   if (admin.ok) return { ok: true, via: 'admin' };
   return { ok: false, response: jsonError('unauthorized', 401) };
+}
+
+/**
+ * Error text that is safe to send to the browser. Our own error codes ('not_member',
+ * 'quest_full', …) pass through; anything else (database/storage messages that name tables,
+ * columns or constraints) is logged on the server and replaced with a generic code.
+ */
+export function publicError(e: unknown, fallback = 'server_error', context?: string): string {
+  const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : '';
+  if (ERROR_CODE.test(msg)) return msg;
+  console.error(`[${context ?? 'api'}]`, e);
+  return fallback;
 }
 
 /** Parse a JSON body without throwing. */

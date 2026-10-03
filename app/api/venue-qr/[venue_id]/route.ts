@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { isAdminUser, isUuid, requireUser } from '@/lib/server/auth';
+import { isAdminUser, isUuid, jsonError, publicError, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { kstDateString } from '@/lib/server/time';
 import { randomInt } from 'crypto';
+import QRCode from 'qrcode';
 
 
 /**
@@ -26,19 +27,25 @@ function todayDate() {
   return kstDateString();
 }
 
+/** QR image drawn here (SVG data URL), so the day's code is never sent to an outside service. */
+async function qrImage(code: string) {
+  const svg = await QRCode.toString(code, { type: 'svg', margin: 2, width: 400, errorCorrectionLevel: 'M' });
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ venue_id: string }> }) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
   try {
     const { venue_id } = await params;
-    if (!isUuid(venue_id)) return NextResponse.json({ error: 'venue_id required' }, { status: 400 });
+    if (!isUuid(venue_id)) return jsonError('venue_id required', 400);
 
     const admin = getAdmin();
 
     const { data: venue } = await admin.from('venues').select('owner_id').eq('id', venue_id).maybeSingle();
-    if (!venue) return NextResponse.json({ error: 'Venue not found' }, { status: 404 });
+    if (!venue) return jsonError('not_found', 404);
     if (venue.owner_id !== auth.user.id && !(await isAdminUser(auth.user.id))) {
-      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+      return jsonError('forbidden', 403);
     }
     const today = todayDate();
 
@@ -56,6 +63,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ven
         code: existing.code,
         valid_date: existing.valid_date,
         venue_id,
+        image: await qrImage(existing.code),
       });
     }
 
@@ -72,23 +80,28 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ven
       code = generateCode();
     }
 
-    const { data: created, error: createErr } = await admin
+    // One code per venue per day (unique index): if two first loads race, the second insert is
+    // ignored and both read back the same row.
+    const { error: createErr } = await admin
       .from('venue_qr_codes')
-      .insert({ venue_id, code, valid_date: today })
+      .upsert({ venue_id, code, valid_date: today }, { onConflict: 'venue_id,valid_date', ignoreDuplicates: true });
+    if (createErr) return jsonError(`create_failed: ${createErr.message}`, 500);
+    const { data: created } = await admin
+      .from('venue_qr_codes')
       .select('id, code, valid_date')
-      .single();
-
-    if (createErr || !created) {
-      return NextResponse.json({ error: `Create failed: ${createErr?.message}` }, { status: 500 });
-    }
+      .eq('venue_id', venue_id)
+      .eq('valid_date', today)
+      .maybeSingle();
+    if (!created) return jsonError('create_failed', 500);
 
     return NextResponse.json({
       id: created.id,
       code: created.code,
       valid_date: created.valid_date,
       venue_id,
+      image: await qrImage(created.code),
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown error' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'venue-qr'), 500);
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 import { KOREAN_CITIES } from '@/lib/cities';
 import { EVENT_CATEGORIES } from '@/lib/eventCategories';
 import { eventError, fromKstInputs, toKstInputs } from '@/lib/eventDisplay';
@@ -10,6 +11,9 @@ import { resizeImage } from '@/lib/imageResize';
 import { Icon } from '@/components/icons/Icon';
 import { SeaArt } from '@/components/icons/SeaArt';
 import { CategoryIcon } from '@/components/icons/CategoryIcon';
+
+/** Daum (Kakao) address search, loaded only on the screens that use it. */
+const DAUM_POSTCODE_SRC = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
 type HostAs = 'user' | 'venue' | 'admin';
 
@@ -295,6 +299,7 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
 
   return (
     <form className="evf" onSubmit={submit} noValidate>
+      <Script src={DAUM_POSTCODE_SRC} strategy="afterInteractive" />
       {blocked && (
         <div className="evf-block">
           {ko ? '계정이 일시 정지된 동안에는 이벤트를 열 수 없어요.' : "You can't host events while your account is paused."}

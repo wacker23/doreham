@@ -24,6 +24,9 @@ import { Icon, isIconName, type IconName } from '@/components/icons/Icon';
 import { CategoryIcon } from '@/components/icons/CategoryIcon';
 import { ACTIVITY_ART, lifestyleIcon, reviewTagIcon } from '@/lib/icons';
 
+const PROFILE_PAGE_COLUMNS =
+  'id, display_name, subscription_tier, subscription_expires_at, photo_url, bio, gender, home_district, primary_language, spoken_languages, mbti_type, zodiac_sign, activity_preferences, interests, social_energy, big_five_openness, big_five_conscientiousness, big_five_extraversion, big_five_agreeableness, big_five_neuroticism, onboarding_completed, account_type, role, job_title, exercise_frequency, education_level, drinking_habits, smoking_habits, children_status';
+
 type Profile = {
   id: string;
   display_name: string;
@@ -31,7 +34,8 @@ type Profile = {
   subscription_expires_at?: string | null;
   photo_url: string | null;
   bio: string | null;
-  date_of_birth: string | null;
+  /** From profile_age(): the exact birthday never leaves the database. */
+  age?: number | null;
   gender: string | null;
   home_district: string | null;
   primary_language: string | null;
@@ -178,14 +182,6 @@ const LIFESTYLE_LABELS = {
   },
 };
 
-function computeAge(dob: string): number {
-  const birth = new Date(dob);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const monthDiff = now.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age--;
-  return age;
-}
 
 function bigFiveLabels(profile: Profile, lang: 'en' | 'ko'): { icon: IconName; label: string }[] {
   const labels: { icon: IconName; label: string }[] = [];
@@ -282,12 +278,13 @@ export default function ProfilePage() {
   async function loadProfile() {
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_PAGE_COLUMNS)
       .eq('id', targetId)
       .maybeSingle();
 
     if (err) {
-      setError(err.message);
+      console.error('profile load failed:', err);
+      setError(lang === 'ko' ? '프로필을 불러오지 못했어요.' : "Couldn't load this profile.");
       setLoading(false);
       return;
     }
@@ -298,11 +295,12 @@ export default function ProfilePage() {
       return;
     }
 
-    setProfile(data as Profile);
+    const { data: age } = await supabase.rpc('profile_age', { p_user: targetId });
+    setProfile({ ...(data as Profile), age: typeof age === 'number' ? age : null });
 
     // Load trust stats + tag catalogs
     const [statsRes, comptRes, vibeRes] = await Promise.all([
-      supabase.from('user_trust_stats').select('*').eq('user_id', targetId).maybeSingle(),
+      supabase.from('user_trust_stats').select('total_reviews_received, compliment_counts, vibe_counts').eq('user_id', targetId).maybeSingle(),
       supabase.from('review_compliment_tags').select('*').order('display_order'),
       supabase.from('review_vibe_tags').select('*').order('display_order'),
     ]);
@@ -379,7 +377,7 @@ export default function ProfilePage() {
   const venueOnly = isVenueAccount(profile) && !profile.onboarding_completed;
   const mbti = profile.mbti_type ? MBTI_LABELS[profile.mbti_type] : null;
   const zodiac = profile.zodiac_sign ? ZODIAC[profile.zodiac_sign] : null;
-  const age = profile.date_of_birth && !venueOnly ? computeAge(profile.date_of_birth) : null;
+  const age = !venueOnly ? profile.age ?? null : null;
   const bigFive = bigFiveLabels(profile, lang);
   const allActivities = [...(profile.activity_preferences ?? []), ...(profile.interests ?? [])];
 

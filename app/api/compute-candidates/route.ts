@@ -20,8 +20,10 @@ export async function POST(request: Request) {
     .select('user_id')
     .eq('group_id', group_id)
     .eq('user_id', auth.user.id)
+    .not('accepted_at', 'is', null)
+    .is('left_at', null)
     .maybeSingle();
-  if (!member) return jsonError('Not a member', 403);
+  if (!member) return jsonError('not_a_member', 403);
 
   const result = await computeCandidates(group_id);
   if (!result.ok) return jsonError(result.error, result.status);

@@ -12,9 +12,11 @@ type Profile = {
   basic_signup_completed: boolean;
   /** 'member' (meets people) or 'venue' (only lists a venue). See lib/accountType.ts. */
   account_type: 'member' | 'venue';
+  /** 'admin' for Doreham staff. Only for showing admin links: the server and RLS do the real checks. */
+  role: string;
 };
 
-const PROFILE_COLUMNS = 'id, display_name, photo_url, onboarding_completed, basic_signup_completed, account_type';
+const PROFILE_COLUMNS = 'id, display_name, photo_url, onboarding_completed, basic_signup_completed, account_type, role';
 
 type UseUserResult = {
   user: User | null;

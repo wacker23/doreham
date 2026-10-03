@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { useLang } from '@/lib/hooks/useLang';
-import { supabase } from '@/lib/supabase/client';
 import { AppHeader } from '@/components/AppHeader';
 import { BasicInfoStep } from '../../../steps/BasicInfoStep';
 import { LocationStep } from '../../../steps/LocationStep';
@@ -64,16 +63,24 @@ export default function EditVenuePage() {
       return;
     }
     (async () => {
-      const { data: v } = await supabase.from('venues').select('*').eq('id', venueId).maybeSingle();
-      if (!v || v.owner_id !== user.id || v.deactivated_at) {
+      // The owner's contact details and registration number are only readable through the server.
+      const res = await fetch(`/api/venues/${encodeURIComponent(venueId)}`);
+      const body = res.ok ? await res.json().catch(() => null) : null;
+      const v = body?.venue;
+      if (!v || v.deactivated_at) {
         setLoadError('not_found');
         return;
       }
-      const { data: menu } = await supabase
-        .from('venue_menu_items')
-        .select('id, name, name_en, description, price_won, is_signature, photo_url, display_order')
-        .eq('venue_id', venueId)
-        .order('display_order', { ascending: true });
+      const menu = (body.menu_items ?? []) as {
+        id: string;
+        name: string;
+        name_en: string | null;
+        description: string | null;
+        price_won: number | null;
+        is_signature: boolean;
+        photo_url: string | null;
+        display_order: number;
+      }[];
       setVenueName(v.business_name_display ?? '');
       setApproved(!!v.is_active);
       setFormData({

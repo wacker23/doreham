@@ -54,7 +54,8 @@ export type Perk = {
 export type Redemption = {
   already_used_today: boolean;
   redeemed_at: string;
-  code: string;
+  /** null when the perk was already used today and can't be shown again. */
+  code: string | null;
   perk: Pick<Perk, 'id' | 'title' | 'details' | 'title_tr' | 'details_tr' | 'source_lang' | 'translated_to' | 'min_level'>;
   venue: { id: string; name: string };
   member: { display_name: string; photo_url: string | null; level: number };

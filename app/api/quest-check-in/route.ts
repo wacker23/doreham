@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { isUuid, jsonError, publicError, readJson, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { kstDateString } from '@/lib/server/time';
 
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
       .single();
 
     if (insertErr || !checkIn) {
-      return NextResponse.json({ error: `Check-in failed: ${insertErr?.message}` }, { status: 500 });
+      return jsonError(`check_in_failed: ${insertErr?.message}`, 500);
     }
 
     // Get total check-in count (for UI display only — quest completion happens later at window close)
@@ -211,6 +211,6 @@ export async function POST(request: Request) {
       distance_m: distance,
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown error' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'quest-check-in'), 500);
   }
 }

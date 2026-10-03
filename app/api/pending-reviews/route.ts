@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/server/auth';
+import { jsonError, publicError, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 
 
@@ -119,6 +119,6 @@ export async function GET() {
 
     return NextResponse.json({ pending });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown error' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'pending-reviews'), 500);
   }
 }

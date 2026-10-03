@@ -1,5 +1,9 @@
 // lib/emails/templates.ts
 // Bilingual email templates (Korean + English) for Doreham venue notifications.
+// Every user-written value (venue names, member names, quest text, reasons) is HTML-escaped
+// here, and subjects are cleaned of line breaks.
+import 'server-only';
+import { escapeHtml, cleanSubject } from '@/lib/server/emails/common';
 
 const BRAND_COLOR = '#FF6A3D';
 const INK = '#1E2230';
@@ -96,9 +100,10 @@ function wrapEmail({
 /**
  * "Your venue has been submitted for review" — sent immediately after submission.
  */
-export function venueSubmittedEmail(venueName: string) {
+export function venueSubmittedEmail(rawVenueName: string) {
+  const venueName = escapeHtml(rawVenueName);
   return {
-    subject: `[Doreham] ${venueName} 등록 접수됨 · Registration received`,
+    subject: cleanSubject(`[Doreham] ${rawVenueName} 등록 접수됨 · Registration received`),
     html: wrapEmail({
       headerKo: '가게 등록 요청이 접수되었습니다 ☕',
       headerEn: "We've received your venue registration ☕",
@@ -121,9 +126,10 @@ export function venueSubmittedEmail(venueName: string) {
 /**
  * "Your venue is approved!" — sent when admin approves.
  */
-export function venueApprovedEmail(venueName: string, venueId: string) {
+export function venueApprovedEmail(rawVenueName: string, venueId: string) {
+  const venueName = escapeHtml(rawVenueName);
   return {
-    subject: `[Doreham] 🎉 ${venueName} 승인 완료 · Approved!`,
+    subject: cleanSubject(`[Doreham] 🎉 ${rawVenueName} 승인 완료 · Approved!`),
     html: wrapEmail({
       headerKo: '축하합니다! 가게가 승인되었습니다 🎉',
       headerEn: 'Congrats! Your venue is approved 🎉',
@@ -138,7 +144,7 @@ export function venueApprovedEmail(venueName: string, venueId: string) {
         <p>When Doreham groups visit, they become your valued early customers. Any questions or need help? Reach out to info@doreham.co.kr anytime!</p>
       `,
       ctaText: { ko: '내 가게 보기', en: 'View my venue' },
-      ctaUrl: `https://doreham.co.kr/venues/${venueId}`,
+      ctaUrl: `https://doreham.co.kr/venues/${encodeURIComponent(venueId)}`,
     }),
   };
 }
@@ -146,9 +152,11 @@ export function venueApprovedEmail(venueName: string, venueId: string) {
 /**
  * "Your venue was not approved" — sent when admin rejects.
  */
-export function venueRejectedEmail(venueName: string, reason: string) {
+export function venueRejectedEmail(rawVenueName: string, rawReason: string) {
+  const venueName = escapeHtml(rawVenueName);
+  const reason = escapeHtml(rawReason).replace(/\n/g, '<br>');
   return {
-    subject: `[Doreham] ${venueName} 등록 검토 결과 · Registration update`,
+    subject: cleanSubject(`[Doreham] ${rawVenueName} 등록 검토 결과 · Registration update`),
     html: wrapEmail({
       headerKo: '가게 등록 검토 결과',
       headerEn: 'Registration review result',
@@ -190,7 +198,14 @@ export function matchCreatedEmail({
   questDescriptionEn: string;
   daysToComplete: number;
 }) {
-  const otherNamesJoined = otherMemberNames.join(' & ');
+  const otherNamesJoined = otherMemberNames.map(escapeHtml).join(' &amp; ');
+  recipientName = escapeHtml(recipientName);
+  venueName = escapeHtml(venueName);
+  questTitle = escapeHtml(questTitle);
+  questTitleEn = escapeHtml(questTitleEn);
+  questDescription = escapeHtml(questDescription);
+  questDescriptionEn = escapeHtml(questDescriptionEn);
+  daysToComplete = Math.max(0, Math.round(Number(daysToComplete) || 0));
 
   return {
     subject: `[Doreham] 🌸 새 그룹 매칭! · You've been matched!`,

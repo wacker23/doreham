@@ -43,7 +43,9 @@ export async function POST(request: NextRequest) {
 
     // Call the National Tax Service API via data.go.kr
     // The API expects an array of business numbers to check
-    const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${apiKey}`;
+    // data.go.kr issues an "Encoding" and a "Decoding" form of the same key (same rule as volunteer1365.ts).
+    const keyParam = apiKey.includes('%') ? apiKey : encodeURIComponent(apiKey);
+    const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${keyParam}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('data.go.kr API error:', response.status, errorText);
+      console.error('data.go.kr API error:', response.status, errorText.slice(0, 300));
       return NextResponse.json(
         { valid: false, reason: 'gov_api_error' },
         { status: 502 }

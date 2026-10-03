@@ -23,3 +23,18 @@ export type EmailResult = { ok?: boolean; error?: string; status: number; [k: st
 export function emailResult(body: Record<string, unknown>, init?: { status?: number }): EmailResult {
   return { ...body, status: init?.status ?? 200 };
 }
+
+/** Escape text before putting it into email HTML (names, venue names, titles, reasons). */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Subject lines are plain text: drop line breaks (header injection) and cap the length. */
+export function cleanSubject(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').slice(0, 200);
+}

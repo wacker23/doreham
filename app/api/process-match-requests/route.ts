@@ -35,5 +35,12 @@ export async function POST(request: Request) {
 
   const requestId = isUuid(body.request_id) ? body.request_id : undefined;
   const result = await processMatchRequests({ requestId, userId: auth.user.id });
-  return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  if (!result.ok) {
+    console.error('[process-match-requests] failed:', result);
+    return jsonError('server_error', 500);
+  }
+  // A member only learns whether their own request matched — not other people's ids,
+  // compatibility scores or how many people are searching.
+  const mine = (result.results ?? []).find((r) => r.request_id === requestId) as { action?: string } | undefined;
+  return NextResponse.json({ ok: true, action: mine?.action ?? 'queued' });
 }

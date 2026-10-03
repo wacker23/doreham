@@ -1,7 +1,7 @@
 // Server-only. Moved from app/api/emails/quest-day-reminder/route.ts (Sep 28 2026) so it is
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
 
 /**
  * Server helper (formerly POST /api/emails/quest-day-reminder)
@@ -29,7 +29,8 @@ export async function sendQuestDayReminderEmail(params: { user_id: string; venue
     if (!profile || !email) return emailResult({ error: 'User not found' }, { status: 404 });
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
-    const name = profile.display_name || (lang === 'ko' ? '친구' : 'friend');
+    const name = escapeHtml(profile.display_name || (lang === 'ko' ? '친구' : 'friend'));
+    const venueName = escapeHtml(venue_name);
 
     const scheduledDate = new Date(scheduled_at);
     const timeEn = scheduledDate.toLocaleString('en-US', {
@@ -52,7 +53,7 @@ export async function sendQuestDayReminderEmail(params: { user_id: string; venue
   </p>
   <div style="background: rgba(255, 106, 61, 0.06); border-radius: 12px; padding: 20px; margin: 24px 0;">
     <p style="margin: 0 0 8px; font-weight: 700; font-size: 15px;">📍 장소</p>
-    <p style="margin: 0 0 16px; color: #666; font-size: 15px;">${venue_name}</p>
+    <p style="margin: 0 0 16px; color: #666; font-size: 15px;">${venueName}</p>
     <p style="margin: 0 0 8px; font-weight: 700; font-size: 15px;">🕐 시간</p>
     <p style="margin: 0; color: #666; font-size: 15px;">${timeKo}</p>
   </div>
@@ -74,7 +75,7 @@ export async function sendQuestDayReminderEmail(params: { user_id: string; venue
   </p>
   <div style="background: rgba(255, 106, 61, 0.06); border-radius: 12px; padding: 20px; margin: 24px 0;">
     <p style="margin: 0 0 8px; font-weight: 700; font-size: 15px;">📍 Where</p>
-    <p style="margin: 0 0 16px; color: #666; font-size: 15px;">${venue_name}</p>
+    <p style="margin: 0 0 16px; color: #666; font-size: 15px;">${venueName}</p>
     <p style="margin: 0 0 8px; font-weight: 700; font-size: 15px;">🕐 When</p>
     <p style="margin: 0; color: #666; font-size: 15px;">${timeEn}</p>
   </div>
@@ -92,7 +93,7 @@ export async function sendQuestDayReminderEmail(params: { user_id: string; venue
     const sent = await getResend().emails.send({
       from: EMAIL_FROM_BRANDED,
       to: email,
-      subject,
+      subject: cleanSubject(subject),
       html,
     });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });
