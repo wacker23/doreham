@@ -995,5 +995,4 @@ footer {
 .dh-ic.off .c, .dh-ic.off .pk, .dh-ic.off .lv, .dh-ic.off .o { fill: none; }
 .dh-ic.light { --ic-line: #FFFFFF; --ic-accent: #FFFFFF; --ic-fill: transparent; }
 .dh-art.locked { filter: grayscale(1); opacity: 0.4; }
-.dh-cat { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex: none; vertical-align: middle; }
-.dh-cat img { flex: none; max-width: none; }
+.dh-ic.dh-cat * { stroke-width: var(--ic-sw, 1.3); }

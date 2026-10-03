@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase/client';
 import { FREE_MATCH_REQUESTS_PER_MONTH, planError, planUnlocked, type PlanStatus } from '@/lib/plan';
 import { Icon } from '@/components/icons/Icon';
 import { CategoryIcon } from '@/components/icons/CategoryIcon';
-import { categoryArtSrc, stripEmoji, venueCategoryArt, type CategoryArt } from '@/lib/icons';
+import { stripEmoji, venueCategoryArt, type CategoryArt } from '@/lib/icons';
 
 type Tab = 'pending' | 'request' | 'history';
 
@@ -1009,7 +1009,7 @@ export default function MatchesPage() {
                           disabled={c.coming_soon}
                           title={c.coming_soon ? (lang === 'ko' ? '곧 출시' : 'Coming soon') : ''}
                         >
-                          <img src={categoryArtSrc(c.icon as CategoryArt)} alt="" className="cat-icon" />
+                          <span className="cat-icon"><CategoryIcon art={c.icon as CategoryArt} size={44} /></span>
                           <div className="cat-name">{lang === 'ko' ? c.label_ko : c.label_en}</div>
                           {c.coming_soon && <div className="cat-soon">{lang === 'ko' ? '준비 중' : 'Soon'}</div>}
                           {planLocked && !c.coming_soon && <div className="cat-lock" aria-hidden="true"><Icon name="lock" size={16} /></div>}
@@ -1340,7 +1340,7 @@ export default function MatchesPage() {
         .cat-card.disabled { opacity: 0.4; cursor: not-allowed; }
         .volunteer-hint.quiet { background: rgba(255, 106, 61, 0.08); }
         .volunteer-hint { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 157, 119, 0.08); color: var(--ink); font-size: 13.5px; line-height: 1.6; }
-        .cat-icon { width: 36px; height: 36px; object-fit: contain; }
+        .cat-icon { display: flex; }
         .cat-name { font-weight: 700; font-size: 11px; color: var(--ink); text-align: center; line-height: 1.2; }
         .cat-soon { font-size: 9px; color: var(--ink-60); font-weight: 600; }
 

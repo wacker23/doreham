@@ -1,11 +1,12 @@
 /**
  * Which icon goes with which piece of data. Client-safe, no JSX.
- * Drawings: components/icons/Icon.tsx (everyday), SeaArt.tsx (levels/badges), and the
- * category artwork in public/categories (Sophia's set + other.svg).
+ * Drawings: components/icons/Icon.tsx (everyday), SeaArt.tsx (levels/badges) and
+ * categoryArt.tsx (Sophia's category set as vectors). The original category PNGs in
+ * public/categories are still used for big illustrations (landing, event card placeholders).
  */
 import type { IconName } from '@/components/icons/Icon';
 
-/** Category artwork files in public/categories. */
+/** Category artwork (vector: categoryArt.tsx; PNG: public/categories). */
 export type CategoryArt =
   | 'adventure'
   | 'books'

@@ -11,7 +11,7 @@ export type MatchCategory = {
   slug: string;         // user-facing slug stored in match_requests.preferred_categories
   label_en: string;
   label_ko: string;
-  icon: string;         // PNG filename in /public/categories/ (without extension)
+  icon: string;         // category art key (components/icons/categoryArt.tsx)
   // Must be values of the public.venue_category enum:
   // cafe, restaurant, board_game_cafe, escape_room, bookshop, workshop_creative,
   // active_sports, cultural_venue, nature_outdoor, music_movie, other
