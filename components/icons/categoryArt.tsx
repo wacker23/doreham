@@ -6,7 +6,7 @@ import type { CategoryArt } from '@/lib/icons';
  * (Icon.tsx) so it sits at the same visual size and crispness. Same drawings as the PNGs in
  * public/categories (the PNGs stay for the landing page). Classes: see globals.css (.dh-ic).
  */
-export const CATEGORY_ART: Record<CategoryArt, ReactNode> = {
+export const CATEGORY_ART: Record<Exclude<CategoryArt, 'other'>, ReactNode> = {
   coffee: (
     <>
       <path d="M8.2 9.2c-1.1-.9-1-1.9 0-2.8s1.1-1.9 0-2.8" />
@@ -100,8 +100,8 @@ export const CATEGORY_ART: Record<CategoryArt, ReactNode> = {
   ),
   puzzle: (
     <>
-      <path className="c" d="M3.4 7.6h4.3a2.4 2.4 0 1 1 4.4 0h4.3v4.3a2.4 2.4 0 1 1 0 4.4v4.3h-4.3a2.4 2.4 0 1 0-4.4 0H3.4v-4.3a2.4 2.4 0 1 0 0-4.4z" />
-      <path className="a" d="M5.6 11.6c.2-.9.8-1.6 1.6-2M5.6 13.4v.1" />
+      <path className="c" d="M4.1 6.85H8.8a2.1 2.1 0 1 1 2.6 0h4.7a1 1 0 0 1 1 1v4.7a2.1 2.1 0 1 1 0 2.6v4.7a1 1 0 0 1-1 1h-4.7a2.1 2.1 0 1 0-2.6 0H4.1a1 1 0 0 1-1-1v-4.15a2.1 2.1 0 1 0 0-2.6V7.85a1 1 0 0 1 1-1z" />
+      <path className="a" d="M6.2 9.7c.3-.65.85-1.1 1.55-1.25M5 10.6v.1" />
     </>
   ),
   makethings: (
@@ -161,15 +161,24 @@ export const CATEGORY_ART: Record<CategoryArt, ReactNode> = {
       <circle className="c ns" cx="19.4" cy="18.1" r=".45" />
     </>
   ),
-  other: (
-    <>
-      <path className="c" d="M12 19 5.3 13.2A1.7 1.7 0 0 1 6.3 10.1 1.8 1.8 0 0 1 8.3 7.65 1.8 1.8 0 0 1 11 6.6 1.8 1.8 0 0 1 13 6.6 1.8 1.8 0 0 1 15.7 7.65 1.8 1.8 0 0 1 17.7 10.1 1.7 1.7 0 0 1 18.7 13.2z" />
-      <path className="c" d="M9.75 18.75h4.5l.65 1.65H9.1z" />
-      <path d="M12 19 7.3 9.5M12 19 10.5 7.25M12 19 13.5 7.25M12 19 16.7 9.5" />
-      <path className="a" d="M6.9 11.6a5 5 0 0 1 1.3-2.2" />
-      <path className="af" d="M19.5 2.5c.25 1.6.85 2.2 2.45 2.45-1.6.25-2.2.85-2.45 2.45-.25-1.6-.85-2.2-2.45-2.45C18.65 4.7 19.25 4.1 19.5 2.5z" />
-      <path className="af" d="M4 3.25c.15.95.5 1.3 1.45 1.45-.95.15-1.3.5-1.45 1.45-.15-.95-.5-1.3-1.45-1.45C3.5 4.55 3.85 4.2 4 3.25z" />
-      <circle className="a" cx="20" cy="17" r="1" />
-    </>
+};
+
+/**
+ * "Other" keeps its original drawing (public/categories/other.svg) exactly as designed: its own
+ * thinner line and bigger sparkles, cropped the way the PNG-era CategoryIcon showed it. Plain
+ * attributes (no .dh-ic classes) so the global icon CSS doesn't restyle it.
+ */
+export const OTHER_ORIGINAL = {
+  viewBox: '1.8 1.8 44.4 44.4',
+  body: (
+    <g fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.3}>
+      <path d="M24 38 10.6 26.4A3.4 3.4 0 0 1 12.6 20.2 3.6 3.6 0 0 1 16.6 15.3 3.6 3.6 0 0 1 22 13.2 3.6 3.6 0 0 1 26 13.2 3.6 3.6 0 0 1 31.4 15.3 3.6 3.6 0 0 1 35.4 20.2 3.4 3.4 0 0 1 37.4 26.4z" fill="#F8F3EB" stroke="#1B2838" />
+      <path d="M19.5 37.5h9l1.3 3.3H18.2z" fill="#F8F3EB" stroke="#1B2838" />
+      <path d="M24 38 14.6 19M24 38 21 14.5M24 38 27 14.5M24 38 33.4 19" stroke="#1B2838" />
+      <path d="M13.8 23.2a10 10 0 0 1 2.6-4.4" stroke="#F05A28" />
+      <path d="M39 5c.5 3.2 1.7 4.4 4.9 4.9-3.2.5-4.4 1.7-4.9 4.9-.5-3.2-1.7-4.4-4.9-4.9C37.3 9.4 38.5 8.2 39 5z" fill="#F05A28" />
+      <path d="M8 6.5c.3 1.9 1 2.6 2.9 2.9-1.9.3-2.6 1-2.9 2.9-.3-1.9-1-2.6-2.9-2.9C7 9.1 7.7 8.4 8 6.5z" fill="#F05A28" />
+      <circle cx="40" cy="34" r="2" stroke="#F05A28" />
+    </g>
   ),
 };
