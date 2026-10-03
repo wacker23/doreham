@@ -4,11 +4,22 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { disablePushForSignOut } from '@/lib/push';
 
-/** Own-profile card: delete the account for good (type a word to confirm). */
-export function DeleteAccountSection({ lang }: { lang: 'en' | 'ko' }) {
+/**
+ * Delete the account for good (type a word to confirm).
+ * `embedded`: shown under Settings → Delete account, already open; Cancel closes that row.
+ */
+export function DeleteAccountSection({
+  lang,
+  embedded = false,
+  onCancel,
+}: {
+  lang: 'en' | 'ko';
+  embedded?: boolean;
+  onCancel?: () => void;
+}) {
   const ko = lang === 'ko';
   const t = (en: string, k: string) => (ko ? k : en);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +63,7 @@ export function DeleteAccountSection({ lang }: { lang: 'en' | 'ko' }) {
 
   if (done) {
     return (
-      <div className="da-card" role="status">
+      <div className={`da-card ${embedded ? 'embedded' : ''}`} role="status">
         <h3>{t('Your account was deleted', '계정이 삭제됐어요')}</h3>
         <p className="da-text">
           {t(
@@ -63,6 +74,7 @@ export function DeleteAccountSection({ lang }: { lang: 'en' | 'ko' }) {
         <button type="button" className="da-btn" onClick={finish}>{t('OK, goodbye 👋', '확인 👋')}</button>
         <style jsx>{`
           .da-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
+          .da-card.embedded { border: 0; border-radius: 0; padding: 4px 18px 18px; margin: 0; }
           h3 { font-family: var(--display); font-weight: 800; font-size: 16px; margin: 0 0 8px; color: var(--ink); }
           .da-text { font-size: 14px; color: var(--ink-60); line-height: 1.5; margin: 0 0 14px; }
           .da-btn { border: 0; background: var(--ink); color: var(--paper); border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: var(--body); }
@@ -72,8 +84,8 @@ export function DeleteAccountSection({ lang }: { lang: 'en' | 'ko' }) {
   }
 
   return (
-    <div className="da-card">
-      <h3>{t('Delete account', '계정 삭제')}</h3>
+    <div className={`da-card ${embedded ? 'embedded' : ''}`}>
+      {!embedded && <h3>{t('Delete account', '계정 삭제')}</h3>}
       {!open ? (
         <div className="da-row">
           <p className="da-text">
@@ -115,6 +127,7 @@ export function DeleteAccountSection({ lang }: { lang: 'en' | 'ko' }) {
                 setOpen(false);
                 setTyped('');
                 setError(null);
+                onCancel?.();
               }}
               disabled={busy}
             >
@@ -128,6 +141,7 @@ export function DeleteAccountSection({ lang }: { lang: 'en' | 'ko' }) {
       )}
       <style jsx>{`
         .da-card { background: #fff; border: 1px solid rgba(255, 106, 61, 0.3); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
+        .da-card.embedded { border: 0; border-radius: 0; padding: 4px 18px 18px; margin: 0; }
         h3 { font-family: var(--display); font-weight: 800; font-size: 16px; margin: 0 0 8px; color: var(--ink); }
         .da-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .da-text { font-size: 14px; color: var(--ink-60); line-height: 1.5; margin: 0; }

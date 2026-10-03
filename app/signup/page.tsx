@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { useLang } from '@/lib/hooks/useLang';
 import { supabase } from '@/lib/supabase/client';
-import { computeZodiacSign } from '../onboarding/lib/zodiac';
+import { computeZodiacSign, ZODIAC_LABELS } from '../onboarding/lib/zodiac';
+import { BirthdayPicker, isAllowedBirthday, MIN_AGE } from '@/components/BirthdayPicker';
 import { forgetSignupAs, isVenueAccount, recalledSignupAs, signupAsFromUrl, type AccountType } from '@/lib/accountType';
 
 type SignupData = {
@@ -32,7 +33,6 @@ const INITIAL_DATA: SignupData = {
 
 const TOTAL_STEPS = 8;
 /** Same as the database rule (profiles.profile_age_check). */
-const MIN_AGE = 19;
 
 /** 'choose' = the first screen: meet people, or register a venue. */
 type Path = 'choose' | AccountType;
@@ -100,7 +100,7 @@ export default function SignupPage() {
     switch (step) {
       case 1: return nameOk;
       case 2: return data.gender !== '';
-      case 3: return data.date_of_birth.length === 10 && isValidAge(data.date_of_birth);
+      case 3: return isAllowedBirthday(data.date_of_birth);
       case 4: return data.exercise_frequency !== '';
       case 5: return data.education_level !== '';
       case 6: return data.drinking_habits !== '';
@@ -108,13 +108,6 @@ export default function SignupPage() {
       case 8: return data.children_status !== '';
       default: return false;
     }
-  }
-
-  function isValidAge(dob: string): boolean {
-    const d = new Date(dob);
-    if (isNaN(d.getTime())) return false;
-    const age = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    return age >= MIN_AGE && age <= 100;
   }
 
   async function handleNext() {
@@ -515,34 +508,29 @@ function Step2Gender({ data, updateField, lang }: StepProps) {
 }
 
 function Step3DOB({ data, updateField, lang }: StepProps) {
-  const zodiac = data.date_of_birth ? computeZodiacSign(data.date_of_birth) : null;
+  const zodiac = isAllowedBirthday(data.date_of_birth) ? computeZodiacSign(data.date_of_birth) : null;
+  const label = zodiac ? ZODIAC_LABELS[zodiac] : null;
   return (
     <div>
       <h2 className="step-title">
         {lang === 'ko' ? '생년월일을 알려주세요 🎂' : "When's your birthday? 🎂"}
       </h2>
       <p className="step-sub">
-        {lang === 'ko' ? '별자리는 자동으로 계산됩니다.' : 'Your zodiac sign will be computed automatically.'}
+        {lang === 'ko'
+          ? `만 ${MIN_AGE}세 이상부터 가입할 수 있어요. 별자리는 자동으로 계산돼요.`
+          : `Doreham is for ${MIN_AGE}+. Your zodiac sign is worked out for you.`}
       </p>
-      <input
-        type="date"
-        value={data.date_of_birth}
-        onChange={(e) => updateField('date_of_birth', e.target.value)}
-        className="input"
-        max={new Date(Date.now() - MIN_AGE * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
-      />
-      {zodiac && (
+      <BirthdayPicker value={data.date_of_birth} onChange={(v) => updateField('date_of_birth', v)} lang={lang} />
+      {label && (
         <div className="zodiac-preview">
-          {lang === 'ko' ? `당신의 별자리: ` : `Your zodiac: `}
-          <strong>{zodiac}</strong>
+          {lang === 'ko' ? '내 별자리: ' : 'Your zodiac: '}
+          <strong>{label.symbol} {lang === 'ko' ? label.ko : label.en}</strong>
         </div>
       )}
       <style jsx>{`
         .step-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--ink); }
         .step-sub { font-size: 16px; color: var(--ink-60); margin: 0 0 24px; }
-        .input { width: 100%; padding: 14px 18px; border: 1px solid var(--ink-12); border-radius: 12px; background: #fff; font-family: var(--body); font-size: 16px; color: var(--ink); outline: none; }
-        .input:focus { border-color: var(--persimmon); }
-        .zodiac-preview { margin-top: 12px; padding: 12px 16px; background: rgba(15, 157, 119, 0.08); color: var(--jade); border-radius: 10px; font-size: 15px; text-transform: capitalize; }
+        .zodiac-preview { margin-top: 12px; padding: 12px 16px; background: rgba(15, 157, 119, 0.08); color: var(--jade); border-radius: 10px; font-size: 15px; }
       `}</style>
     </div>
   );
