@@ -1,24 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { isVenueAccount } from '@/lib/accountType';
-import { UserMenu } from '@/components/UserMenu';
-import { NotificationBell } from '@/components/NotificationBell';
+import { useLang } from '@/lib/hooks/useLang';
+import { AppHeader } from '@/components/AppHeader';
+import { AppTabBar } from '@/components/AppTabBar';
 import { DoroSvg, HamiSvg } from '@/components/jellyfish';
-
-type Lang = 'en' | 'ko';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, profile, loading } = useUser();
-  const [lang, setLang] = useState<Lang>('en');
-
-  useEffect(() => {
-    document.body.setAttribute('data-lang', lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
+  const [lang, setLang] = useLang();
 
   useEffect(() => {
     if (loading) return;
@@ -68,151 +62,64 @@ export default function HomePage() {
     );
   }
 
-  const name = profile?.display_name ?? 'friend';
+  const name = profile?.display_name ?? (lang === 'ko' ? '친구' : 'friend');
+  const ko = lang === 'ko';
 
   return (
     <>
-      <header className="nav">
-        <div className="wrap nav-in">
-          <a className="brand" href="/">
-            Doreham <span className="ko-mark">도레함</span>
-          </a>
-          <div className="nav-right">
-            <div className="toggle" role="group" aria-label="Language">
-              <button aria-pressed={lang === 'ko'} onClick={() => setLang('ko')}>한국어</button>
-              <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
-            </div>
-            <NotificationBell lang={lang} />
-            <UserMenu lang={lang} />
-          </div>
-        </div>
-      </header>
+      <AppHeader lang={lang} setLang={setLang} />
 
       <main className="home-wrap">
-        <div className="wrap home-in">
-          <div className="celebration">
-            <div className="jellies">
-              <DoroSvg />
-              <HamiSvg />
-            </div>
+        <div className="celebration">
+          <div className="jellies" aria-hidden="true">
+            <DoroSvg />
+            <HamiSvg />
+          </div>
 
-            <h1>
-              <span className="en">You&apos;re all set, {name}!</span>
-              <span className="ko lang-ko">{name}님, 준비 완료!</span>
-            </h1>
+          <h1>{ko ? `${name}님, 준비 완료!` : `You're all set, ${name}!`}</h1>
 
-            <p className="sub">
-              <span className="en">
-                Your profile is complete. Doro and Hami are getting your first
-                matches ready — small groups, real activities, right where you are.
+          <p className="sub">
+            {ko
+              ? '프로필이 완성됐어요. 매칭을 요청하면 도로와 하미가 근처에서 잘 맞는 2~5명을 찾아드려요.'
+              : 'Your profile is ready. Ask for a match and Doro and Hami will find 2 to 5 people near you who fit you.'}
+          </p>
+
+          <a className="cta" href="/matches">
+            {ko ? '첫 그룹 찾기 →' : 'Find my first group →'}
+          </a>
+
+          <div className="next">
+            <a className="next-card" href="/events">
+              <span className="next-ic" aria-hidden="true">🎉</span>
+              <span className="next-text">
+                <strong>{ko ? '이벤트' : 'Events'}</strong>
+                <span>{ko ? '우리 도시에서 열리는 모임을 보거나 직접 열어 보세요.' : "See what's on in your city, or host your own."}</span>
               </span>
-              <span className="ko lang-ko">
-                프로필이 완성되었습니다. 도로와 하미가 곧 첫 매칭을 준비할게요 —
-                작은 그룹, 진짜 활동, 당신 근처에서.
+              <span className="next-arrow" aria-hidden="true">→</span>
+            </a>
+            <a className="next-card" href={`/profile/${user.id}`}>
+              <span className="next-ic" aria-hidden="true">📸</span>
+              <span className="next-text">
+                <strong>{ko ? '내 프로필' : 'Your profile'}</strong>
+                <span>{ko ? '사진을 올리면 그룹 친구들이 알아보기 쉬워요.' : 'Add a photo so your group can recognise you.'}</span>
               </span>
-            </p>
-
-            <div className="status-card">
-              <div className="status-badge">
-                <span className="pulse" />
-                <span className="en">Matching coming soon</span>
-                <span className="ko lang-ko">매칭 준비 중</span>
-              </div>
-              <p className="status-desc">
-                <span className="en">
-                  We&apos;re opening in Asan first, then Cheonan and Seoul.
-                  You&apos;ll get an email when your city is live.
-                </span>
-                <span className="ko lang-ko">
-                  아산에서 먼저 시작한 후, 천안과 서울로 확장됩니다.
-                  당신의 도시가 열리면 이메일로 알려드릴게요.
-                </span>
-              </p>
-            </div>
-
-            <div className="next-steps">
-              <h2>
-                <span className="en">Meanwhile</span>
-                <span className="ko lang-ko">그 동안</span>
-              </h2>
-              <div className="tips">
-                <div className="tip">
-                  <div className="tip-num">1</div>
-                  <div>
-                    <h3>
-                      <span className="en">Tell a friend</span>
-                      <span className="ko lang-ko">친구에게 알려주세요</span>
-                    </h3>
-                    <p>
-                      <span className="en">
-                        Doreham works best when the people around you join too.
-                        Share doreham.co.kr with a friend who&apos;d get it.
-                      </span>
-                      <span className="ko lang-ko">
-                        도레함은 주변 사람들이 함께할 때 가장 좋아요.
-                        공감할 만한 친구에게 doreham.co.kr을 알려주세요.
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                <div className="tip">
-                  <div className="tip-num">2</div>
-                  <div>
-                    <h3>
-                      <span className="en">Follow along</span>
-                      <span className="ko lang-ko">소식 받기</span>
-                    </h3>
-                    <p>
-                      <span className="en">
-                        We&apos;ll email you when matching goes live in your city
-                        and share behind-the-scenes updates as we build.
-                      </span>
-                      <span className="ko lang-ko">
-                        당신의 도시에서 매칭이 시작되면 이메일로 알려드리고,
-                        만드는 과정도 함께 나눌게요.
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+              <span className="next-arrow" aria-hidden="true">→</span>
+            </a>
           </div>
         </div>
       </main>
 
-      <style jsx>{`
-        .nav { position: sticky; top: 0; z-index: 50; background: rgba(245, 242, 235, 0.75); backdrop-filter: saturate(180%) blur(14px); -webkit-backdrop-filter: saturate(180%) blur(14px); border-bottom: 1px solid var(--ink-12); }
-        .nav-in { display: flex; align-items: center; gap: 32px; height: 72px; }
-        .brand { display: flex; align-items: baseline; gap: 9px; font-family: var(--display); font-weight: 800; font-size: 22px; text-decoration: none; }
-        .brand .ko-mark { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: var(--ink-60); font-weight: 700; font-size: 18px; }
-        .nav-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-        .toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
-        .toggle button { border: 0; background: transparent; font-family: var(--body); font-weight: 600; font-size: 13px; padding: 7px 13px; cursor: pointer; color: var(--ink-60); }
-        .toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+      <AppTabBar lang={lang} />
 
-        .home-wrap { padding: 60px 0 120px; }
-        .home-in { max-width: 720px; }
-        .celebration { text-align: center; animation: fadeUp 0.9s var(--ease-smooth, ease); }
+      <style jsx>{`
+        .home-wrap { padding: 40px 16px 96px; }
+        .celebration { max-width: 560px; margin: 0 auto; text-align: center; animation: fadeUp 0.9s var(--ease-smooth, ease); }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .jellies {
-          display: flex;
-          justify-content: center;
-          gap: -20px;
-          margin-bottom: 32px;
-        }
-        .jellies :global(.jelly) {
-          width: 130px;
-          filter: drop-shadow(0 20px 40px rgba(30, 34, 48, 0.12));
-        }
-        .jellies :global(.jelly.doro) {
-          transform: rotate(6deg);
-          animation: floatA 6s ease-in-out infinite;
-        }
-        .jellies :global(.jelly.hami) {
-          transform: rotate(-6deg) translateX(-20px);
-          animation: floatB 6.6s ease-in-out infinite;
-        }
+        .jellies { display: flex; justify-content: center; margin-bottom: 24px; }
+        .jellies :global(.jelly) { width: 120px; max-width: 32vw; filter: drop-shadow(0 20px 40px rgba(30, 34, 48, 0.12)); }
+        .jellies :global(.jelly.doro) { transform: rotate(6deg); animation: floatA 6s ease-in-out infinite; }
+        .jellies :global(.jelly.hami) { transform: rotate(-6deg) translateX(-20px); animation: floatB 6.6s ease-in-out infinite; }
         @keyframes floatA {
           0%, 100% { transform: rotate(6deg) translateY(0); }
           50% { transform: rotate(6deg) translateY(-14px); }
@@ -222,122 +129,22 @@ export default function HomePage() {
           50% { transform: rotate(-6deg) translateX(-20px) translateY(-10px); }
         }
 
-        h1 {
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: clamp(32px, 5vw, 52px);
-          letter-spacing: -0.02em;
-          margin: 0 0 20px;
-        }
-        .sub {
-          font-size: 18px;
-          color: var(--ink-60);
-          max-width: 46ch;
-          margin: 0 auto 40px;
-          line-height: 1.55;
-        }
+        h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 6vw, 48px); letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 14px; color: var(--ink); overflow-wrap: anywhere; }
+        .sub { font-size: 16.5px; color: var(--ink-60); max-width: 44ch; margin: 0 auto 26px; line-height: 1.55; }
+        .cta { display: inline-block; background: var(--persimmon); color: #fff; font-weight: 800; font-size: 16px; border-radius: 999px; padding: 14px 28px; text-decoration: none; box-shadow: 0 8px 22px rgba(255, 106, 61, 0.28); }
+        .cta:hover { transform: translateY(-1px); }
 
-        .status-card {
-          background: var(--paper-2);
-          border: 1px solid var(--ink-12);
-          border-radius: 24px;
-          padding: 28px 32px;
-          max-width: 460px;
-          margin: 0 auto 60px;
-        }
-        .status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          background: rgba(255, 106, 61, 0.1);
-          color: var(--persimmon);
-          padding: 8px 16px;
-          border-radius: 999px;
-          font-weight: 700;
-          font-size: 13px;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 14px;
-        }
-        .pulse {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: var(--persimmon);
-          animation: pulseAnim 1.6s ease-in-out infinite;
-        }
-        @keyframes pulseAnim {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.4); opacity: 0.6; }
-        }
-        .status-desc {
-          font-size: 15px;
-          color: var(--ink-60);
-          line-height: 1.55;
-        }
+        .next { display: grid; gap: 12px; margin-top: 36px; text-align: left; }
+        .next-card { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--ink-12); border-radius: 18px; padding: 16px 18px; text-decoration: none; color: var(--ink); }
+        .next-card:hover { border-color: var(--ink-60); }
+        .next-ic { width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--paper-2); display: grid; place-items: center; font-size: 22px; }
+        .next-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--ink-60); line-height: 1.45; }
+        .next-text strong { font-size: 16px; color: var(--ink); }
+        .next-arrow { color: var(--persimmon); font-weight: 800; font-size: 18px; }
 
-        .next-steps {
-          max-width: 560px;
-          margin: 0 auto;
-          text-align: left;
-        }
-        .next-steps h2 {
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: 24px;
-          text-align: center;
-          margin: 0 0 28px;
-          color: var(--ink);
-        }
-        .tips {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-        .tip {
-          display: flex;
-          gap: 20px;
-          padding: 24px;
-          background: var(--paper-2);
-          border: 1px solid var(--ink-12);
-          border-radius: 20px;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .tip:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 28px rgba(30, 34, 48, 0.06);
-        }
-        .tip-num {
-          flex-shrink: 0;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: var(--persimmon);
-          color: #fff;
-          display: grid;
-          place-items: center;
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: 18px;
-        }
-        .tip h3 {
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: 18px;
-          margin: 0 0 6px;
-          color: var(--ink);
-        }
-        .tip p {
-          font-size: 14.5px;
-          color: var(--ink-60);
-          line-height: 1.5;
-          margin: 0;
-        }
-
-        @media (max-width: 560px) {
-          .home-wrap { padding: 40px 0 60px; }
-          .jellies :global(.jelly) { width: 100px; }
-          .status-card, .tip { padding: 20px; }
+        @media (min-width: 600px) {
+          .home-wrap { padding-top: 60px; }
+          .jellies :global(.jelly) { width: 130px; }
         }
       `}</style>
     </>

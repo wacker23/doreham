@@ -68,6 +68,9 @@ type Match = {
       road_address: string | null;
       city: string;
       photo_urls: string[];
+      per_person_cost_won: number | null;
+      discount_offer: string | null;
+      discount_offer_en: string | null;
     } | null;
     program: {
       id: string;
@@ -297,7 +300,7 @@ export default function MatchesPage() {
       .from('quests')
       .select(`
         id, group_id, title, title_en, quest_description, description_en, status, expires_at, quest_type,
-        venue:venues(id, business_name_display, category, address, road_address, city, photo_urls),
+        venue:venues(id, business_name_display, category, address, road_address, city, photo_urls, per_person_cost_won, discount_offer, discount_offer_en),
         program:volunteer_programs(id, title, title_en, org_name, org_name_en, place, place_en, detail_url)
       `)
       .in('group_id', groupIds);
@@ -1594,7 +1597,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       {match.quest.venue && (
       <div className="venue-section">
         <h3>{lang === 'ko' ? '만날 장소' : 'Where to meet'}</h3>
-        <div className="venue-card">
+        <a className="venue-card venue-link" href={`/venues/${match.quest.venue.id}`}>
           {match.quest.venue.photo_urls?.[0] && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={match.quest.venue.photo_urls[0]} alt="" className="venue-photo" />
@@ -1609,8 +1612,24 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
             <div className="venue-address">
               {match.quest.venue.road_address ?? match.quest.venue.address}
             </div>
+            {(() => {
+              const v = match.quest.venue;
+              const perk = lang === 'ko' ? v.discount_offer : v.discount_offer_en || v.discount_offer;
+              if (!v.per_person_cost_won && !perk) return null;
+              return (
+                <div className="venue-chips">
+                  {!!v.per_person_cost_won && (
+                    <span className="venue-chip">
+                      💰 ~₩{v.per_person_cost_won.toLocaleString()} {lang === 'ko' ? '/ 1인' : '/ person'}
+                    </span>
+                  )}
+                  {perk && <span className="venue-chip perk">🎁 {perk}</span>}
+                </div>
+              );
+            })()}
+            <div className="venue-more">{lang === 'ko' ? '사진·영업시간·메뉴 보기 →' : 'Photos, hours and menu →'}</div>
           </div>
-        </div>
+        </a>
         {match.quest_scheduled_at && (
           <div className="scheduled-info">
             <div className="scheduled-label">
@@ -1793,6 +1812,13 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         .venue-name { font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
         .venue-category { color: var(--ink-60); font-size: 13px; margin-bottom: 6px; }
         .venue-address { color: var(--ink-60); font-size: 13px; line-height: 1.4; }
+        .venue-link { text-decoration: none; color: inherit; border: 1px solid transparent; transition: border-color 0.15s; }
+        .venue-link:hover { border-color: var(--ink-12); }
+        .venue-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-width: 0; }
+        .venue-chip { font-size: 12px; font-weight: 700; line-height: 1.35; color: var(--ink); background: #fff; border: 1px solid var(--ink-12); border-radius: 10px; padding: 3px 9px; max-width: 100%; overflow-wrap: anywhere; }
+        .venue-chip.perk { color: var(--persimmon); border-color: rgba(255, 106, 61, 0.3); }
+        .venue-more { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--persimmon); }
+        @media (max-width: 420px) { .venue-link { flex-direction: column; } .venue-link .venue-photo { width: 100%; height: 140px; } }
         .scheduled-info { margin-top: 12px; padding: 14px 18px; background: linear-gradient(135deg, rgba(15, 157, 119, 0.08), rgba(255, 106, 61, 0.05)); border: 1px solid rgba(15, 157, 119, 0.2); border-radius: 12px; }
         .scheduled-label { font-size: 11px; font-weight: 700; color: var(--jade); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
         .scheduled-time { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--ink); }
