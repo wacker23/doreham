@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
+import { stripEmoji, venueCategoryArt } from '@/lib/icons';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
 const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
@@ -87,19 +90,19 @@ const CITIES = [
   { code: 'other', label: 'Other' },
 ];
 
-const CATEGORY_LABELS: Record<string, { en: string; emoji: string; needsMenu: boolean }> = {
-  cafe:              { en: 'Café', emoji: '☕', needsMenu: true },
-  restaurant:        { en: 'Restaurant', emoji: '🍜', needsMenu: true },
-  board_game_cafe:   { en: 'Board game café', emoji: '🎲', needsMenu: false },
-  escape_room:       { en: 'Escape room', emoji: '🧩', needsMenu: false },
-  bookshop:          { en: 'Bookshop', emoji: '📚', needsMenu: false },
-  workshop_creative: { en: 'Workshop', emoji: '🏺', needsMenu: false },
-  active_sports:     { en: 'Sports', emoji: '🥾', needsMenu: false },
-  cultural_venue:    { en: 'Cultural venue', emoji: '🎨', needsMenu: false },
-  nature_outdoor:    { en: 'Nature', emoji: '🌿', needsMenu: false },
-  music_movie:       { en: 'Music/Movie', emoji: '🎬', needsMenu: false },
-  bar_club:          { en: 'Bar/Club', emoji: '🍸', needsMenu: true },
-  other:             { en: 'Other', emoji: '🏪', needsMenu: false },
+const CATEGORY_LABELS: Record<string, { en: string; needsMenu: boolean }> = {
+  cafe:              { en: 'Café', needsMenu: true },
+  restaurant:        { en: 'Restaurant', needsMenu: true },
+  board_game_cafe:   { en: 'Board game café', needsMenu: false },
+  escape_room:       { en: 'Escape room', needsMenu: false },
+  bookshop:          { en: 'Bookshop', needsMenu: false },
+  workshop_creative: { en: 'Workshop', needsMenu: false },
+  active_sports:     { en: 'Sports', needsMenu: false },
+  cultural_venue:    { en: 'Cultural venue', needsMenu: false },
+  nature_outdoor:    { en: 'Nature', needsMenu: false },
+  music_movie:       { en: 'Music/Movie', needsMenu: false },
+  bar_club:          { en: 'Bar/Club', needsMenu: true },
+  other:             { en: 'Other', needsMenu: false },
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -144,15 +147,12 @@ function groupCompatibility(profiles: Profile[]): number {
 }
 
 function generateQuestTitleAndDescription(venue: Venue, menuItems: MenuItem[]) {
-  const catInfo = CATEGORY_LABELS[venue.category];
-  const emoji = catInfo?.emoji ?? '🌟';
-
   if (venue.category === 'cafe' && menuItems.length > 0) {
     const itemNames = menuItems.map((m) => m.name).join(', ');
     const itemNamesEn = menuItems.map((m) => m.name_en ?? m.name).join(', ');
     return {
-      title: `${emoji} ${venue.business_name_display}에서 함께 시간 보내기`,
-      title_en: `${emoji} Coffee time at ${venue.business_name_display}`,
+      title: `${venue.business_name_display}에서 함께 시간 보내기`,
+      title_en: `Coffee time at ${venue.business_name_display}`,
       description: `${venue.business_name_display}에 함께 방문해서 ${itemNames}을(를) 각자 주문하고 서로 나눠 마셔보세요.`,
       description_en: `Visit ${venue.business_name_display} together and each order one of: ${itemNamesEn}. Share sips!`,
     };
@@ -161,24 +161,24 @@ function generateQuestTitleAndDescription(venue: Venue, menuItems: MenuItem[]) {
     const itemNames = menuItems.map((m) => m.name).join(', ');
     const itemNamesEn = menuItems.map((m) => m.name_en ?? m.name).join(', ');
     return {
-      title: `${emoji} ${venue.business_name_display}에서 함께 식사`,
-      title_en: `${emoji} Share a meal at ${venue.business_name_display}`,
+      title: `${venue.business_name_display}에서 함께 식사`,
+      title_en: `Share a meal at ${venue.business_name_display}`,
       description: `${venue.business_name_display}에서 함께 식사해요. ${itemNames} 중 하나씩 주문해서 나눠 먹으면 좋겠어요!`,
       description_en: `Meet at ${venue.business_name_display}. Try ordering ${itemNamesEn} — sharing dishes is more fun!`,
     };
   }
 
   const generic: Record<string, { titleKo: string; titleEn: string; ko: string; en: string }> = {
-    board_game_cafe: { titleKo: `${emoji} ${venue.business_name_display}에서 보드게임`, titleEn: `${emoji} Board game night at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 보드게임을 즐겨보세요.`, en: `Head to ${venue.business_name_display} and play a board game together.` },
-    escape_room: { titleKo: `${emoji} ${venue.business_name_display} 방탈출 도전`, titleEn: `${emoji} Escape ${venue.business_name_display} together`, ko: `${venue.business_name_display}에서 함께 방탈출을 도전해보세요.`, en: `Take on an escape room at ${venue.business_name_display} together.` },
-    bookshop: { titleKo: `${emoji} ${venue.business_name_display}에서 서로에게 책 추천`, titleEn: `${emoji} Book swap at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 각자 상대에게 책을 추천해주세요.`, en: `Visit ${venue.business_name_display} together. Recommend books to each other!` },
-    workshop_creative: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 만들기`, titleEn: `${emoji} Make something at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 원데이 클래스를 즐겨보세요.`, en: `Join a workshop at ${venue.business_name_display} together.` },
-    active_sports: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 운동`, titleEn: `${emoji} Active time at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 활동해요.`, en: `Get active together at ${venue.business_name_display}.` },
-    cultural_venue: { titleKo: `${emoji} ${venue.business_name_display} 함께 둘러보기`, titleEn: `${emoji} Explore ${venue.business_name_display} together`, ko: `${venue.business_name_display}을(를) 함께 둘러보세요.`, en: `Explore ${venue.business_name_display} together.` },
-    nature_outdoor: { titleKo: `${emoji} ${venue.business_name_display}에서 자연 속으로`, titleEn: `${emoji} Into nature at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Enjoy ${venue.business_name_display} together.` },
-    music_movie: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 즐기기`, titleEn: `${emoji} Together at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Meet at ${venue.business_name_display}.` },
-    bar_club: { titleKo: `${emoji} ${venue.business_name_display}에서 함께 한잔`, titleEn: `${emoji} Night out at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 즐거운 밤을 보내세요.`, en: `Enjoy a night out together at ${venue.business_name_display}.` },
-    other: { titleKo: `${emoji} ${venue.business_name_display}에서 만나기`, titleEn: `${emoji} Meet up at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Spend time together at ${venue.business_name_display}.` },
+    board_game_cafe: { titleKo: `${venue.business_name_display}에서 보드게임`, titleEn: `Board game night at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 보드게임을 즐겨보세요.`, en: `Head to ${venue.business_name_display} and play a board game together.` },
+    escape_room: { titleKo: `${venue.business_name_display} 방탈출 도전`, titleEn: `Escape ${venue.business_name_display} together`, ko: `${venue.business_name_display}에서 함께 방탈출을 도전해보세요.`, en: `Take on an escape room at ${venue.business_name_display} together.` },
+    bookshop: { titleKo: `${venue.business_name_display}에서 서로에게 책 추천`, titleEn: `Book swap at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 각자 상대에게 책을 추천해주세요.`, en: `Visit ${venue.business_name_display} together. Recommend books to each other!` },
+    workshop_creative: { titleKo: `${venue.business_name_display}에서 함께 만들기`, titleEn: `Make something at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 원데이 클래스를 즐겨보세요.`, en: `Join a workshop at ${venue.business_name_display} together.` },
+    active_sports: { titleKo: `${venue.business_name_display}에서 함께 운동`, titleEn: `Active time at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 활동해요.`, en: `Get active together at ${venue.business_name_display}.` },
+    cultural_venue: { titleKo: `${venue.business_name_display} 함께 둘러보기`, titleEn: `Explore ${venue.business_name_display} together`, ko: `${venue.business_name_display}을(를) 함께 둘러보세요.`, en: `Explore ${venue.business_name_display} together.` },
+    nature_outdoor: { titleKo: `${venue.business_name_display}에서 자연 속으로`, titleEn: `Into nature at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Enjoy ${venue.business_name_display} together.` },
+    music_movie: { titleKo: `${venue.business_name_display}에서 함께 즐기기`, titleEn: `Together at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Meet at ${venue.business_name_display}.` },
+    bar_club: { titleKo: `${venue.business_name_display}에서 함께 한잔`, titleEn: `Night out at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 즐거운 밤을 보내세요.`, en: `Enjoy a night out together at ${venue.business_name_display}.` },
+    other: { titleKo: `${venue.business_name_display}에서 만나기`, titleEn: `Meet up at ${venue.business_name_display}`, ko: `${venue.business_name_display}에서 함께 시간을 보내세요.`, en: `Spend time together at ${venue.business_name_display}.` },
   };
   const preset = generic[venue.category] ?? generic.other;
   return { title: preset.titleKo, title_en: preset.titleEn, description: preset.ko, description_en: preset.en };
@@ -273,7 +273,7 @@ export default function AdminMatchesPage() {
         completed_at: quest.completed_at,
         cancelled_at: quest.cancelled_at,
         venue_id: quest.venue_id,
-        venue_name: quest.venue?.business_name_display ?? `🤝 ${quest.program?.title ?? 'Volunteer quest'}`,
+        venue_name: quest.venue?.business_name_display ?? (quest.program?.title ?? 'Volunteer quest'),
         venue_category: quest.venue?.category ?? 'other',
         members: groupMembers,
       } as ExistingMatch;
@@ -595,10 +595,10 @@ export default function AdminMatchesPage() {
           <h1>Matches</h1>
           <div className="view-toggle">
             <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>
-              📋 View all ({existingMatches.length})
+              <Icon name="doc" size={16} /> View all ({existingMatches.length})
             </button>
             <button className={view === 'create' ? 'active' : ''} onClick={() => setView('create')}>
-              ✨ Create new
+              <Icon name="sparkle" size={16} /> Create new
             </button>
           </div>
         </div>
@@ -610,7 +610,7 @@ export default function AdminMatchesPage() {
         {matchRequests.length > 0 && (
           <div className="requests-section">
             <div className="requests-header">
-              <h2>🔔 Pending match requests <span className="req-count">{matchRequests.length}</span></h2>
+              <h2><Icon name="bell" size={20} /> Pending match requests <span className="req-count">{matchRequests.length}</span></h2>
               <p className="req-hint">Click a request to prefill the create-match form with that user + their city.</p>
             </div>
             <div className="requests-list">
@@ -638,7 +638,7 @@ export default function AdminMatchesPage() {
                           {isPrefilled && <span className="prefilled-tag">PREFILLED</span>}
                         </div>
                         <div className="req-meta">
-                          📍 {cityLabel} · 👥 {sizeLabel} · ⏱ {ageDisplay}
+                          <Icon name="location" size={14} /> {cityLabel} · <Icon name="people" size={14} /> {sizeLabel} · <Icon name="time" size={14} /> {ageDisplay}
                         </div>
                         {req.profile?.home_district && (
                           <div className="req-district">{req.profile.home_district}</div>
@@ -683,7 +683,6 @@ export default function AdminMatchesPage() {
                   const isExpanded = expandedMatchId === match.group_id;
                   const status = STATUS_LABELS[match.quest_status];
                   const days = daysUntil(match.expires_at);
-                  const cat = CATEGORY_LABELS[match.venue_category];
                   const isProcessing = processingMatchId === match.group_id;
                   const isCanceling = cancelingId === match.group_id;
 
@@ -692,7 +691,7 @@ export default function AdminMatchesPage() {
                       <div className="match-header" onClick={() => setExpandedMatchId(isExpanded ? null : match.group_id)}>
                         <div className="match-main">
                           <div className="match-title">
-                            {cat?.emoji} {match.quest_title_en ?? match.quest_title}
+                            <CategoryIcon art={venueCategoryArt(match.venue_category)} size={20} /> {stripEmoji(match.quest_title_en ?? match.quest_title)}
                           </div>
                           <div className="match-meta">
                             {match.members.map((m) => m.display_name).join(' · ')} — {match.city} · {days > 0 ? `${days}d left` : 'expired'}
@@ -756,7 +755,7 @@ export default function AdminMatchesPage() {
                               ) : (
                                 <>
                                   {match.quest_status === 'proposed' && (
-                                    <button className="btn-secondary" onClick={() => scheduleMatch(match)} disabled={isProcessing}>📅 Mark scheduled</button>
+                                    <button className="btn-secondary" onClick={() => scheduleMatch(match)} disabled={isProcessing}><Icon name="date" size={16} /> Mark scheduled</button>
                                   )}
                                   <button className="btn-success" onClick={() => completeMatch(match)} disabled={isProcessing}>✓ Mark completed</button>
                                   <button className="btn-danger-outline" onClick={() => setCancelingId(match.group_id)} disabled={isProcessing}>✗ Cancel match</button>
@@ -776,7 +775,7 @@ export default function AdminMatchesPage() {
           <>
             {prefilledRequestId && (
               <div className="prefill-banner">
-                💡 Form is prefilled from a match request. When you create the match, the request will auto-resolve.
+                <Icon name="tip" size={16} /> Form is prefilled from a match request. When you create the match, the request will auto-resolve.
                 <button className="clear-prefill" onClick={() => { setPrefilledRequestId(null); setSelectedUserIds(new Set()); }}>Clear prefill</button>
               </div>
             )}
@@ -842,7 +841,7 @@ export default function AdminMatchesPage() {
               {filteredVenues.length === 0 ? <p className="empty-inline">No approved venues in this city.</p> : (
                 <select value={selectedVenueId} onChange={(e) => { setSelectedVenueId(e.target.value); loadMenuItemsForVenue(e.target.value); }} className="input">
                   <option value="">— Select a venue —</option>
-                  {filteredVenues.map((v) => { const cat = CATEGORY_LABELS[v.category]; return (<option key={v.id} value={v.id}>{cat?.emoji} {v.business_name_display} · {cat?.en ?? v.category}</option>); })}
+                  {filteredVenues.map((v) => { const cat = CATEGORY_LABELS[v.category]; return (<option key={v.id} value={v.id}>{v.business_name_display} · {cat?.en ?? v.category}</option>); })}
                 </select>
               )}
             </div>
@@ -856,7 +855,7 @@ export default function AdminMatchesPage() {
                     const isSelected = selectedMenuIds.has(m.id);
                     return (
                       <button key={m.id} type="button" className={`menu-card ${isSelected ? 'selected' : ''}`} onClick={() => toggleMenuItem(m.id)}>
-                        <div className="menu-name">{m.name} {m.is_signature && '⭐'}</div>
+                        <div className="menu-name">{m.name} {m.is_signature && <Icon name="starFilled" size={13} />}</div>
                         {m.name_en && <div className="menu-name-en">{m.name_en}</div>}
                         {m.price_won && <div className="menu-price">₩{m.price_won.toLocaleString()}</div>}
                       </button>
@@ -868,7 +867,7 @@ export default function AdminMatchesPage() {
 
             <div className="create-actions">
               <button type="button" className="btn-create" onClick={createMatch} disabled={creating || selectedUserIds.size !== 3 || !selectedVenueId || (menuItems.length > 0 && selectedMenuIds.size === 0)}>
-                {creating ? 'Creating…' : '✨ Create match'}
+                {creating ? 'Creating…' : 'Create match'}
               </button>
             </div>
           </>

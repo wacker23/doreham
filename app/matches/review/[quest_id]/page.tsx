@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
 import { useLang } from '@/lib/hooks/useLang';
+import { Icon } from '@/components/icons/Icon';
+import { reviewTagIcon } from '@/lib/icons';
 
 type Tag = {
   id: string;
@@ -207,13 +209,13 @@ export default function ReviewQuestPage() {
   if (error && !pending) {
     return (
       <main className="err-wrap">
-        <div className="err-icon">⚠️</div>
+        <div className="err-icon"><Icon name="warning" size={48} /></div>
         <h1>{lang === 'ko' ? '리뷰할 수 없어요' : "Can't review"}</h1>
         <p>{error}</p>
         <a href="/matches" className="btn-back">{lang === 'ko' ? '돌아가기' : 'Back to matches'}</a>
         <style jsx>{`
           .err-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-          .err-icon { font-size: 48px; margin-bottom: 16px; }
+          .err-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 8px; }
           p { color: var(--ink-60); margin: 0 0 24px; }
           .btn-back { background: var(--ink); color: var(--paper); text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; }
@@ -225,12 +227,12 @@ export default function ReviewQuestPage() {
   if (success) {
     return (
       <main className="success-wrap">
-        <div className="success-icon">🌸</div>
+        <div className="success-icon"><Icon name="matches" size={72} /></div>
         <h1>{lang === 'ko' ? '리뷰 감사합니다!' : 'Thanks for your review!'}</h1>
         <p>{lang === 'ko' ? '커뮤니티를 더 좋게 만드는 데 도움이 돼요.' : 'This helps make the community better.'}</p>
         <style jsx>{`
           .success-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; background: linear-gradient(180deg, rgba(255, 106, 61, 0.06), transparent); }
-          .success-icon { font-size: 72px; margin-bottom: 16px; }
+          .success-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0 0 8px; color: var(--persimmon); }
           p { color: var(--ink); font-size: 15px; margin: 0; }
         `}</style>
@@ -275,7 +277,7 @@ export default function ReviewQuestPage() {
             <div className="quest-label">
               {lang === 'ko' ? '완료한 퀘스트' : 'Completed quest'}
             </div>
-            <div className="quest-venue">📍 {lang === 'en' ? (pending.venue_name_en || pending.venue_name) : pending.venue_name}</div>
+            <div className="quest-venue"><Icon name="location" size={18} /> {lang === 'en' ? (pending.venue_name_en || pending.venue_name) : pending.venue_name}</div>
             <div className="quest-date">
               {new Date(pending.completed_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
                 weekday: 'short', month: 'short', day: 'numeric',
@@ -283,9 +285,10 @@ export default function ReviewQuestPage() {
             </div>
           </div>
           <p className="privacy-note">
+            <Icon name="lock" size={14} />{' '}
             {lang === 'ko'
-              ? '🔒 모든 리뷰는 익명입니다. 걱정거리는 비공개로 처리되며 프로필에 표시되지 않아요.'
-              : '🔒 All reviews are anonymous. Concerns stay private and are never shown on profiles.'}
+              ? '모든 리뷰는 익명입니다. 걱정거리는 비공개로 처리되며 프로필에 표시되지 않아요.'
+              : 'All reviews are anonymous. Concerns stay private and are never shown on profiles.'}
           </p>
         </div>
 
@@ -293,12 +296,12 @@ export default function ReviewQuestPage() {
         {!pending.venue_reviewed && (
           <section className="review-section venue-section">
             <h2>
-              📍 {lang === 'en' ? (pending.venue_name_en || pending.venue_name) : pending.venue_name}
+              <Icon name="venue" size={20} /> {lang === 'en' ? (pending.venue_name_en || pending.venue_name) : pending.venue_name}
               <span className="opt-tag">{lang === 'ko' ? '선택' : 'Optional'}</span>
             </h2>
 
             <div className="tag-group">
-              <div className="tag-group-title">{lang === 'ko' ? '👍 좋았던 점' : '👍 What went well'}</div>
+              <div className="tag-group-title"><Icon name="helpful" size={16} /> {lang === 'ko' ? '좋았던 점' : 'What went well'}</div>
               <div className="tags-grid">
                 {venueComplimentTags.map((t) => {
                   const active = venueReview.compliment_tags.has(t.id);
@@ -309,7 +312,7 @@ export default function ReviewQuestPage() {
                       className={`tag-btn ${active ? 'active' : ''}`}
                       onClick={() => toggleVenueTag('compliment_tags', t.id)}
                     >
-                      {t.emoji} {lang === 'ko' ? t.label_ko : t.label_en}
+                      <Icon name={reviewTagIcon(t.id)} size={18} /> {lang === 'ko' ? t.label_ko : t.label_en}
                     </button>
                   );
                 })}
@@ -318,7 +321,7 @@ export default function ReviewQuestPage() {
 
             <div className="tag-group">
               <div className="tag-group-title concern-title">
-                {lang === 'ko' ? '⚠️ 아쉬웠던 점 (비공개)' : '⚠️ What could be better (private)'}
+                <Icon name="warning" size={16} /> {lang === 'ko' ? '아쉬웠던 점 (비공개)' : 'What could be better (private)'}
               </div>
               <div className="tags-grid">
                 {venueConcernTags.map((t) => {
@@ -330,7 +333,7 @@ export default function ReviewQuestPage() {
                       className={`tag-btn concern ${active ? 'active' : ''}`}
                       onClick={() => toggleVenueTag('concern_tags', t.id)}
                     >
-                      {t.emoji} {lang === 'ko' ? t.label_ko : t.label_en}
+                      <Icon name={reviewTagIcon(t.id)} size={18} /> {lang === 'ko' ? t.label_ko : t.label_en}
                     </button>
                   );
                 })}
@@ -339,7 +342,7 @@ export default function ReviewQuestPage() {
 
             <div className="tag-group">
               <div className="tag-group-title">
-                {lang === 'ko' ? '💬 한 줄 후기 (선택, 30-100자)' : '💬 Short review (optional, 30-100 chars)'}
+                <Icon name="chat" size={16} /> {lang === 'ko' ? '한 줄 후기 (선택, 30-100자)' : 'Short review (optional, 30-100 chars)'}
               </div>
               <textarea
                 value={venueReview.short_text}
@@ -376,7 +379,7 @@ export default function ReviewQuestPage() {
 
               {/* Compliments grouped by category */}
               <div className="tag-group">
-                <div className="tag-group-title">{lang === 'ko' ? '🌟 칭찬' : '🌟 Compliments'}</div>
+                <div className="tag-group-title"><Icon name="star" size={16} /> {lang === 'ko' ? '칭찬' : 'Compliments'}</div>
                 {Object.entries(complimentsByCategory).map(([cat, tags]) => (
                   <div key={cat} className="category-block">
                     <div className="cat-label">
@@ -392,7 +395,7 @@ export default function ReviewQuestPage() {
                             className={`tag-btn ${active ? 'active' : ''}`}
                             onClick={() => toggleTag(member.user_id, 'compliment_tags', t.id)}
                           >
-                            {t.emoji} {lang === 'ko' ? t.label_ko : t.label_en}
+                            <Icon name={reviewTagIcon(t.id)} size={18} /> {lang === 'ko' ? t.label_ko : t.label_en}
                           </button>
                         );
                       })}
@@ -403,7 +406,7 @@ export default function ReviewQuestPage() {
 
               {/* Vibe stickers */}
               <div className="tag-group">
-                <div className="tag-group-title">{lang === 'ko' ? '✨ 분위기 스티커' : '✨ Vibe stickers'}</div>
+                <div className="tag-group-title"><Icon name="sparkle" size={16} /> {lang === 'ko' ? '분위기 스티커' : 'Vibe stickers'}</div>
                 <div className="tags-grid">
                   {vibeTags.map((t) => {
                     const active = review.vibe_tags.has(t.id);
@@ -414,7 +417,7 @@ export default function ReviewQuestPage() {
                         className={`tag-btn vibe ${active ? 'active' : ''}`}
                         onClick={() => toggleTag(member.user_id, 'vibe_tags', t.id)}
                       >
-                        {t.emoji} {lang === 'ko' ? t.label_ko : t.label_en}
+                        <Icon name={reviewTagIcon(t.id)} size={18} /> {lang === 'ko' ? t.label_ko : t.label_en}
                       </button>
                     );
                   })}
@@ -424,7 +427,7 @@ export default function ReviewQuestPage() {
               {/* Concerns (private) */}
               <div className="tag-group">
                 <div className="tag-group-title concern-title">
-                  {lang === 'ko' ? '⚠️ 걱정거리 (비공개, 신뢰도만)' : '⚠️ Concerns (private, for trust only)'}
+                  <Icon name="lock" size={16} /> {lang === 'ko' ? '걱정거리 (비공개, 신뢰도만)' : 'Concerns (private, for trust only)'}
                 </div>
                 {Object.entries(concernsByCategory).map(([cat, tags]) => (
                   <div key={cat} className="category-block">
@@ -441,7 +444,7 @@ export default function ReviewQuestPage() {
                             className={`tag-btn concern ${active ? 'active' : ''}`}
                             onClick={() => toggleTag(member.user_id, 'concern_tags', t.id)}
                           >
-                            {t.emoji} {lang === 'ko' ? t.label_ko : t.label_en}
+                            <Icon name={reviewTagIcon(t.id)} size={18} /> {lang === 'ko' ? t.label_ko : t.label_en}
                           </button>
                         );
                       })}
@@ -481,7 +484,7 @@ export default function ReviewQuestPage() {
         .intro { margin-bottom: 20px; }
         .quest-summary { background: #fff; border: 1px solid var(--ink-12); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
         .quest-label { font-size: 11px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; font-weight: 700; }
-        .quest-venue { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--ink); margin-bottom: 2px; }
+        .quest-venue { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--ink); margin-bottom: 2px; }
         .quest-date { font-size: 13px; color: var(--ink-60); }
         .privacy-note { font-size: 12px; color: var(--ink-60); background: rgba(15, 157, 119, 0.06); border: 1px solid rgba(15, 157, 119, 0.15); padding: 10px 14px; border-radius: 10px; line-height: 1.5; margin: 0; }
         .review-section { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
@@ -493,12 +496,12 @@ export default function ReviewQuestPage() {
         .person-header h2 { margin: 0; }
         .tag-group { margin-bottom: 20px; }
         .tag-group:last-child { margin-bottom: 0; }
-        .tag-group-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
+        .tag-group-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
         .tag-group-title.concern-title { color: var(--ink-60); }
         .category-block { margin-bottom: 12px; }
         .cat-label { font-size: 11px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-weight: 600; }
         .tags-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-        .tag-btn { background: var(--paper-2); border: 1.5px solid transparent; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; transition: all 0.15s; font-family: var(--body); }
+        .tag-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-2); border: 1.5px solid transparent; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; transition: all 0.15s; font-family: var(--body); }
         .tag-btn:hover:not(.active) { border-color: var(--ink-12); }
         .tag-btn.active { background: rgba(255, 106, 61, 0.12); border-color: var(--persimmon); color: var(--persimmon); }
         .tag-btn.vibe.active { background: rgba(122, 88, 168, 0.12); border-color: #7A58A8; color: #7A58A8; }

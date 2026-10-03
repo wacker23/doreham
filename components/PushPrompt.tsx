@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 import { askNow, autoPush, bannerClosedThisVisit, closeBannerThisVisit, type PushState } from '@/lib/push';
 import { isVenueAccount } from '@/lib/accountType';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Notifications, like an app: on every visit (and after signing in) the browser's own
@@ -54,7 +55,7 @@ export function PushPrompt({ lang }: { lang: 'en' | 'ko' }) {
   return (
     <div className="pp-wrap" role="region" aria-label={t('Notifications', '알림')}>
       <div className="pp-card">
-        <div className="pp-ic" aria-hidden="true">🔔</div>
+        <div className="pp-ic" aria-hidden="true"><Icon name="bell" size={24} /></div>
         <div className="pp-text">
           {state === 'ios-install' ? (
             <>

@@ -7,6 +7,8 @@ import { cityName } from '@/lib/cities';
 import { eventCategory } from '@/lib/eventCategories';
 import { dayLabel, relativeTime, timeRange } from '@/lib/eventDisplay';
 import type { EventBase, EventReport, FeedEvent } from '@/lib/eventTypes';
+import { Icon } from '@/components/icons/Icon';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
 type QueueEvent = EventBase & { hidden_reason: string | null };
 type QueueComment = { id: string; body: string; user_id: string; deleted_at: string | null };
@@ -86,7 +88,7 @@ export default function AdminEventsPage() {
         {error && <div className="err">{error}</div>}
 
         <h2>Needs a look ({queue?.events.length ?? '…'})</h2>
-        {queue && queue.events.length === 0 && <p className="muted">Nothing reported. 🌿</p>}
+        {queue && queue.events.length === 0 && <p className="muted">Nothing reported.</p>}
         <div className="list">
           {queue?.events.map((e) => {
             const reps = reportsFor(e.id);
@@ -96,7 +98,7 @@ export default function AdminEventsPage() {
                 <div className="top">
                   <span className={`st ${e.status}`}>{e.status}{e.hidden_reason ? ` · ${e.hidden_reason}` : ''}</span>
                   <span className="muted small">
-                    {cat.emoji} {cat.label_en} · {cityName(e.city, 'en')} · {dayLabel(e.starts_at, 'en')} {timeRange(e.starts_at, e.ends_at, 'en')}
+                    <CategoryIcon art={cat.art} size={16} /> {cat.label_en} · {cityName(e.city, 'en')} · {dayLabel(e.starts_at, 'en')} {timeRange(e.starts_at, e.ends_at, 'en')}
                   </span>
                 </div>
                 <a className="title" href={`/events/${e.id}`} target="_blank" rel="noreferrer">
@@ -149,11 +151,11 @@ export default function AdminEventsPage() {
             <div key={e.id} className="row">
               <div>
                 <a className="title small" href={`/events/${e.id}`} target="_blank" rel="noreferrer">
-                  {e.is_featured ? '⭐ ' : ''}
+                  {e.is_featured ? <Icon name="starFilled" size={14} /> : null}
                   {e.title}
                 </a>
                 <div className="muted small">
-                  {cityName(e.city, 'en')} · {dayLabel(e.starts_at, 'en')} · {e.host.kind}: {e.host.name} · 👥 {e.going_count}
+                  {cityName(e.city, 'en')} · {dayLabel(e.starts_at, 'en')} · {e.host.kind}: {e.host.name} · <Icon name="people" size={14} /> {e.going_count}
                 </div>
               </div>
               <div className="acts">

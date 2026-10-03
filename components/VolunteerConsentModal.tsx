@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Consent for volunteer (봉사) quests: the group selfie that finishes the quest, the optional 1365
@@ -48,7 +49,7 @@ export function VolunteerConsentModal({
   return (
     <div className="vc-backdrop" role="dialog" aria-modal="true" aria-labelledby="vc-title" onClick={onClose}>
       <div className="vc-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="vc-emoji">🤝📸</div>
+        <div className="vc-emoji" aria-hidden="true"><Icon name="volunteer" size={40} /><Icon name="camera" size={40} /></div>
         <h2 id="vc-title">{t('Before your first volunteer quest', '첫 봉사 퀘스트 전에')}</h2>
         <ul>
           <li>
@@ -102,7 +103,7 @@ export function VolunteerConsentModal({
         .vc-backdrop { position: fixed; inset: 0; background: rgba(20, 20, 20, 0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 100; padding: 16px; }
         @media (min-width: 640px) { .vc-backdrop { align-items: center; } }
         .vc-sheet { background: var(--paper, #fff); border-radius: 20px; padding: 24px 22px 18px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); }
-        .vc-emoji { font-size: 36px; text-align: center; }
+        .vc-emoji { display: flex; justify-content: center; gap: 6px; }
         h2 { font-family: var(--display); font-weight: 800; font-size: 20px; text-align: center; margin: 8px 0 14px; color: var(--ink); }
         ul { margin: 0 0 16px; padding-left: 20px; }
         li { font-size: 14px; line-height: 1.6; color: var(--ink); margin-bottom: 8px; }

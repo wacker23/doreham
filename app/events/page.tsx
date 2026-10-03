@@ -11,6 +11,10 @@ import { EVENT_CATEGORIES, eventCategory } from '@/lib/eventCategories';
 import { dayLabel, eventText, kstParts, toKstInputs } from '@/lib/eventDisplay';
 import { initials, type FeedEvent } from '@/lib/eventTypes';
 import { levelByNumber } from '@/lib/points';
+import { Icon } from '@/components/icons/Icon';
+import { SeaArt, levelArt } from '@/components/icons/SeaArt';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
+import { categoryArtSrc } from '@/lib/icons';
 
 type Scope = 'upcoming' | 'mine';
 
@@ -74,7 +78,7 @@ export default function EventsPage() {
     };
     if (scope === 'upcoming') {
       for (const e of events) {
-        if (e.is_featured) push('featured', lang === 'ko' ? '⭐ 도레함 추천' : '⭐ Featured', e);
+        if (e.is_featured) push('featured', lang === 'ko' ? '도레함 추천' : 'Featured', e);
         else push(toKstInputs(e.starts_at).date, dayLabel(e.starts_at, lang), e);
       }
     } else {
@@ -134,10 +138,10 @@ export default function EventsPage() {
             <label className="ev-city">
               <span className="sr-only">{ko ? '도시' : 'City'}</span>
               <select value={city ?? ''} onChange={(e) => pickCity(e.target.value)}>
-                <option value="">{ko ? '🇰🇷 전체 도시' : '🇰🇷 All cities'}</option>
+                <option value="">{ko ? '전체 도시' : 'All cities'}</option>
                 {KOREAN_CITIES.map((c) => (
                   <option key={c.slug} value={c.slug}>
-                    {c.emoji} {ko ? c.name_ko : c.name_en}
+                    {ko ? c.name_ko : c.name_en}
                   </option>
                 ))}
               </select>
@@ -152,7 +156,7 @@ export default function EventsPage() {
             </button>
             {EVENT_CATEGORIES.map((c) => (
               <button key={c.slug} className={category === c.slug ? 'on' : ''} aria-pressed={category === c.slug} onClick={() => setCategory(c.slug)}>
-                <span aria-hidden="true">{c.emoji}</span> {ko ? c.label_ko : c.label_en}
+                <CategoryIcon art={c.art} size={22} /> {ko ? c.label_ko : c.label_en}
               </button>
             ))}
           </div>
@@ -168,7 +172,7 @@ export default function EventsPage() {
           </div>
         ) : events.length === 0 && !error ? (
           <div className="ev-empty">
-            <div className="ev-empty-icon" aria-hidden="true">{scope === 'mine' ? '🗓️' : '🎈'}</div>
+            <div className="ev-empty-icon" aria-hidden="true">{scope === 'mine' ? <Icon name="date" size={52} /> : <CategoryIcon art="other" size={84} />}</div>
             <h2>
               {scope === 'mine'
                 ? ko ? '아직 참여한 이벤트가 없어요' : 'No events yet'
@@ -184,7 +188,7 @@ export default function EventsPage() {
         ) : (
           sections.map((s) => (
             <div key={s.key} className="ev-section">
-              <h2 className="ev-day">{s.title}</h2>
+              <h2 className="ev-day">{s.key === 'featured' && <Icon name="starFilled" size={20} />}{s.title}</h2>
               <div className="ev-grid">
                 {s.items.map((e) => (
                   <EventCard key={e.id} e={e} lang={lang} now={loadedAt} showCity={!city || scope === 'mine'} />
@@ -218,18 +222,18 @@ export default function EventsPage() {
 
         .ev-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 4px; padding: 2px 16px 12px; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
         .ev-chips::-webkit-scrollbar { display: none; }
-        .ev-chips button { flex-shrink: 0; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 13px; font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
-        .ev-chips button.on { background: var(--persimmon); border-color: var(--persimmon); color: #fff; }
+        .ev-chips button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 13px; font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+        .ev-chips button.on { background: rgba(255, 106, 61, 0.1); border-color: var(--persimmon); color: var(--ink); box-shadow: inset 0 0 0 1px var(--persimmon); }
 
         .ev-error { color: #b42318; background: #fef3f2; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
         .ev-section { margin-top: 18px; }
-        .ev-day { font-family: var(--display); font-weight: 800; font-size: 17px; margin: 0 0 10px; color: var(--ink); line-height: 1.3; }
+        .ev-day { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 17px; margin: 0 0 10px; color: var(--ink); line-height: 1.3; }
         .ev-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
         .ev-skel { height: 124px; border-radius: 18px; background: linear-gradient(90deg, var(--paper-2), #fff, var(--paper-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border: 1px solid var(--ink-12); }
         @keyframes shimmer { to { background-position: -200% 0; } }
 
         .ev-empty { text-align: center; padding: 48px 20px; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 24px; margin: 18px auto 0; max-width: 560px; }
-        .ev-empty-icon { font-size: 48px; margin-bottom: 10px; }
+        .ev-empty-icon { display: flex; justify-content: center; margin-bottom: 10px; }
         .ev-empty h2 { font-family: var(--display); font-weight: 800; font-size: 21px; margin: 0 0 6px; line-height: 1.3; }
         .ev-empty p { color: var(--ink-60); font-size: 14.5px; margin: 0 auto 20px; max-width: 420px; line-height: 1.5; }
         .ev-cta { display: inline-block; background: var(--persimmon); color: #fff; font-weight: 700; font-size: 15px; padding: 11px 22px; border-radius: 999px; text-decoration: none; }
@@ -284,18 +288,19 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
           // eslint-disable-next-line @next/next/no-img-element
           <img src={e.poster_url} alt="" loading="lazy" />
         ) : (
-          <span className="ev-ph" aria-hidden="true">{cat.emoji}</span>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="ev-ph" src={categoryArtSrc(cat.art)} alt="" loading="lazy" />
         )}
         <span className="ev-date" aria-hidden="true">
           <span className="m">{p.month}</span>
           <span className="d">{p.day}</span>
         </span>
-        {e.is_featured && <span className="ev-feat">⭐ {ko ? '추천' : 'Featured'}</span>}
+        {e.is_featured && <span className="ev-feat"><Icon name="starFilled" size={13} tone="light" /> {ko ? '추천' : 'Featured'}</span>}
       </div>
       <div className="ev-body">
         <div className="ev-tags">
           <span className="tag cat">
-            {cat.emoji} {ko ? cat.label_ko : cat.label_en}
+            <CategoryIcon art={cat.art} size={16} /> {ko ? cat.label_ko : cat.label_en}
           </span>
           {e.status === 'cancelled' && <span className="tag bad">{ko ? '취소됨' : 'Cancelled'}</span>}
           {e.viewer_is_host ? (
@@ -320,14 +325,14 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
             <span className="hn">{e.host.name}</span>
             {!!e.host.level && e.host.level >= 2 && (
               <span className="ev-lv" title={ko ? levelByNumber(e.host.level).ko : levelByNumber(e.host.level).en}>
-                {levelByNumber(e.host.level).emoji}
+                <SeaArt name={levelArt(e.host.level)} size={18} />
               </span>
             )}
             {e.host.kind === 'venue' && <span className="ev-badge">{ko ? '가게' : 'Venue'}</span>}
             {e.host.kind === 'admin' && <span className="ev-badge jade">{ko ? '공식' : 'Official'}</span>}
           </span>
           <span className="ev-count">
-            👥 {e.going_count}
+            <Icon name="people" size={16} /> {e.going_count}
             {e.capacity ? `/${e.capacity}` : ''}
           </span>
         </div>
@@ -340,14 +345,14 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
         .ev-card.dim { opacity: 0.6; }
         .ev-media { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--paper-2); }
         .ev-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .ev-ph { font-size: 38px; filter: drop-shadow(0 4px 10px rgba(30, 34, 48, 0.15)); }
+        .ev-media img.ev-ph { object-fit: cover; transform: scale(1.25); }
         .ev-date { position: absolute; top: 6px; left: 6px; display: flex; flex-direction: column; align-items: center; min-width: 34px; padding: 3px 5px; border-radius: 9px; background: rgba(255, 255, 255, 0.94); line-height: 1.05; box-shadow: 0 2px 8px rgba(30, 34, 48, 0.12); }
         .ev-date .m { font-size: 9.5px; font-weight: 800; color: var(--persimmon); text-transform: uppercase; }
         .ev-date .d { font-family: var(--display); font-size: 16px; font-weight: 800; }
-        .ev-feat { display: none; position: absolute; font-weight: 800; color: #fff; background: var(--persimmon); border-radius: 999px; }
+        .ev-feat { display: none; align-items: center; gap: 4px; position: absolute; font-weight: 800; color: #fff; background: var(--persimmon); border-radius: 999px; }
         .ev-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 2px 2px 2px 0; }
         .ev-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-        .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-60); white-space: nowrap; }
+        .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-60); white-space: nowrap; }
         .tag.bad { background: #fef3f2; color: #b42318; }
         .tag.going { background: rgba(15, 157, 119, 0.12); color: var(--jade); }
         .tag.host { background: rgba(255, 106, 61, 0.12); color: var(--persimmon); }
@@ -360,20 +365,20 @@ function EventCard({ e, lang, now, showCity }: { e: FeedEvent; lang: 'en' | 'ko'
         .av.admin { background: var(--persimmon); color: #fff; }
         .av.venue { background: var(--pink); }
         .hn { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ev-lv { font-size: 13px; }
+        .ev-lv { display: inline-flex; }
         .ev-badge { flex-shrink: 0; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--pink); color: var(--ink); }
         .ev-badge.jade { background: rgba(15, 157, 119, 0.14); color: var(--jade); }
-        .ev-count { flex-shrink: 0; font-weight: 700; color: var(--ink); }
+        .ev-count { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--ink); }
         .ev-fee { align-self: flex-start; font-size: 12px; color: var(--ink-60); background: var(--paper-2); padding: 1px 8px; border-radius: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         @media (min-width: 600px) {
           .ev-card { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; }
           .ev-media { aspect-ratio: 16 / 10; border-radius: 0; }
-          .ev-ph { font-size: 56px; }
+          .ev-media img.ev-ph { object-fit: contain; transform: scale(1.5); }
           .ev-date { top: 10px; left: 10px; min-width: 42px; padding: 5px 7px; border-radius: 11px; }
           .ev-date .m { font-size: 10.5px; }
           .ev-date .d { font-size: 20px; }
-          .ev-feat { display: inline-block; right: 10px; top: 10px; font-size: 11.5px; padding: 3px 9px; }
+          .ev-feat { display: inline-flex; right: 10px; top: 10px; font-size: 11.5px; padding: 3px 9px; }
           .ev-body { padding: 12px 14px 14px; gap: 5px; flex: 1; }
           h3 { font-size: 17px; }
         }

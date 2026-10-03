@@ -7,6 +7,9 @@ import { VenuePerksList } from '@/components/VenuePerksList';
 import { useLang } from '@/lib/hooks/useLang';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTabBar } from '@/components/AppTabBar';
+import { Icon } from '@/components/icons/Icon';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
+import { reviewTagIcon, venueCategoryArt } from '@/lib/icons';
 
 type Venue = {
   id: string;
@@ -43,19 +46,19 @@ type MenuItem = {
   is_signature: boolean;
 };
 
-const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }> = {
-  cafe:              { en: 'Café', ko: '카페', emoji: '☕' },
-  restaurant:        { en: 'Restaurant', ko: '식당', emoji: '🍜' },
-  board_game_cafe:   { en: 'Board game café', ko: '보드게임 카페', emoji: '🎲' },
-  escape_room:       { en: 'Escape room', ko: '방탈출', emoji: '🧩' },
-  bookshop:          { en: 'Bookshop', ko: '서점', emoji: '📚' },
-  workshop_creative: { en: 'Workshop', ko: '원데이 클래스', emoji: '🏺' },
-  active_sports:     { en: 'Sports', ko: '스포츠', emoji: '🥾' },
-  cultural_venue:    { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
-  nature_outdoor:    { en: 'Nature', ko: '자연', emoji: '🌿' },
-  music_movie:       { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
-  bar_club:          { en: 'Bar / Club', ko: '바·클럽', emoji: '🍸' },
-  other:             { en: 'Other', ko: '기타', emoji: '🏪' },
+const CATEGORY_LABELS: Record<string, { en: string; ko: string }> = {
+  cafe:              { en: 'Café', ko: '카페' },
+  restaurant:        { en: 'Restaurant', ko: '식당' },
+  board_game_cafe:   { en: 'Board game café', ko: '보드게임 카페' },
+  escape_room:       { en: 'Escape room', ko: '방탈출' },
+  bookshop:          { en: 'Bookshop', ko: '서점' },
+  workshop_creative: { en: 'Workshop', ko: '원데이 클래스' },
+  active_sports:     { en: 'Sports', ko: '스포츠' },
+  cultural_venue:    { en: 'Cultural venue', ko: '문화 공간' },
+  nature_outdoor:    { en: 'Nature', ko: '자연' },
+  music_movie:       { en: 'Music/Movie', ko: '음악·영화' },
+  bar_club:          { en: 'Bar / Club', ko: '바·클럽' },
+  other:             { en: 'Other', ko: '기타' },
 };
 
 const WEEKDAYS: { code: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'; en: string; ko: string }[] = [
@@ -161,7 +164,7 @@ export default function VenueDetailPage() {
         <AppHeader lang={lang} setLang={setLang} />
         <main className="wrap main-wrap">
           <div className="error-state">
-            <div className="error-icon">🔍</div>
+            <div className="error-icon"><Icon name="search" size={56} /></div>
             <h2>{error ?? (lang === 'ko' ? '가게를 찾을 수 없습니다' : 'Venue not found')}</h2>
             <button onClick={() => router.back()} className="btn-primary">
               {lang === 'ko' ? '← 돌아가기' : '← Go back'}
@@ -175,7 +178,7 @@ export default function VenueDetailPage() {
           .ko-mark { color: var(--ink-60); font-weight: 700; font-size: 17px; }
           .main-wrap { padding: 60px 24px; max-width: 500px; }
           .error-state { text-align: center; padding: 60px 20px; background: var(--paper-2); border-radius: 24px; }
-          .error-icon { font-size: 56px; margin-bottom: 20px; }
+          .error-icon { display: flex; justify-content: center; margin-bottom: 20px; }
           .error-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 24px; }
           .btn-primary { background: var(--persimmon); color: #fff; border: 0; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; }
         `}</style>
@@ -228,18 +231,18 @@ export default function VenueDetailPage() {
           <div className="header-main">
             <h1>{venue.business_name_display}</h1>
             <p className="category">
-              {cat?.emoji} {cat ? (lang === 'ko' ? cat.ko : cat.en) : venue.category}
+              <CategoryIcon art={venueCategoryArt(venue.category)} size={24} /> {cat ? (lang === 'ko' ? cat.ko : cat.en) : venue.category}
             </p>
           </div>
           <div className="badges">
             {venue.hidden_gem_eligible && (
               <span className="badge hidden-gem">
-                {lang === 'ko' ? '✨ 숨은 명소' : '✨ Hidden Gem'}
+                <Icon name="sparkle" size={14} /> {lang === 'ko' ? '숨은 명소' : 'Hidden Gem'}
               </span>
             )}
             {yearsOpen !== null && yearsOpen >= 5 && (
               <span className="badge established">
-                {lang === 'ko' ? `⭐ ${yearsOpen}년째 운영` : `⭐ ${yearsOpen}+ years`}
+                <Icon name="starFilled" size={14} /> {lang === 'ko' ? `${yearsOpen}년째 운영` : `${yearsOpen}+ years`}
               </span>
             )}
           </div>
@@ -247,7 +250,7 @@ export default function VenueDetailPage() {
 
         <div className="section">
           <h3>{lang === 'ko' ? '위치' : 'Location'}</h3>
-          <p className="location-text">📍 {fullAddressLine}</p>
+          <p className="location-text"><Icon name="location" size={18} /> {fullAddressLine}</p>
           {venue.zipcode && <p className="location-sub">{venue.zipcode}</p>}
         </div>
 
@@ -261,7 +264,7 @@ export default function VenueDetailPage() {
         {discount && (
           <div className="section discount-section">
             <div className="discount-badge">
-              {lang === 'ko' ? '🎁 도레함 혜택' : '🎁 Doreham perk'}
+              <Icon name="perk" size={18} /> {lang === 'ko' ? '도레함 혜택' : 'Doreham perk'}
             </div>
             <p className="discount-text">{discount}</p>
           </div>
@@ -314,7 +317,7 @@ export default function VenueDetailPage() {
                   <div className="menu-info">
                     <div className="menu-name">
                       {item.name}
-                      {item.is_signature && <span className="signature">⭐</span>}
+                      {item.is_signature && <span className="signature"><Icon name="starFilled" size={14} label={lang === 'ko' ? '대표 메뉴' : 'Signature'} /></span>}
                     </div>
                     {item.name_en && lang === 'ko' && (
                       <div className="menu-name-en">{item.name_en}</div>
@@ -344,7 +347,7 @@ export default function VenueDetailPage() {
             {Object.keys(venueStats.compliment_counts ?? {}).length > 0 && (
               <div className="review-block">
                 <div className="review-block-title">
-                  {lang === 'ko' ? '👍 좋았던 점' : '👍 What people loved'}
+                  <Icon name="helpful" size={16} /> {lang === 'ko' ? '좋았던 점' : 'What people loved'}
                 </div>
                 <div className="review-tags">
                   {Object.entries(venueStats.compliment_counts)
@@ -354,7 +357,7 @@ export default function VenueDetailPage() {
                       if (!tag) return null;
                       return (
                         <span key={tagId} className="review-tag compliment">
-                          {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                          <Icon name={reviewTagIcon(tagId)} size={16} /> {lang === 'ko' ? tag.label_ko : tag.label_en}
                           <span className="tag-count">×{count}</span>
                         </span>
                       );
@@ -367,7 +370,7 @@ export default function VenueDetailPage() {
             {venueStats.recent_text_reviews.length > 0 && (
               <div className="review-block">
                 <div className="review-block-title">
-                  {lang === 'ko' ? '💬 후기' : '💬 What visitors said'}
+                  <Icon name="chat" size={16} /> {lang === 'ko' ? '후기' : 'What visitors said'}
                 </div>
                 <div className="text-reviews">
                   {venueStats.recent_text_reviews
@@ -420,18 +423,18 @@ export default function VenueDetailPage() {
         .thumb img { width: 100%; height: 100%; object-fit: cover; }
         .venue-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
         .header-main h1 { font-family: var(--display); font-weight: 800; font-size: 36px; margin: 0 0 6px; letter-spacing: -0.02em; }
-        .category { color: var(--ink-60); font-size: 16px; font-weight: 500; margin: 0; }
+        .category { display: flex; align-items: center; gap: 6px; color: var(--ink-60); font-size: 16px; font-weight: 500; margin: 0; }
         .badges { display: flex; gap: 8px; flex-wrap: wrap; }
-        .badge { padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; }
         .badge.hidden-gem { background: rgba(255, 106, 61, 0.12); color: var(--persimmon); }
         .badge.established { background: rgba(15, 157, 119, 0.12); color: var(--jade); }
         .section { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
         .section h3 { font-family: var(--display); font-weight: 700; font-size: 14px; margin: 0 0 12px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; }
-        .location-text { color: var(--ink); font-size: 15px; margin: 0; }
+        .location-text { display: flex; align-items: flex-start; gap: 6px; color: var(--ink); font-size: 15px; margin: 0; }
         .location-sub { color: var(--ink-60); font-size: 13px; margin: 4px 0 0; }
         .description { color: var(--ink); font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap; }
         .discount-section { background: linear-gradient(135deg, rgba(255, 106, 61, 0.05), rgba(15, 157, 119, 0.03)); border-color: rgba(255, 106, 61, 0.15); }
-        .discount-badge { display: inline-block; background: var(--persimmon); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+        .discount-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--persimmon); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
         .discount-text { color: var(--ink); font-weight: 500; font-size: 15px; margin: 0; }
         .hours-list { display: flex; flex-direction: column; gap: 6px; }
         .hours-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
@@ -454,7 +457,7 @@ export default function VenueDetailPage() {
         .review-count-badge { background: var(--persimmon); color: #fff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 999px; }
         .review-block { margin-bottom: 20px; }
         .review-block:last-child { margin-bottom: 0; }
-        .review-block-title { font-size: 12px; font-weight: 700; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+        .review-block-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
         .review-tags { display: flex; flex-wrap: wrap; gap: 6px; }
         .review-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-2); border: 1px solid var(--ink-12); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); }
         .review-tag.compliment { background: rgba(255, 106, 61, 0.08); border-color: rgba(255, 106, 61, 0.2); color: var(--persimmon); }

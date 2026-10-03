@@ -4,6 +4,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
+import { NOTIFICATION_ICON, NOTIFICATION_TINT, stripEmoji } from '@/lib/icons';
 
 type Notification = {
   id: string;
@@ -22,29 +24,6 @@ type Props = {
   lang: 'en' | 'ko';
 };
 
-const TYPE_ICONS: Record<string, string> = {
-  match_invite: '🎉',
-  match_activated: '✨',
-  match_cancelled: '😔',
-  match_found: '💌',
-  no_match_found: '🔍',
-  member_left: '👋',
-  quest_scheduled: '📅',
-  availability_reminder: '⏰',
-  check_in_reminder: '📍',
-  quest_day_reminder: '🗓️',
-  review_reminder: '🌸',
-  strike_issued: '⚠️',
-  welcome: '👋',
-  event_joined: '🙋',
-  event_comment: '💬',
-  event_updated: '📅',
-  event_cancelled: '❌',
-  event_reminder: '⏰',
-  level_up: '⬆️',
-  monthly_rank: '🏆',
-  plus_granted: '✨',
-};
 
 export function NotificationBell({ lang }: Props) {
   const { user } = useUser();
@@ -217,10 +196,7 @@ export function NotificationBell({ lang }: Props) {
         onClick={() => setOpen((o) => !o)}
         aria-label={lang === 'ko' ? '알림' : 'Notifications'}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
+        <Icon name="bell" size={24} />
         {unreadCount > 0 && (
           <span className="unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
         )}
@@ -248,7 +224,7 @@ export function NotificationBell({ lang }: Props) {
               </div>
             ) : notifications.length === 0 ? (
               <div className="dropdown-empty">
-                <div className="empty-icon">🌸</div>
+                <div className="empty-icon"><Icon name="matches" size={40} /></div>
                 <p>{lang === 'ko' ? '아직 알림이 없어요' : 'No notifications yet'}</p>
               </div>
             ) : (
@@ -258,9 +234,9 @@ export function NotificationBell({ lang }: Props) {
                   className={`notif-item ${n.read_at ? 'read' : 'unread'} ${n.is_important ? 'important' : ''}`}
                   onClick={() => handleClickNotification(n)}
                 >
-                  <div className="notif-icon">{TYPE_ICONS[n.type] ?? '🔔'}</div>
+                  <div className="notif-icon" style={{ background: NOTIFICATION_TINT[n.type] ?? '#E1F0F4' }}><Icon name={NOTIFICATION_ICON[n.type] ?? 'bell'} size={22} /></div>
                   <div className="notif-content">
-                    <div className="notif-title">{lang === 'ko' ? n.title_ko : n.title_en}</div>
+                    <div className="notif-title">{stripEmoji(lang === 'ko' ? n.title_ko : n.title_en)}</div>
                     {(lang === 'ko' ? n.body_ko : n.body_en) && (
                       <div className="notif-body">{lang === 'ko' ? n.body_ko : n.body_en}</div>
                     )}
@@ -295,7 +271,7 @@ export function NotificationBell({ lang }: Props) {
         .dropdown.sheet .dropdown-header { flex: none; }
         .dropdown.sheet .dropdown-body { flex: 1; min-height: 0; max-height: none; overscroll-behavior: contain; }
         .dropdown-empty { padding: 40px 20px; text-align: center; color: var(--ink-60); }
-        .empty-icon { font-size: 32px; margin-bottom: 8px; }
+        .empty-icon { display: flex; justify-content: center; margin-bottom: 8px; }
         .dropdown-empty p { margin: 0; font-size: 13px; }
         .mini-loader { width: 24px; height: 24px; border: 2px solid var(--ink-12); border-top-color: var(--persimmon); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -305,7 +281,7 @@ export function NotificationBell({ lang }: Props) {
         .notif-item.unread { background: rgba(255, 106, 61, 0.03); }
         .notif-item.unread::before { content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; background: var(--persimmon); border-radius: 50%; }
         .notif-item.important .notif-title { color: var(--persimmon); }
-        .notif-icon { font-size: 20px; flex-shrink: 0; }
+        .notif-icon { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
         .notif-content { flex: 1; min-width: 0; }
         .notif-title { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 2px; }
         .notif-body { font-size: 12px; color: var(--ink-60); line-height: 1.4; margin-bottom: 4px; }

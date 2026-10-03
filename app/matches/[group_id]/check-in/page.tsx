@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
 
 type QuestInfo = {
   quest_id: string;
@@ -276,13 +277,13 @@ export default function CheckInPage() {
   if (error && !quest) {
     return (
       <main className="err-wrap">
-        <div className="err-icon">⚠️</div>
+        <div className="err-icon"><Icon name="warning" size={48} /></div>
         <h1>{lang === 'ko' ? '접근할 수 없어요' : 'Access denied'}</h1>
         <p>{error}</p>
         <a href="/matches" className="btn-back">{lang === 'ko' ? '매칭으로 돌아가기' : 'Back to matches'}</a>
         <style jsx>{`
           .err-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-          .err-icon { font-size: 48px; margin-bottom: 16px; }
+          .err-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 8px; }
           p { color: var(--ink-60); margin: 0 0 24px; }
           .btn-back { background: var(--ink); color: var(--paper); text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; }
@@ -304,7 +305,7 @@ export default function CheckInPage() {
 
     return (
       <main className="success-wrap">
-        <div className="success-icon">✅</div>
+        <div className="success-icon"><Icon name="done" size={72} /></div>
         <h1>{lang === 'ko' ? '체크인 완료!' : 'Checked in!'}</h1>
         <p className="success-desc">
           {lang === 'ko'
@@ -313,16 +314,16 @@ export default function CheckInPage() {
         </p>
         {success.location_verified && (
           <p className="verified-line">
-            📍 {lang === 'ko' ? '위치 확인됨' : 'Location verified'}
+            <Icon name="location" size={16} /> {lang === 'ko' ? '위치 확인됨' : 'Location verified'}
           </p>
         )}
         <a href={`/matches/${groupId}/questions`} className="btn-ice">
-          🧊 {lang === 'ko' ? '얼음 깨기 · 대화 시작' : 'Break the Ice · Start conversation'}
+          <Icon name="icebreaker" size={20} /> {lang === 'ko' ? '얼음 깨기 · 대화 시작' : 'Break the Ice · Start conversation'}
         </a>
         <a href="/matches" className="btn-back">{lang === 'ko' ? '매칭으로 돌아가기' : 'Back to matches'}</a>
         <style jsx>{`
           .success-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; background: linear-gradient(180deg, rgba(15, 157, 119, 0.06), transparent); }
-          .success-icon { font-size: 72px; margin-bottom: 16px; }
+          .success-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 28px; margin: 0 0 12px; color: var(--jade); }
           .success-desc { font-size: 16px; color: var(--ink); margin: 0 0 16px; max-width: 320px; line-height: 1.5; }
           .verified-line { font-size: 13px; color: var(--jade); margin: 0 0 32px; }
@@ -338,7 +339,7 @@ export default function CheckInPage() {
   if (quest.already_checked_in) {
     return (
       <main className="checked-wrap">
-        <div className="checked-icon">✅</div>
+        <div className="checked-icon"><Icon name="done" size={60} /></div>
         <h1>{lang === 'ko' ? '이미 체크인했어요' : "You've already checked in"}</h1>
         <p>
           {lang === 'ko'
@@ -346,12 +347,12 @@ export default function CheckInPage() {
             : `${quest.check_in_count} of ${quest.total_members} checked in`}
         </p>
         <a href={`/matches/${groupId}/questions`} className="btn-ice">
-          🧊 {lang === 'ko' ? '얼음 깨기 · 대화 시작' : 'Break the Ice · Start conversation'}
+          <Icon name="icebreaker" size={20} /> {lang === 'ko' ? '얼음 깨기 · 대화 시작' : 'Break the Ice · Start conversation'}
         </a>
         <a href="/matches" className="btn-back">{lang === 'ko' ? '매칭으로 돌아가기' : 'Back to matches'}</a>
         <style jsx>{`
           .checked-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-          .checked-icon { font-size: 60px; margin-bottom: 16px; }
+          .checked-icon { display: flex; justify-content: center; margin-bottom: 16px; }
           h1 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 8px; }
           p { color: var(--ink-60); margin: 0 0 24px; }
           .btn-back { background: var(--ink); color: var(--paper); text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; }
@@ -371,11 +372,11 @@ export default function CheckInPage() {
 
       <div className="content">
         <div className="venue-card">
-          <div className="venue-label">{lang === 'ko' ? '📍 만나는 장소' : '📍 Meeting spot'}</div>
+          <div className="venue-label"><Icon name="location" size={14} /> {lang === 'ko' ? '만나는 장소' : 'Meeting spot'}</div>
           <div className="venue-name">{quest.venue_name}</div>
           {quest.quest_scheduled_at && (
             <div className="quest-time">
-              🗓️ {new Date(quest.quest_scheduled_at).toLocaleString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+              <Icon name="date" size={16} /> {new Date(quest.quest_scheduled_at).toLocaleString(lang === 'ko' ? 'ko-KR' : 'en-US', {
                 weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
               })}
             </div>
@@ -389,7 +390,7 @@ export default function CheckInPage() {
 
         {!windowStatus.canCheckIn && (
           <div className="window-banner">
-            ⏱️ {windowStatus.message}
+            <Icon name="time" size={16} /> {windowStatus.message}
           </div>
         )}
 
@@ -397,10 +398,10 @@ export default function CheckInPage() {
           <>
             {/* GPS status */}
             <div className={`gps-banner gps-${gpsStatus}`}>
-              {gpsStatus === 'requesting' && `📡 ${lang === 'ko' ? '위치 확인 중...' : 'Getting your location...'}`}
-              {gpsStatus === 'granted' && `✅ ${lang === 'ko' ? '위치 확인됨' : 'Location ready'}`}
-              {gpsStatus === 'denied' && `⚠️ ${lang === 'ko' ? '체크인하려면 위치 권한이 필요해요' : 'Location access is needed to check in'}`}
-              {gpsStatus === 'unavailable' && `⚠️ ${lang === 'ko' ? '이 기기에서 위치를 사용할 수 없어요' : 'Location is not available on this device'}`}
+              {gpsStatus === 'requesting' && <><Icon name="location" size={16} /> {lang === 'ko' ? '위치 확인 중...' : 'Getting your location...'}</>}
+              {gpsStatus === 'granted' && <><Icon name="done" size={16} /> {lang === 'ko' ? '위치 확인됨' : 'Location ready'}</>}
+              {gpsStatus === 'denied' && <><Icon name="warning" size={16} /> {lang === 'ko' ? '체크인하려면 위치 권한이 필요해요' : 'Location access is needed to check in'}</>}
+              {gpsStatus === 'unavailable' && <><Icon name="warning" size={16} /> {lang === 'ko' ? '이 기기에서 위치를 사용할 수 없어요' : 'Location is not available on this device'}</>}
               {gpsStatus === 'denied' && (
                 <button type="button" className="gps-retry" onClick={requestGPS}>
                   {lang === 'ko' ? '다시 시도' : 'Try again'}
@@ -414,13 +415,13 @@ export default function CheckInPage() {
                 className={scanMode === 'camera' ? 'active' : ''}
                 onClick={() => setScanMode('camera')}
               >
-                📷 {lang === 'ko' ? 'QR 스캔' : 'Scan QR'}
+                <Icon name="qr" size={18} /> {lang === 'ko' ? 'QR 스캔' : 'Scan QR'}
               </button>
               <button
                 className={scanMode === 'manual' ? 'active' : ''}
                 onClick={() => setScanMode('manual')}
               >
-                ⌨️ {lang === 'ko' ? '코드 입력' : 'Enter code'}
+                <Icon name="edit" size={18} /> {lang === 'ko' ? '코드 입력' : 'Enter code'}
               </button>
             </div>
 
@@ -469,18 +470,18 @@ export default function CheckInPage() {
         .header-title { font-family: var(--display); font-weight: 800; font-size: 17px; }
         .content { max-width: 480px; margin: 0 auto; padding: 20px; }
         .venue-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-        .venue-label { font-size: 12px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .venue-label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
         .venue-name { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--ink); margin-bottom: 8px; }
         .quest-time { font-size: 14px; color: var(--ink-60); margin-bottom: 10px; }
         .checkin-progress { font-size: 13px; color: var(--jade); font-weight: 700; }
         .window-banner { background: rgba(255, 106, 61, 0.1); border: 1px solid rgba(255, 106, 61, 0.25); color: var(--persimmon); padding: 14px 18px; border-radius: 12px; font-weight: 600; text-align: center; margin-bottom: 16px; }
-        .gps-banner { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; }
+        .gps-banner { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; }
         .gps-retry { margin-left: 10px; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
         .gps-requesting { background: #f5f2eb; color: var(--ink-60); }
         .gps-granted { background: rgba(15, 157, 119, 0.08); color: var(--jade); }
         .gps-denied, .gps-unavailable { background: rgba(232, 169, 63, 0.1); color: #a86720; }
         .mode-toggle { display: inline-flex; border: 1px solid var(--ink-12); border-radius: 999px; overflow: hidden; margin-bottom: 16px; background: var(--paper-2); width: 100%; }
-        .mode-toggle button { flex: 1; border: 0; background: transparent; padding: 12px 16px; font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; color: var(--ink-60); }
+        .mode-toggle button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; padding: 12px 16px; font-family: var(--body); font-weight: 600; font-size: 14px; cursor: pointer; color: var(--ink-60); }
         .mode-toggle button.active { background: var(--ink); color: var(--paper); }
         .scanner-wrap { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 16px; }
         .scanner-box { width: 100%; min-height: 280px; background: #000; border-radius: 12px; overflow: hidden; }

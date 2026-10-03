@@ -13,6 +13,9 @@ import { MeetPeopleCard } from '@/components/MeetPeopleCard';
 import { isVenueAccount } from '@/lib/accountType';
 import { supabase } from '@/lib/supabase/client';
 import { FREE_MATCH_REQUESTS_PER_MONTH, planError, planUnlocked, type PlanStatus } from '@/lib/plan';
+import { Icon } from '@/components/icons/Icon';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
+import { categoryArtSrc, stripEmoji, venueCategoryArt, type CategoryArt } from '@/lib/icons';
 
 type Tab = 'pending' | 'request' | 'history';
 
@@ -99,19 +102,19 @@ type MatchRequest = {
 
 
 
-const CATEGORY_LABELS: Record<string, { en: string; ko: string; emoji: string }> = {
-  cafe: { en: 'Café', ko: '카페', emoji: '☕' },
-  restaurant: { en: 'Restaurant', ko: '식당', emoji: '🍜' },
-  board_game_cafe: { en: 'Board game café', ko: '보드게임 카페', emoji: '🎲' },
-  escape_room: { en: 'Escape room', ko: '방탈출', emoji: '🧩' },
-  bookshop: { en: 'Bookshop', ko: '서점', emoji: '📚' },
-  workshop_creative: { en: 'Workshop', ko: '원데이 클래스', emoji: '🏺' },
-  active_sports: { en: 'Sports', ko: '스포츠', emoji: '🥾' },
-  cultural_venue: { en: 'Cultural venue', ko: '문화 공간', emoji: '🎨' },
-  nature_outdoor: { en: 'Nature', ko: '자연', emoji: '🌿' },
-  music_movie: { en: 'Music/Movie', ko: '음악·영화', emoji: '🎬' },
-  bar_club: { en: 'Bar/Club', ko: '바·클럽', emoji: '🍸' },
-  other: { en: 'Other', ko: '기타', emoji: '🏪' },
+const CATEGORY_LABELS: Record<string, { en: string; ko: string }> = {
+  cafe: { en: 'Café', ko: '카페' },
+  restaurant: { en: 'Restaurant', ko: '식당' },
+  board_game_cafe: { en: 'Board game café', ko: '보드게임 카페' },
+  escape_room: { en: 'Escape room', ko: '방탈출' },
+  bookshop: { en: 'Bookshop', ko: '서점' },
+  workshop_creative: { en: 'Workshop', ko: '원데이 클래스' },
+  active_sports: { en: 'Sports', ko: '스포츠' },
+  cultural_venue: { en: 'Cultural venue', ko: '문화 공간' },
+  nature_outdoor: { en: 'Nature', ko: '자연' },
+  music_movie: { en: 'Music/Movie', ko: '음악·영화' },
+  bar_club: { en: 'Bar/Club', ko: '바·클럽' },
+  other: { en: 'Other', ko: '기타' },
 };
 
 const STATUS_LABELS: Record<string, { en: string; ko: string; color: string }> = {
@@ -729,7 +732,7 @@ export default function MatchesPage() {
               <div className="review-banner-list">
                 {pendingReviews.map((pr: any) => (
                   <a key={pr.quest_id} href={`/matches/review/${pr.quest_id}`} className="review-banner">
-                    <div className="rb-icon">🌸</div>
+                    <div className="rb-icon"><Icon name="matches" size={30} /></div>
                     <div className="rb-content">
                       <div className="rb-title">
                         {lang === 'ko' ? '리뷰를 남겨주세요' : 'Leave a review'}
@@ -763,7 +766,7 @@ export default function MatchesPage() {
                           {requestCitiesLabel(req)} · {req.group_size ?? (lang === 'ko' ? '랜덤 인원' : 'Random size')}
                         </div>
                         <div className="searching-est">
-                          {lang === 'ko' ? '⏱ 예상 시간: 몇 시간 정도 걸릴 수 있어요' : '⏱ Est. wait: could be a few hours'}
+                          <Icon name="time" size={16} /> {lang === 'ko' ? '예상 시간: 몇 시간 정도 걸릴 수 있어요' : 'Est. wait: could be a few hours'}
                         </div>
                       </div>
                     </div>
@@ -777,7 +780,7 @@ export default function MatchesPage() {
 
             {pendingMatches.length === 0 && activeRequests.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">🌸</div>
+                <div className="empty-icon"><Icon name="matches" size={56} /></div>
                 <h2>
                   {lang === 'ko' ? '아직 매칭이 없어요' : 'No matches yet'}
                 </h2>
@@ -821,10 +824,10 @@ export default function MatchesPage() {
               </p>
               {plan && (
                 plan.plus ? (
-                  <a className="plan-tag plus" href="/plus">✨ Doreham+</a>
+                  <a className="plan-tag plus" href="/plus"><Icon name="plus" size={16} /> Doreham+</a>
                 ) : !plan.enforced ? (
                   <a className="plan-tag plus" href="/plus">
-                    {lang === 'ko' ? '🎉 테스트 기간 · 모든 기능 무료' : '🎉 Test period · everything is free'}
+                    <Icon name="events" size={16} /> {lang === 'ko' ? '테스트 기간 · 모든 기능 무료' : 'Test period · everything is free'}
                   </a>
                 ) : (
                   <a className="plan-tag" href="/plus">
@@ -839,7 +842,7 @@ export default function MatchesPage() {
             <div className="matchable-toggle">
               <div className="matchable-left">
                 <div className="matchable-title">
-                  {isMatchable ? '✅ ' : '💤 '}
+                  <Icon name={isMatchable ? 'done' : 'pending'} size={18} />{' '}
                   {lang === 'ko' ? '매칭 활성화' : 'Matching enabled'}
                 </div>
                 <div className="matchable-sub">
@@ -860,7 +863,7 @@ export default function MatchesPage() {
 
             {isFrozen ? (
               <div className="frozen-notice">
-                <div className="frozen-icon">❄️</div>
+                <div className="frozen-icon"><Icon name="icebreaker" size={48} /></div>
                 <h3>{lang === 'ko' ? '계정 일시 정지' : 'Account frozen'}</h3>
                 <p className="frozen-when">
                   {lang === 'ko'
@@ -890,14 +893,14 @@ export default function MatchesPage() {
               <>
                 {strikeCount > 0 && (
                   <div className="strike-warning">
-                    ⚠️ {lang === 'ko' ? `주의: ${strikeCount}회 취소 기록` : `Heads up: ${strikeCount} previous strike${strikeCount > 1 ? 's' : ''}`}
+                    <Icon name="warning" size={18} /> {lang === 'ko' ? `주의: ${strikeCount}회 취소 기록` : `Heads up: ${strikeCount} previous strike${strikeCount > 1 ? 's' : ''}`}
                   </div>
                 )}
 
                 {/* City */}
                 <div className="form-section">
                   <label className="form-label">
-                    {lang === 'ko' ? `🗺 도시 선택 (최대 ${MAX_REQUEST_CITIES}곳)` : `🗺 Pick cities (up to ${MAX_REQUEST_CITIES})`}
+                    <Icon name="map" size={18} /> {lang === 'ko' ? `도시 선택 (최대 ${MAX_REQUEST_CITIES}곳)` : `Pick cities (up to ${MAX_REQUEST_CITIES})`}
                   </label>
                   <p className="form-hint">
                     {lang === 'ko'
@@ -909,7 +912,7 @@ export default function MatchesPage() {
                       className={`city-card random ${randomCity ? 'selected' : ''}`}
                       onClick={() => { setRandomCity(!randomCity); if (!randomCity) setSelectedCities([]); }}
                     >
-                      <div className="city-emoji">🎲</div>
+                      <div className="city-emoji"><Icon name="explore" size={30} /></div>
                       <div className="city-name">
                         {lang === 'ko' ? '어디든' : 'Anywhere'}
                       </div>
@@ -938,7 +941,7 @@ export default function MatchesPage() {
                           disabled={!hasVenues}
                           title={!hasVenues ? (lang === 'ko' ? '아직 준비 중' : 'Coming soon') : ''}
                         >
-                          <div className="city-emoji">{c.emoji}</div>
+                          <div className="city-emoji"><Icon name={c.icon} size={30} /></div>
                           <div className="city-name">
                             {lang === 'ko' ? c.name_ko : c.name_en}
                           </div>
@@ -967,8 +970,8 @@ export default function MatchesPage() {
                 {/* Categories */}
                 <div className="form-section">
                   <label className="form-label">
-                    {lang === 'ko' ? '🎯 카테고리 선택 (선택 사항)' : '🎯 Pick categories (optional)'}
-                    {isFree && <a className="plus-chip" href="/plus">✨ Doreham+</a>}
+                    <Icon name="goal" size={18} /> {lang === 'ko' ? '카테고리 선택 (선택 사항)' : 'Pick categories (optional)'}
+                    {isFree && <a className="plus-chip" href="/plus"><Icon name="plus" size={14} /> Doreham+</a>}
                   </label>
                   <p className="form-hint">
                     {isFree
@@ -1006,19 +1009,20 @@ export default function MatchesPage() {
                           disabled={c.coming_soon}
                           title={c.coming_soon ? (lang === 'ko' ? '곧 출시' : 'Coming soon') : ''}
                         >
-                          <img src={`/categories/${c.icon}.png`} alt="" className="cat-icon" />
+                          <img src={categoryArtSrc(c.icon as CategoryArt)} alt="" className="cat-icon" />
                           <div className="cat-name">{lang === 'ko' ? c.label_ko : c.label_en}</div>
                           {c.coming_soon && <div className="cat-soon">{lang === 'ko' ? '준비 중' : 'Soon'}</div>}
-                          {planLocked && !c.coming_soon && <div className="cat-lock" aria-hidden="true">🔒</div>}
+                          {planLocked && !c.coming_soon && <div className="cat-lock" aria-hidden="true"><Icon name="lock" size={16} /></div>}
                         </button>
                       );
                     })}
                   </div>
                   {isVolunteerRequest && (
                     <div className="volunteer-hint">
+                      <Icon name="volunteer" size={18} />{' '}
                       {lang === 'ko'
-                        ? '🤝 봉사 퀘스트: 그룹이 함께할 1365 봉사활동을 찾아드려요. 각자 1365에서 무료로 신청하고, 당일에 단체 사진 한 장만 찍으면 끝! 봉사시간은 1365에 그대로 인정돼요.'
-                        : "🤝 Volunteer quest: we'll find a 1365 volunteer activity for your group. Each of you signs up on 1365 (free), and on the day you just take one group selfie. Your hours count on 1365 as usual."}
+                        ? '봉사 퀘스트: 그룹이 함께할 1365 봉사활동을 찾아드려요. 각자 1365에서 무료로 신청하고, 당일에 단체 사진 한 장만 찍으면 끝! 봉사시간은 1365에 그대로 인정돼요.'
+                        : "Volunteer quest: we'll find a 1365 volunteer activity for your group. Each of you signs up on 1365 (free), and on the day you just take one group selfie. Your hours count on 1365 as usual."}
                     </div>
                   )}
                 </div>
@@ -1026,8 +1030,8 @@ export default function MatchesPage() {
                 {/* Group size */}
                 <div className="form-section">
                   <label className="form-label">
-                    {lang === 'ko' ? '👥 인원 선택' : '👥 Group size'}
-                    {isFree && <a className="plus-chip" href="/plus">✨ Doreham+</a>}
+                    <Icon name="people" size={18} /> {lang === 'ko' ? '인원 선택' : 'Group size'}
+                    {isFree && <a className="plus-chip" href="/plus"><Icon name="plus" size={14} /> Doreham+</a>}
                   </label>
                   {isFree && (
                     <p className="form-hint">
@@ -1057,14 +1061,14 @@ export default function MatchesPage() {
                         setRandomSize(!randomSize); if (!randomSize) setSelectedGroupSize(null);
                       }}
                     >
-                      🎲 {lang === 'ko' ? '랜덤' : 'Random'}
+                      <Icon name="explore" size={18} /> {lang === 'ko' ? '랜덤' : 'Random'}
                     </button>
                   </div>
                 </div>
 
                 {planNote && (
                   <div className="plan-note">
-                    ✨ {planNote}{' '}
+                    <Icon name="plus" size={16} /> {planNote}{' '}
                     <a href="/plus">{lang === 'ko' ? 'Doreham+ 보기 →' : 'See Doreham+ →'}</a>
                   </div>
                 )}
@@ -1084,13 +1088,14 @@ export default function MatchesPage() {
                 <button className="find-btn" onClick={() => submitMatchRequest()} disabled={submittingRequest || outOfRequests}>
                   {submittingRequest
                     ? (lang === 'ko' ? '요청 중…' : 'Requesting…')
-                    : (lang === 'ko' ? '🔍 매칭 찾기' : '🔍 Find a match')}
+                    : <><Icon name="search" size={18} tone="light" /> {lang === 'ko' ? '매칭 찾기' : 'Find a match'}</>}
                 </button>
 
                 <div className="commit-note">
+                  <Icon name="tip" size={16} />{' '}
                   {lang === 'ko'
-                    ? '💡 매칭 확정 후 취소하면 경고를 받습니다. 3회 이상 취소 시 계정이 일시 정지됩니다.'
-                    : '💡 Cancelling after a match is confirmed counts as a strike. 3 strikes → account frozen.'}
+                    ? '매칭 확정 후 취소하면 경고를 받습니다. 3회 이상 취소 시 계정이 일시 정지됩니다.'
+                    : 'Cancelling after a match is confirmed counts as a strike. 3 strikes → account frozen.'}
                 </div>
               </>
             )}
@@ -1102,7 +1107,7 @@ export default function MatchesPage() {
           <>
             {historyMatches.length === 0 && pastRequests.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">📜</div>
+                <div className="empty-icon"><Icon name="doc" size={52} /></div>
                 <h2>{lang === 'ko' ? '아직 기록이 없어요' : 'No history yet'}</h2>
                 <p>{lang === 'ko' ? '완료된 매칭과 지난 요청이 여기에 표시됩니다.' : 'Completed matches and past requests will appear here.'}</p>
               </div>
@@ -1128,7 +1133,7 @@ export default function MatchesPage() {
                           : item.req.status === 'cancelled_by_user'
                             ? `✗ ${lang === 'ko' ? '요청 취소됨' : 'Request cancelled'}`
                             : item.req.status === 'expired'
-                              ? `⏱ ${lang === 'ko' ? '만료됨' : 'Expired'}`
+                              ? `${lang === 'ko' ? '만료됨' : 'Expired'}`
                               : item.req.status === 'matched'
                                 ? `✓ ${lang === 'ko' ? '매칭됨' : 'Matched'}`
                                 : item.req.status}
@@ -1221,7 +1226,7 @@ export default function MatchesPage() {
 
         /* Empty states */
         .empty-state { text-align: center; padding: 80px 20px; background: var(--paper-2); border-radius: 24px; }
-        .empty-icon { font-size: 64px; margin-bottom: 20px; }
+        .empty-icon { display: flex; justify-content: center; margin-bottom: 20px; }
         .empty-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 8px; }
         .empty-state p { color: var(--ink-60); font-size: 16px; margin: 0 0 24px; max-width: 500px; margin-left: auto; margin-right: auto; }
         .cta-btn {
@@ -1265,7 +1270,7 @@ export default function MatchesPage() {
         }
         .searching-title { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); margin-bottom: 2px; }
         .searching-meta { font-size: 13px; color: var(--ink); font-weight: 600; }
-        .searching-est { font-size: 12px; color: var(--ink-60); margin-top: 2px; }
+        .searching-est { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-60); margin-top: 2px; }
         .cancel-btn {
           background: transparent; border: 1px solid var(--ink-12);
           padding: 8px 16px; border-radius: 999px;
@@ -1281,19 +1286,19 @@ export default function MatchesPage() {
         .request-hero { text-align: center; margin-bottom: 32px; }
         .request-hero h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 8px; letter-spacing: -0.02em; }
         .request-hero p { color: var(--ink-60); font-size: 15px; margin: 0 0 16px; }
-        .plan-tag { display: inline-block; background: #fff; border: 1px solid var(--ink-12); color: var(--ink-60); font-weight: 700; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; text-decoration: none; line-height: 1.4; }
+        .plan-tag { display: inline-flex; align-items: center; gap: 5px; background: #fff; border: 1px solid var(--ink-12); color: var(--ink-60); font-weight: 700; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; text-decoration: none; line-height: 1.4; }
         .plan-tag.plus { background: linear-gradient(135deg, rgba(255, 106, 61, 0.12), rgba(199, 184, 224, 0.25)); border-color: rgba(255, 106, 61, 0.35); color: var(--persimmon); }
-        .plus-chip { margin-left: 8px; font-size: 11px; font-weight: 800; color: var(--persimmon); background: rgba(255, 106, 61, 0.1); border-radius: 999px; padding: 3px 9px; text-decoration: none; vertical-align: middle; }
+        .plus-chip { display: inline-flex; align-items: center; gap: 3px; text-transform: none; letter-spacing: 0; margin-left: 8px; font-size: 11px; font-weight: 800; color: var(--persimmon); background: rgba(255, 106, 61, 0.1); border-radius: 999px; padding: 3px 9px; text-decoration: none; vertical-align: middle; }
         .plan-note { background: rgba(199, 184, 224, 0.18); border: 1px solid rgba(199, 184, 224, 0.6); color: var(--ink); padding: 12px 16px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; line-height: 1.5; }
         .plan-note a { color: var(--persimmon); font-weight: 700; text-decoration: none; white-space: nowrap; }
         .cat-card.locked { opacity: 0.55; }
         .cat-card.locked:hover:not(.disabled) { transform: none; border-color: var(--ink-12); }
-        .cat-lock { position: absolute; top: 4px; right: 6px; font-size: 11px; }
+        .cat-lock { position: absolute; top: 4px; right: 6px; display: flex; }
         .size-btn.locked { opacity: 0.45; cursor: not-allowed; }
         .size-btn.locked:hover, .size-btn.locked.selected { transform: none; border-color: var(--ink-12); }
 
         .frozen-notice { text-align: center; padding: 60px 30px; background: rgba(91, 124, 250, 0.06); border: 1px solid rgba(91, 124, 250, 0.2); border-radius: 20px; }
-        .frozen-icon { font-size: 64px; margin-bottom: 16px; }
+        .frozen-icon { display: flex; justify-content: center; margin-bottom: 16px; }
         .frozen-notice h3 { font-family: var(--display); font-size: 24px; margin: 0 0 12px; color: var(--ink); }
         .frozen-when { font-weight: 700; color: var(--ink); font-size: 15px; margin: 0 0 6px; }
         .frozen-note { font-size: 13px; color: var(--ink-60); font-style: italic; margin: 0; }
@@ -1306,7 +1311,7 @@ export default function MatchesPage() {
         .strike-warning { background: rgba(232, 169, 63, 0.15); color: #a86720; padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; margin-bottom: 20px; text-align: center; border: 1px solid rgba(232, 169, 63, 0.3); }
 
         .form-section { margin-bottom: 24px; }
-        .form-label { display: block; font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
 
         .cities-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; }
         .city-card {
@@ -1324,7 +1329,7 @@ export default function MatchesPage() {
         .city-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); }
         .city-card.disabled { opacity: 0.4; cursor: not-allowed; }
         .city-card.random { background: linear-gradient(135deg, rgba(255, 106, 61, 0.05), rgba(15, 157, 119, 0.05)); }
-        .city-emoji { font-size: 32px; }
+        .city-emoji { display: flex; justify-content: center; }
         .city-name { font-weight: 700; font-size: 13px; color: var(--ink); }
         .city-soon { font-size: 10px; color: var(--ink-60); font-weight: 600; }
         .form-hint { font-size: 12px; color: var(--ink-60); margin: 0 0 12px; }
@@ -1352,7 +1357,7 @@ export default function MatchesPage() {
           color: var(--ink);
           min-width: 60px;
         }
-        .size-btn.size-random { font-size: 14px; min-width: auto; }
+        .size-btn.size-random { font-size: 14px; min-width: auto; display: inline-flex; align-items: center; gap: 5px; }
         .size-btn:hover { border-color: var(--persimmon); transform: translateY(-1px); }
         .size-btn.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.08); color: var(--persimmon); }
 
@@ -1389,7 +1394,7 @@ export default function MatchesPage() {
           margin-bottom: 24px;
         }
         .matchable-left { flex: 1; min-width: 0; }
-        .matchable-title { font-weight: 700; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
+        .matchable-title { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
         .matchable-sub { font-size: 12px; color: var(--ink-60); line-height: 1.4; }
         .toggle-switch {
           width: 48px; height: 28px;
@@ -1433,7 +1438,7 @@ export default function MatchesPage() {
         .review-banner-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .review-banner { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, rgba(255, 106, 61, 0.08), rgba(122, 88, 168, 0.06)); border: 1.5px solid rgba(255, 106, 61, 0.2); border-radius: 14px; padding: 14px 18px; text-decoration: none; color: var(--ink); transition: all 0.15s; }
         .review-banner:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255, 106, 61, 0.15); border-color: var(--persimmon); }
-        .rb-icon { font-size: 28px; flex-shrink: 0; }
+        .rb-icon { display: flex; flex-shrink: 0; }
         .rb-content { flex: 1; min-width: 0; }
         .rb-title { font-family: var(--display); font-weight: 800; font-size: 15px; margin-bottom: 2px; color: var(--ink); }
         .rb-sub { font-size: 12px; color: var(--ink-60); line-height: 1.4; }
@@ -1480,7 +1485,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       </div>
       {match.is_pending_invites && match.my_invite_state === 'invited' && (
         <div className="invite-banner">
-          <div className="invite-title">🎉 {lang === 'ko' ? '매칭 초대!' : "You've been invited!"}</div>
+          <div className="invite-title"><Icon name="matchFound" size={22} /> {lang === 'ko' ? '매칭 초대!' : "You've been invited!"}</div>
           <div className="invite-desc">
             {lang === 'ko'
               ? '이 그룹에 합류하시겠습니까? 수락하면 그룹 채팅과 일정 조율에 참여할 수 있어요.'
@@ -1491,7 +1496,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
 
       {match.is_pending_invites && match.my_invite_state === 'accepted' && (
         <div className="invite-banner accepted">
-          <div className="invite-title">⏳ {lang === 'ko' ? '다른 멤버의 응답 대기 중' : 'Waiting for other members'}</div>
+          <div className="invite-title"><Icon name="pending" size={22} /> {lang === 'ko' ? '다른 멤버의 응답 대기 중' : 'Waiting for other members'}</div>
           <div className="invite-desc">
             {(() => {
               const waiting = match.members.filter((m) => m.invite_state === 'invited').map((m) => m.display_name);
@@ -1504,7 +1509,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       )}
 
       <h2 className="quest-title">
-        {lang === 'ko' ? match.quest.title : (match.quest.title_en ?? match.quest.title)}
+        {stripEmoji(lang === 'ko' ? match.quest.title : (match.quest.title_en ?? match.quest.title))}
       </h2>
 
       <p className="quest-description">
@@ -1549,7 +1554,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
           <h3>{lang === 'ko' ? '함께할 봉사활동' : 'Volunteer activity'}</h3>
           {match.quest.program ? (
             <div className="venue-card volunteer-card">
-              <div className="volunteer-emoji">🤝</div>
+              <div className="volunteer-emoji"><Icon name="volunteer" size={36} /></div>
               <div className="venue-info">
                 <div className="venue-name">
                   {lang === 'en' ? (match.quest.program.title_en || match.quest.program.title) : match.quest.program.title}
@@ -1561,14 +1566,14 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
                 )}
                 {match.quest.program.place && (
                   <div className="venue-address">
-                    📍 {lang === 'en' ? (match.quest.program.place_en || match.quest.program.place) : match.quest.program.place}
+                    <Icon name="location" size={15} /> {lang === 'en' ? (match.quest.program.place_en || match.quest.program.place) : match.quest.program.place}
                   </div>
                 )}
               </div>
             </div>
           ) : (
             <div className="venue-card volunteer-card">
-              <div className="volunteer-emoji">🗳️</div>
+              <div className="volunteer-emoji"><Icon name="vote" size={36} /></div>
               <div className="venue-info">
                 <div className="venue-name">
                   {lang === 'ko' ? '함께 고를 1365 봉사활동' : 'A 1365 activity you choose together'}
@@ -1583,7 +1588,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
           )}
           {match.quest_scheduled_at && (
             <div className="scheduled-info">
-              <div className="scheduled-label">{lang === 'ko' ? '📅 봉사 시간' : '📅 Volunteering time'}</div>
+              <div className="scheduled-label"><Icon name="date" size={16} /> {lang === 'ko' ? '봉사 시간' : 'Volunteering time'}</div>
               <div className="scheduled-time">
                 {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                 {' · '}
@@ -1604,7 +1609,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
           )}
           <div className="venue-info">
             <div className="venue-name">
-              {cat?.emoji} {match.quest.venue.business_name_display}
+              <CategoryIcon art={venueCategoryArt(match.quest.venue.category)} size={22} /> {match.quest.venue.business_name_display}
             </div>
             <div className="venue-category">
               {cat ? (lang === 'ko' ? cat.ko : cat.en) : match.quest.venue.category}
@@ -1620,10 +1625,10 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
                 <div className="venue-chips">
                   {!!v.per_person_cost_won && (
                     <span className="venue-chip">
-                      💰 ~₩{v.per_person_cost_won.toLocaleString()} {lang === 'ko' ? '/ 1인' : '/ person'}
+                      <Icon name="price" size={14} /> ~₩{v.per_person_cost_won.toLocaleString()} {lang === 'ko' ? '/ 1인' : '/ person'}
                     </span>
                   )}
-                  {perk && <span className="venue-chip perk">🎁 {perk}</span>}
+                  {perk && <span className="venue-chip perk"><Icon name="perk" size={14} /> {perk}</span>}
                 </div>
               );
             })()}
@@ -1633,7 +1638,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         {match.quest_scheduled_at && (
           <div className="scheduled-info">
             <div className="scheduled-label">
-              {lang === 'ko' ? '📅 만나는 시간' : '📅 Meeting time'}
+              <Icon name="date" size={16} /> {lang === 'ko' ? '만나는 시간' : 'Meeting time'}
             </div>
             <div className="scheduled-time">
               {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -1659,7 +1664,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
                 )}
                 <div className="menu-name">
                   {lang === 'ko' ? item.name : (item.name_en ?? item.name)}
-                  {item.is_signature && ' ⭐'}
+                  {item.is_signature && <> <Icon name="starFilled" size={14} label={lang === 'ko' ? '대표 메뉴' : 'Signature'} /></>}
                 </div>
                 {item.price_won && (
                   <div className="menu-price">₩{item.price_won.toLocaleString()}</div>
@@ -1704,7 +1709,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         if (inWindow) {
           return (
             <a href={`/matches/${match.group_id}/check-in`} className="checkin-btn active">
-              📍 {lang === 'ko' ? '지금 체크인' : 'Check in now'}
+              <Icon name="location" size={20} tone="light" /> {lang === 'ko' ? '지금 체크인' : 'Check in now'}
               <span className="checkin-live">● {lang === 'ko' ? '진행 중' : 'Open'}</span>
             </a>
           );
@@ -1719,7 +1724,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
             : (lang === 'ko' ? `${minsLeft}분 후` : `in ${minsLeft} min`);
           return (
             <div className="checkin-btn upcoming">
-              ⏳ {lang === 'ko' ? `체크인 ${timeStr} 열림` : `Check-in opens ${timeStr}`}
+              <Icon name="pending" size={20} /> {lang === 'ko' ? `체크인 ${timeStr} 열림` : `Check-in opens ${timeStr}`}
             </div>
           );
         }
@@ -1731,11 +1736,12 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
       {/* Volunteer quest: one page for voting, 1365 signup and the group selfie */}
       {!isHistory && isVolunteer && !match.is_pending_invites && (
         <a href={`/matches/${match.group_id}/volunteer`} className="volunteer-btn">
+          <Icon name={match.phase === 'voting' ? 'vote' : 'volunteer'} size={20} />{' '}
           {match.phase === 'voting'
-            ? (lang === 'ko' ? '🗳️ 봉사활동 투표하기' : '🗳️ Vote on an activity')
+            ? (lang === 'ko' ? '봉사활동 투표하기' : 'Vote on an activity')
             : match.phase === 'scheduled'
-              ? (lang === 'ko' ? '🤝 1365 신청 · 단체 사진' : '🤝 1365 signup · group selfie')
-              : (lang === 'ko' ? '🤝 봉사 퀘스트 열기' : '🤝 Open volunteer quest')}
+              ? (lang === 'ko' ? '1365 신청 · 단체 사진' : '1365 signup · group selfie')
+              : (lang === 'ko' ? '봉사 퀘스트 열기' : 'Open volunteer quest')}
         </a>
       )}
 
@@ -1744,9 +1750,10 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
           href={`/matches/${match.group_id}/availability`}
           className={`avail-btn ${match.my_availability_submitted ? 'submitted' : 'pending'}`}
         >
+          <Icon name="date" size={20} />{' '}
           {match.my_availability_submitted
-            ? (lang === 'ko' ? '📅 가능한 시간 업데이트' : '📅 Update your availability')
-            : (lang === 'ko' ? '📅 가능한 시간 선택' : '📅 Pick your availability')}
+            ? (lang === 'ko' ? '가능한 시간 업데이트' : 'Update your availability')
+            : (lang === 'ko' ? '가능한 시간 선택' : 'Pick your availability')}
           <span className="avail-progress">
             {match.availability_submitted_count} / {match.members.length}
           </span>
@@ -1755,14 +1762,14 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
 
       {!isHistory && !match.is_pending_invites && (
         <a href={`/matches/${match.group_id}/chat`} className="chat-open-btn">
-          💬 {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
+          <Icon name="chat" size={20} /> {lang === 'ko' ? '그룹 채팅 열기' : 'Open group chat'}
           {match.unread_count > 0 && <span className="unread-badge">{match.unread_count}</span>}
         </a>
       )}
 
       {!isHistory && !match.is_pending_invites && (
         <a href={`/matches/${match.group_id}/questions`} className="ice-btn">
-          🧊 {lang === 'ko' ? '얼음 깨기' : 'Break the Ice'}
+          <Icon name="icebreaker" size={20} /> {lang === 'ko' ? '얼음 깨기' : 'Break the Ice'}
           <span className="ice-badge">{lang === 'ko' ? '대화 질문' : 'Conversation'}</span>
         </a>
       )}
@@ -1805,22 +1812,22 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         .mini-tag { font-size: 10px; font-weight: 600; color: var(--ink-60); background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ink-12); }
         .venue-card { display: flex; gap: 14px; background: var(--paper-2); border-radius: 12px; padding: 12px; }
         .volunteer-card { align-items: center; }
-        .volunteer-emoji { width: 64px; height: 64px; border-radius: 12px; background: rgba(15, 157, 119, 0.12); display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; }
+        .volunteer-emoji { width: 64px; height: 64px; border-radius: 12px; background: rgba(15, 157, 119, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .volunteer-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #0f9d77, #34c39a); color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700; margin-top: 16px; text-decoration: none; }
         .venue-photo { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
         .venue-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
-        .venue-name { font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
+        .venue-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
         .venue-category { color: var(--ink-60); font-size: 13px; margin-bottom: 6px; }
         .venue-address { color: var(--ink-60); font-size: 13px; line-height: 1.4; }
         .venue-link { text-decoration: none; color: inherit; border: 1px solid transparent; transition: border-color 0.15s; }
         .venue-link:hover { border-color: var(--ink-12); }
         .venue-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-width: 0; }
-        .venue-chip { font-size: 12px; font-weight: 700; line-height: 1.35; color: var(--ink); background: #fff; border: 1px solid var(--ink-12); border-radius: 10px; padding: 3px 9px; max-width: 100%; overflow-wrap: anywhere; }
+        .venue-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; line-height: 1.35; color: var(--ink); background: #fff; border: 1px solid var(--ink-12); border-radius: 10px; padding: 3px 9px; max-width: 100%; overflow-wrap: anywhere; }
         .venue-chip.perk { color: var(--persimmon); border-color: rgba(255, 106, 61, 0.3); }
         .venue-more { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--persimmon); }
         @media (max-width: 420px) { .venue-link { flex-direction: column; } .venue-link .venue-photo { width: 100%; height: 140px; } }
         .scheduled-info { margin-top: 12px; padding: 14px 18px; background: linear-gradient(135deg, rgba(15, 157, 119, 0.08), rgba(255, 106, 61, 0.05)); border: 1px solid rgba(15, 157, 119, 0.2); border-radius: 12px; }
-        .scheduled-label { font-size: 11px; font-weight: 700; color: var(--jade); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .scheduled-label { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--jade); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
         .scheduled-time { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--ink); }
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         .menu-tile { background: var(--paper-2); border-radius: 10px; padding: 8px; text-align: center; }
@@ -1842,7 +1849,7 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
         .unread-badge { background: #fff; color: var(--persimmon); font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 999px; min-width: 24px; text-align: center; }
         .invite-banner { background: linear-gradient(135deg, rgba(255, 106, 61, 0.08), rgba(15, 157, 119, 0.05)); border: 1px solid rgba(255, 106, 61, 0.25); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
         .invite-banner.accepted { background: linear-gradient(135deg, rgba(15, 157, 119, 0.06), rgba(255, 106, 61, 0.02)); border-color: rgba(15, 157, 119, 0.25); }
-        .invite-title { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
+        .invite-title { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
         .invite-desc { font-size: 13px; color: var(--ink-60); line-height: 1.5; }
         .member-status { font-size: 10px; font-weight: 700; margin-top: 4px; padding: 2px 8px; border-radius: 999px; display: inline-block; }
         .member-status.status-accepted { background: rgba(15, 157, 119, 0.15); color: var(--jade); }

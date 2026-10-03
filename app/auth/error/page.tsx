@@ -1,6 +1,7 @@
 'use client';
 
 import { useLang } from '@/lib/hooks/useLang';
+import { Icon } from '@/components/icons/Icon';
 
 /** Where /auth/callback sends you when Google/Kakao sign-in didn't finish. */
 export default function AuthErrorPage() {
@@ -22,7 +23,7 @@ export default function AuthErrorPage() {
       </header>
       <main className="ae-wrap">
         <div className="ae-card">
-          <div className="ae-ic" aria-hidden="true">🔑</div>
+          <div className="ae-ic" aria-hidden="true"><Icon name="key" size={48} /></div>
           <h1>{ko ? '로그인이 끝나지 않았어요' : "Sign-in didn't finish"}</h1>
           <p>
             {ko
@@ -42,7 +43,7 @@ export default function AuthErrorPage() {
         .ae-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
         .ae-wrap { min-height: calc(100vh - 65px); display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
         .ae-card { max-width: 420px; width: 100%; text-align: center; background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 32px 24px; }
-        .ae-ic { font-size: 40px; margin-bottom: 8px; }
+        .ae-ic { display: flex; justify-content: center; margin-bottom: 8px; }
         h1 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 10px; color: var(--ink); }
         p { color: var(--ink-60); font-size: 15px; line-height: 1.55; margin: 0 0 20px; }
         .ae-btn { display: inline-block; background: var(--persimmon); color: #fff; font-weight: 700; font-size: 15px; border-radius: 999px; padding: 12px 24px; text-decoration: none; }

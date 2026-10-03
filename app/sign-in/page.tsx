@@ -6,6 +6,7 @@ import { useLang } from '@/lib/hooks/useLang';
 import { useUser } from '@/lib/hooks/useUser';
 import { disablePushForSignOut } from '@/lib/push';
 import { forgetSignupAs, isVenueAccount, rememberSignupAs, signupAsFromUrl } from '@/lib/accountType';
+import { Icon } from '@/components/icons/Icon';
 
 export default function SignInPage() {
   const [lang, setLang] = useLang();
@@ -93,8 +94,9 @@ export default function SignInPage() {
           {forVenue ? (
             <>
               <h1 className="signin-h">
-                <span className="en">Register your venue 🏪</span>
-                <span className="ko lang-ko">가게 등록하기 🏪</span>
+                <span className="en">Register your venue</span>
+                <span className="ko lang-ko">가게 등록하기</span>{' '}
+                <Icon name="venue" size={30} />
               </h1>
               <p className="signin-sub">
                 <span className="en">Sign in, add your place, and host events for people nearby. No personality questions.</span>

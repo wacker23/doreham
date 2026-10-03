@@ -47,18 +47,18 @@ export function computeZodiacSign(dateOfBirth: string): ZodiacSign | null {
   return null;  // shouldn't reach here but TypeScript wants it
 }
 
-// Display labels for each sign in English and Korean.
-export const ZODIAC_LABELS: Record<ZodiacSign, { en: string; ko: string; symbol: string }> = {
-  aries:       { en: 'Aries',       ko: '양자리',      symbol: '♈' },
-  taurus:      { en: 'Taurus',      ko: '황소자리',    symbol: '♉' },
-  gemini:      { en: 'Gemini',      ko: '쌍둥이자리',  symbol: '♊' },
-  cancer:      { en: 'Cancer',      ko: '게자리',      symbol: '♋' },
-  leo:         { en: 'Leo',         ko: '사자자리',    symbol: '♌' },
-  virgo:       { en: 'Virgo',       ko: '처녀자리',    symbol: '♍' },
-  libra:       { en: 'Libra',       ko: '천칭자리',    symbol: '♎' },
-  scorpio:     { en: 'Scorpio',     ko: '전갈자리',    symbol: '♏' },
-  sagittarius: { en: 'Sagittarius', ko: '궁수자리',    symbol: '♐' },
-  capricorn:   { en: 'Capricorn',   ko: '염소자리',    symbol: '♑' },
-  aquarius:    { en: 'Aquarius',    ko: '물병자리',    symbol: '♒' },
-  pisces:      { en: 'Pisces',      ko: '물고기자리',  symbol: '♓' },
+// Display labels for each sign in English and Korean. The picture is <Icon name={sign} />.
+export const ZODIAC_LABELS: Record<ZodiacSign, { en: string; ko: string }> = {
+  aries:       { en: 'Aries',       ko: '양자리' },
+  taurus:      { en: 'Taurus',      ko: '황소자리' },
+  gemini:      { en: 'Gemini',      ko: '쌍둥이자리' },
+  cancer:      { en: 'Cancer',      ko: '게자리' },
+  leo:         { en: 'Leo',         ko: '사자자리' },
+  virgo:       { en: 'Virgo',       ko: '처녀자리' },
+  libra:       { en: 'Libra',       ko: '천칭자리' },
+  scorpio:     { en: 'Scorpio',     ko: '전갈자리' },
+  sagittarius: { en: 'Sagittarius', ko: '궁수자리' },
+  capricorn:   { en: 'Capricorn',   ko: '염소자리' },
+  aquarius:    { en: 'Aquarius',    ko: '물병자리' },
+  pisces:      { en: 'Pisces',      ko: '물고기자리' },
 };

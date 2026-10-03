@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { UiLanguage, VenueFormData } from '../lib/types';
 import { KOREAN_CITIES } from '../lib/types';
+import { Icon } from '@/components/icons/Icon';
 
 type Props = {
   lang: UiLanguage;
@@ -139,7 +140,7 @@ export function LocationStep({ lang, initialData, onNext, onBack }: Props) {
           onClick={openPostcodeSearch}
           className={`address-search-btn ${hasAddress ? 'has-address' : ''}`}
         >
-          🔍 {lang === 'ko' ? '주소 검색' : 'Search address'}
+          <Icon name="search" size={18} /> {lang === 'ko' ? '주소 검색' : 'Search address'}
         </button>
         {errors.address && <span className="err">{errors.address}</span>}
       </div>

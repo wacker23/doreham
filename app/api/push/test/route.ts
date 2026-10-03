@@ -11,8 +11,8 @@ export async function POST() {
     {
       user_id: auth.user.id,
       type: 'test',
-      title_en: 'Notifications are on 🎉',
-      title_ko: '알림이 켜졌어요 🎉',
+      title_en: 'Notifications are on',
+      title_ko: '알림이 켜졌어요',
       body_en: "This is how Doreham will reach you when something happens.",
       body_ko: '새 소식이 있으면 이렇게 알려드릴게요.',
       action_url: '/matches',

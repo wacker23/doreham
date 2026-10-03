@@ -1,6 +1,7 @@
 'use client';
 
 import { MEET_PEOPLE_HREF } from '@/lib/accountType';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * For venue-only accounts: an invitation (not a nag) to make the friend profile and use
@@ -10,7 +11,7 @@ export function MeetPeopleCard({ lang }: { lang: 'en' | 'ko' }) {
   const ko = lang === 'ko';
   return (
     <div className="mp-card">
-      <div className="mp-ic" aria-hidden="true">👋</div>
+      <div className="mp-ic" aria-hidden="true"><Icon name="hello" size={28} /></div>
       <div className="mp-text">
         <div className="mp-title">{ko ? '사람들도 만나 보고 싶으세요?' : 'Want to meet people too?'}</div>
         <div className="mp-sub">

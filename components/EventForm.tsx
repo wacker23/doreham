@@ -7,6 +7,9 @@ import { EVENT_CATEGORIES } from '@/lib/eventCategories';
 import { eventError, fromKstInputs, toKstInputs } from '@/lib/eventDisplay';
 import type { EventBase, HostContext } from '@/lib/eventTypes';
 import { resizeImage } from '@/lib/imageResize';
+import { Icon } from '@/components/icons/Icon';
+import { SeaArt } from '@/components/icons/SeaArt';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
 type HostAs = 'user' | 'venue' | 'admin';
 
@@ -325,7 +328,7 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
           </div>
         ) : (
           <button type="button" className="evf-drop" onClick={() => posterInput.current?.click()} disabled={posterBusy}>
-            <span className="evf-drop-icon" aria-hidden="true">🖼️</span>
+            <span className="evf-drop-icon" aria-hidden="true"><Icon name="image" size={32} /></span>
             <strong>{posterBusy ? (ko ? '준비 중…' : 'Preparing…') : ko ? '포스터나 사진 추가' : 'Add a poster or photo'}</strong>
             <span>{ko ? '이벤트가 눈에 잘 띄어요. JPEG, PNG, WebP (자동으로 줄여서 올려요)' : 'Events with a picture get noticed. JPEG, PNG or WebP (we resize it for you)'}</span>
           </button>
@@ -339,10 +342,10 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
             <option value="user">{ko ? '나 (개인 모임)' : 'Me (personal meetup)'}</option>
             {ctx!.venues.map((v) => (
               <option key={v.id} value={v.id}>
-                🏪 {v.name}
+                {v.name}
               </option>
             ))}
-            {ctx!.isAdmin && <option value="admin">{ko ? '⭐ 도레함 공식' : '⭐ Doreham (official)'}</option>}
+            {ctx!.isAdmin && <option value="admin">{ko ? '도레함 공식' : 'Doreham (official)'}</option>}
           </select>
         </div>
       )}
@@ -371,7 +374,7 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
               className={f.category === c.slug ? 'on' : ''}
               onClick={() => set('category', c.slug)}
             >
-              {c.emoji} {ko ? c.label_ko : c.label_en}
+              <CategoryIcon art={c.art} size={22} /> {ko ? c.label_ko : c.label_en}
             </button>
           ))}
         </div>
@@ -402,7 +405,7 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
             <option value="">{ko ? '도시 선택' : 'Pick a city'}</option>
             {KOREAN_CITIES.map((c) => (
               <option key={c.slug} value={c.slug}>
-                {c.emoji} {ko ? c.name_ko : c.name_en}
+                {ko ? c.name_ko : c.name_en}
               </option>
             ))}
           </select>
@@ -526,15 +529,15 @@ export function EventForm({ lang, initial }: { lang: 'en' | 'ko'; initial?: Edit
         .evf-hint { margin: -8px 0 0; font-size: 12.5px; color: var(--ink-60); }
         .evf-inline { display: flex; gap: 8px; }
         .evf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-        .evf-chips button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 8px 13px; font-family: var(--body); font-weight: 600; font-size: 13.5px; cursor: pointer; color: var(--ink); }
-        .evf-chips button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .evf-chips button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 8px 13px; font-family: var(--body); font-weight: 600; font-size: 13.5px; cursor: pointer; color: var(--ink); }
+        .evf-chips button.on { background: rgba(255, 106, 61, 0.1); color: var(--ink); border-color: var(--persimmon); box-shadow: inset 0 0 0 1px var(--persimmon); }
         .evf-check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
         .evf-file { display: none; }
         .evf-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 26px 16px; border: 2px dashed rgba(30, 34, 48, 0.18); border-radius: 16px; background: #fff; cursor: pointer; font-family: var(--body); color: var(--ink); text-align: center; }
         .evf-drop:hover { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.04); }
         .evf-drop strong { font-size: 15px; }
         .evf-drop span { font-size: 12.5px; color: var(--ink-60); max-width: 360px; }
-        .evf-drop .evf-drop-icon { font-size: 34px; line-height: 1; margin-bottom: 2px; }
+        .evf-drop .evf-drop-icon { display: flex; line-height: 1; margin-bottom: 2px; }
         .evf-poster { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--ink-12); background: var(--paper-2); }
         .evf-poster img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
         .evf-poster-acts { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
@@ -557,7 +560,7 @@ function HostPlusLock({ lang }: { lang: 'en' | 'ko' }) {
   const ko = lang === 'ko';
   return (
     <div className="hpl">
-      <div className="hpl-ic" aria-hidden="true">✨</div>
+      <div className="hpl-ic" aria-hidden="true"><SeaArt name="plus" size={64} /></div>
       <h2>{ko ? '이벤트 열기는 Doreham+ 기능이에요' : 'Hosting events is part of Doreham+'}</h2>
       <p>
         {ko
@@ -568,7 +571,7 @@ function HostPlusLock({ lang }: { lang: 'en' | 'ko' }) {
       <a className="hpl-back" href="/events">{ko ? '이벤트 둘러보기' : 'Browse events'}</a>
       <style jsx>{`
         .hpl { text-align: center; background: #fff; border: 1px solid var(--ink-12); border-radius: 20px; padding: 32px 24px; }
-        .hpl-ic { font-size: 40px; margin-bottom: 8px; }
+        .hpl-ic { display: flex; justify-content: center; margin-bottom: 8px; }
         h2 { font-family: var(--display); font-weight: 800; font-size: 22px; margin: 0 0 10px; color: var(--ink); }
         p { color: var(--ink-60); font-size: 15px; line-height: 1.55; margin: 0 auto 20px; max-width: 46ch; }
         .hpl-btn { display: inline-block; background: var(--persimmon); color: #fff; font-weight: 700; font-size: 15px; border-radius: 999px; padding: 12px 24px; text-decoration: none; }

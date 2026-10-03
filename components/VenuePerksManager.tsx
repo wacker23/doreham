@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LEVELS, levelByNumber } from '@/lib/points';
 import { perkError } from '@/lib/pointsTypes';
+import { Icon } from '@/components/icons/Icon';
+import { SeaArt, levelArt } from '@/components/icons/SeaArt';
 
 type OwnerPerk = {
   id: string;
@@ -68,7 +70,7 @@ export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'e
   return (
     <div className="vp">
       <div className="vp-head">
-        <div className="vp-title">🎁 {ko ? '도레함 회원 혜택' : 'Perks for Doreham members'}</div>
+        <div className="vp-title"><Icon name="perk" size={20} /> {ko ? '도레함 회원 혜택' : 'Perks for Doreham members'}</div>
         <div className="vp-code" title={ko ? '회원 화면에 같은 코드가 보여요' : "Members' screens show the same code"}>
           {ko ? '오늘의 코드' : "Today's code"} <strong>{data.code_today}</strong>
         </div>
@@ -89,7 +91,7 @@ export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'e
                   <strong>{p.title}</strong>
                   {p.details && <span>{p.details}</span>}
                   <span className="vp-meta">
-                    {lv.emoji} {ko ? `${lv.ko} 이상` : `${lv.en} and up`} · {ko ? `오늘 ${p.redemptions.today}회 · 전체 ${p.redemptions.total}회` : `Used ${p.redemptions.today} today · ${p.redemptions.total} total`}
+                    <SeaArt name={levelArt(lv.n)} size={16} /> {ko ? `${lv.ko} 이상` : `${lv.en} and up`} · {ko ? `오늘 ${p.redemptions.today}회 · 전체 ${p.redemptions.total}회` : `Used ${p.redemptions.today} today · ${p.redemptions.total} total`}
                   </span>
                 </div>
                 <div className="vp-acts">
@@ -134,7 +136,7 @@ export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'e
             <select value={minLevel} onChange={(e) => setMinLevel(Number(e.target.value))}>
               {LEVELS.map((l) => (
                 <option key={l.n} value={l.n}>
-                  {l.emoji} {ko ? `${l.ko} (레벨 ${l.n})` : `${l.en} (level ${l.n})`}
+                  {ko ? `${l.ko} (레벨 ${l.n})` : `${l.en} (level ${l.n})`}
                 </option>
               ))}
             </select>
@@ -161,7 +163,7 @@ export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'e
       <style jsx>{`
         .vp { margin-top: 14px; border: 1px solid var(--ink-12); border-radius: 16px; padding: 14px 16px; background: #fff; }
         .vp-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .vp-title { font-weight: 800; font-size: 15px; color: var(--ink); }
+        .vp-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--ink); }
         .vp-code { font-size: 13px; color: var(--ink-60); font-weight: 700; background: var(--paper-2); border-radius: 999px; padding: 4px 12px; }
         .vp-code strong { font-family: var(--display); font-size: 18px; letter-spacing: 0.12em; color: var(--persimmon); margin-left: 4px; }
         .vp-help { font-size: 12.5px; color: var(--ink-60); margin: 6px 0 10px; line-height: 1.5; }
@@ -170,7 +172,7 @@ export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'e
         .vp-list li.off { opacity: 0.55; }
         .vp-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 180px; font-size: 13.5px; color: var(--ink-60); }
         .vp-main strong { font-size: 15px; color: var(--ink); }
-        .vp-meta { font-size: 12px; }
+        .vp-meta { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 12px; }
         .vp-acts { display: flex; gap: 6px; }
         button { font-family: var(--body); font-weight: 700; font-size: 13px; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 13px; cursor: pointer; color: var(--ink); }
         button.danger { color: #b42318; }

@@ -9,8 +9,10 @@ import { AppTabBar } from '@/components/AppTabBar';
 import { Avatar } from '@/components/Avatar';
 import { PerkRedeemSheet } from '@/components/PerkRedeemSheet';
 import { cityName } from '@/lib/cities';
-import { BADGES, LEVELS, LEVEL_UNLOCKS, POINT_RULES, levelByNumber, reasonLabel } from '@/lib/points';
+import { BADGES, LEVELS, LEVEL_UNLOCKS, POINT_RULES, levelByNumber, reasonIcon, reasonLabel } from '@/lib/points';
 import { perkError, perkText, type LeaderboardResponse, type MySummary, type Perk, type Redemption } from '@/lib/pointsTypes';
+import { Icon, type IconName } from '@/components/icons/Icon';
+import { SeaArt, levelArt } from '@/components/icons/SeaArt';
 
 type Tab = 'ranking' | 'me' | 'perks';
 type Period = 'month' | 'all';
@@ -126,13 +128,13 @@ export default function LeaderboardPage() {
         <div className="lb-tabs" role="tablist">
           {(
             [
-              ['ranking', ko ? '🏆 순위' : '🏆 Ranking'],
-              ['me', ko ? '⭐ 내 포인트' : '⭐ My points'],
-              ['perks', ko ? '🎁 혜택' : '🎁 Perks'],
-            ] as [Tab, string][]
-          ).map(([t, label]) => (
+              ['ranking', 'ranking', ko ? '순위' : 'Ranking'],
+              ['me', 'star', ko ? '내 포인트' : 'My points'],
+              ['perks', 'perk', ko ? '혜택' : 'Perks'],
+            ] as [Tab, IconName, string][]
+          ).map(([t, icon, label]) => (
             <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => pickTab(t)}>
-              {label}
+              <Icon name={icon} size={18} tone={tab === t ? 'on' : 'off'} /> {label}
             </button>
           ))}
         </div>
@@ -153,7 +155,7 @@ export default function LeaderboardPage() {
 
             {board?.hidden ? (
               <div className="lb-me muted-card">
-                🙈 {ko ? '순위표에서 나를 숨겼어요.' : "You're hidden from the leaderboard."}{' '}
+                <Icon name="lock" size={18} /> {ko ? '순위표에서 나를 숨겼어요.' : "You're hidden from the leaderboard."}{' '}
                 <button className="linkish" disabled={busy === 'hide'} onClick={() => setHidden(false)}>
                   {ko ? '다시 보이기' : 'Show me again'}
                 </button>
@@ -167,7 +169,7 @@ export default function LeaderboardPage() {
               </div>
             ) : board ? (
               <div className="lb-me muted-card">
-                🌱 {ko ? '아직 순위가 없어요. 퀘스트를 마치면 순위표에 올라가요.' : 'Not on the board yet. Finish a quest to get on it.'}{' '}
+                <SeaArt name="level1" size={22} /> {ko ? '아직 순위가 없어요. 퀘스트를 마치면 순위표에 올라가요.' : 'Not on the board yet. Finish a quest to get on it.'}{' '}
                 <a href="/matches">{ko ? '매칭 요청하기 →' : 'Request a match →'}</a>
               </div>
             ) : null}
@@ -176,7 +178,7 @@ export default function LeaderboardPage() {
               <div className="lb-skel" />
             ) : board.entries.length === 0 ? (
               <div className="lb-empty">
-                <div className="lb-empty-icon">🏁</div>
+                <div className="lb-empty-icon"><Icon name="ranking" size={44} /></div>
                 <strong>{ko ? '이번 달은 아직 아무도 포인트가 없어요' : 'No points yet this month'}</strong>
                 <span>{ko ? '첫 번째 주인공이 되어 보세요!' : 'Be the first on the board!'}</span>
               </div>
@@ -189,11 +191,11 @@ export default function LeaderboardPage() {
                     const lv = levelByNumber(e.user.level);
                     return (
                       <a key={e.user.id} href={`/profile/${e.user.id}`} className={`pod p${i + 1} ${e.is_me ? 'me' : ''}`}>
-                        <span className="medal">{['🥇', '🥈', '🥉'][i]}</span>
+                        <span className={`medal m${i + 1}`}>{i + 1}</span>
                         <Avatar name={e.user.display_name} url={e.user.photo_url} size={i === 0 ? 64 : 52} />
                         <span className="pod-name">{e.user.display_name}</span>
                         <span className="pod-lv">
-                          {lv.emoji} {ko ? lv.ko : lv.en}
+                          <SeaArt name={levelArt(lv.n)} size={18} /> {ko ? lv.ko : lv.en}
                         </span>
                         <span className="pod-pts">{e.points.toLocaleString()}</span>
                         <span className="pod-base">{e.rank}</span>
@@ -212,7 +214,7 @@ export default function LeaderboardPage() {
                           <span className="who">
                             <span className="n">{e.user.display_name}</span>
                             <span className="s">
-                              {lv.emoji} {ko ? lv.ko : lv.en}
+                              <SeaArt name={levelArt(lv.n)} size={18} /> {ko ? lv.ko : lv.en}
                               {e.user.city ? ` · ${cityName(e.user.city, lang)}` : ''}
                             </span>
                           </span>
@@ -226,8 +228,8 @@ export default function LeaderboardPage() {
             )}
             <p className="lb-foot">
               {ko
-                ? '매달 1일 한국 시간 0시에 이번 달 순위가 새로 시작돼요. 월간 톱 10은 🏆 배지를 받아요.'
-                : 'The monthly ranking restarts on the 1st at midnight Korea time. The monthly top 10 get the 🏆 badge.'}
+                ? '매달 1일 한국 시간 0시에 이번 달 순위가 새로 시작돼요. 월간 톱 10은 톱 10 배지를 받아요.'
+                : 'The monthly ranking restarts on the 1st at midnight Korea time. The monthly top 10 get the Top 10 badge.'}
             </p>
           </div>
         )}
@@ -240,7 +242,7 @@ export default function LeaderboardPage() {
             ) : (
               <>
                 <div className="lvl-card">
-                  <div className="lvl-emoji" aria-hidden="true">{myLevel.emoji}</div>
+                  <div className="lvl-emoji"><SeaArt name={levelArt(myLevel.n)} size={76} /></div>
                   <div className="lvl-body">
                     <div className="lvl-name">
                       {ko ? `${myLevel.ko} · 레벨 ${myLevel.n}` : `${myLevel.en} · Level ${myLevel.n}`}
@@ -254,9 +256,9 @@ export default function LeaderboardPage() {
                     <div className="lvl-next">
                       {mine.next_level
                         ? ko
-                          ? `${levelByNumber(mine.next_level).emoji} ${levelByNumber(mine.next_level).ko}까지 ${mine.needed}점`
-                          : `${mine.needed} more to ${levelByNumber(mine.next_level).emoji} ${levelByNumber(mine.next_level).en}`
-                        : ko ? '최고 레벨이에요! 🎉' : "You're at the top level! 🎉"}
+                          ? `${levelByNumber(mine.next_level).ko}까지 ${mine.needed}점`
+                          : `${mine.needed} more to ${levelByNumber(mine.next_level).en}`
+                        : ko ? '최고 레벨이에요!' : "You're at the top level!"}
                     </div>
                   </div>
                 </div>
@@ -286,7 +288,7 @@ export default function LeaderboardPage() {
                     const earned = mine.badges.find((x) => x.id === b.id)?.earned;
                     return (
                       <div key={b.id} className={`bdg ${earned ? 'on' : ''}`} title={ko ? b.how_ko : b.how_en}>
-                        <span className="be">{earned ? b.emoji : '🔒'}</span>
+                        <span className="be"><SeaArt name={b.id} size={44} locked={!earned} /></span>
                         <span className="bn">{ko ? b.ko : b.en}</span>
                         <span className="bh">{ko ? b.how_ko : b.how_en}</span>
                       </div>
@@ -299,7 +301,7 @@ export default function LeaderboardPage() {
                   {POINT_RULES.map((r) => (
                     <li key={r.reason}>
                       <span>
-                        {r.emoji} {ko ? r.ko : r.en}
+                        <Icon name={r.icon} size={20} /> {ko ? r.ko : r.en}
                       </span>
                       <strong className={r.points < 0 ? 'neg' : ''}>{r.points > 0 ? `+${r.points}` : r.points}</strong>
                     </li>
@@ -318,7 +320,7 @@ export default function LeaderboardPage() {
                   <ul className="hist">
                     {mine.history.map((h, i) => (
                       <li key={i}>
-                        <span>{reasonLabel(h.reason, lang)}</span>
+                        <span className="hist-reason"><Icon name={reasonIcon(h.reason)} size={18} /> {reasonLabel(h.reason, lang)}</span>
                         <span className="hd">{new Date(h.created_at).toLocaleDateString(ko ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}</span>
                         <strong className={h.delta < 0 ? 'neg' : ''}>{h.delta > 0 ? `+${h.delta}` : h.delta}</strong>
                       </li>
@@ -346,7 +348,7 @@ export default function LeaderboardPage() {
         {tab === 'perks' && (
           <div>
             <div className="lb-me">
-              <span className="lb-me-rank">{myLevel.emoji}</span>
+              <span className="lb-me-rank"><SeaArt name={levelArt(myLevel.n)} size={36} /></span>
               <span>
                 {ko ? '내 레벨' : 'Your level'}: <strong>{ko ? myLevel.ko : myLevel.en}</strong>
               </span>
@@ -360,11 +362,11 @@ export default function LeaderboardPage() {
                 return (
                   <li key={l.n} className={open ? 'on' : ''}>
                     <span className="ul-lv">
-                      {l.emoji} {ko ? l.ko : l.en}
+                      <span className="ul-name"><SeaArt name={levelArt(l.n)} size={22} /> {ko ? l.ko : l.en}</span>
                       <em>{l.min.toLocaleString()}+</em>
                     </span>
                     <span className="ul-items">
-                      {items.length ? items.map((u) => <span key={u.en}>{open ? '✓' : '🔒'} {ko ? u.ko : u.en}</span>) : <span>{open ? '✓' : '🔒'} {ko ? '더 많은 가게 혜택' : 'More venue perks'}</span>}
+                      {items.length ? items.map((u) => <span key={u.en}><Icon name={open ? u.icon : 'lock'} size={16} tone={open ? undefined : 'off'} /> {ko ? u.ko : u.en}</span>) : <span><Icon name={open ? 'perk' : 'lock'} size={16} tone={open ? undefined : 'off'} /> {ko ? '더 많은 가게 혜택' : 'More venue perks'}</span>}
                     </span>
                   </li>
                 );
@@ -377,7 +379,7 @@ export default function LeaderboardPage() {
               <div className="lb-skel" />
             ) : perks.perks.length === 0 ? (
               <div className="lb-empty">
-                <div className="lb-empty-icon">🎁</div>
+                <div className="lb-empty-icon"><Icon name="perk" size={44} /></div>
                 <strong>{ko ? '아직 가게 혜택이 없어요' : 'No venue perks yet'}</strong>
                 <span>{ko ? '제휴 가게가 혜택을 추가하면 여기에 보여요.' : 'When partner venues add perks, they show up here.'}</span>
               </div>
@@ -393,7 +395,7 @@ export default function LeaderboardPage() {
                           {p.venue.name} · {cityName(p.venue.city, lang)}
                         </a>
                         <span className="pk-lv">
-                          {need.emoji} {ko ? `${need.ko} 이상` : `${need.en}+`}
+                          <SeaArt name={levelArt(need.n)} size={16} /> {ko ? `${need.ko} 이상` : `${need.en}+`}
                         </span>
                       </div>
                       <div className="pk-title">{t.title}</div>
@@ -405,7 +407,7 @@ export default function LeaderboardPage() {
                           </button>
                         ) : (
                           <span className="pk-lock">
-                            🔒 {ko ? `${need.ko} 레벨에서 열려요` : `Unlocks at ${need.en}`}
+                            <Icon name="lock" size={15} tone="off" /> {ko ? `${need.ko} 레벨에서 열려요` : `Unlocks at ${need.en}`}
                           </span>
                         )}
                       </div>
@@ -435,26 +437,29 @@ export default function LeaderboardPage() {
         .muted { color: var(--ink-60); font-size: 14px; }
         .lb-error { color: #b42318; background: #fef3f2; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
         .lb-tabs { display: flex; gap: 4px; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 999px; padding: 4px; margin-bottom: 16px; }
-        .lb-tabs button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 8px; font-family: var(--body); font-weight: 700; font-size: 14px; color: var(--ink-60); cursor: pointer; white-space: nowrap; }
-        .lb-tabs button.on { background: var(--ink); color: var(--paper); }
+        .lb-tabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; border-radius: 999px; padding: 9px 8px; font-family: var(--body); font-weight: 700; font-size: 14px; color: var(--ink-60); cursor: pointer; white-space: nowrap; }
+        .lb-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(30, 34, 48, 0.12); }
         .lb-period { display: flex; gap: 8px; margin-bottom: 12px; }
         .lb-period button { border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 7px 14px; font-family: var(--body); font-weight: 700; font-size: 13px; color: var(--ink); cursor: pointer; }
         .lb-period button.on { background: var(--persimmon); border-color: var(--persimmon); color: #fff; }
         .lb-me { display: flex; align-items: center; gap: 12px; background: #fff; border: 2px solid rgba(255, 106, 61, 0.35); border-radius: 16px; padding: 12px 16px; font-size: 14.5px; margin-bottom: 16px; flex-wrap: wrap; }
-        .lb-me.muted-card { border: 1px solid var(--ink-12); background: var(--paper-2); color: var(--ink); }
+        .lb-me.muted-card { align-items: center; border: 1px solid var(--ink-12); background: var(--paper-2); color: var(--ink); }
         .lb-me a, .linkish { color: var(--persimmon); font-weight: 700; text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--body); font-size: 14px; }
         .lb-me-rank { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--persimmon); }
         .lb-skel { height: 220px; border-radius: 18px; background: var(--paper-2); border: 1px solid var(--ink-12); }
         .lb-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 40px 16px; background: var(--paper-2); border-radius: 20px; color: var(--ink); }
         .lb-empty span { color: var(--ink-60); font-size: 14px; }
-        .lb-empty-icon { font-size: 40px; }
+        .lb-empty-icon { display: flex; justify-content: center; }
 
         .lb-podium { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 8px; align-items: end; margin: 8px 0 14px; }
         .pod { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: var(--ink); min-width: 0; }
         .pod.empty { visibility: hidden; }
-        .medal { font-size: 22px; }
+        .medal { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 13px; color: var(--ink); border: 1.5px solid #1B2838; }
+        .medal.m1 { background: #F7D46B; }
+        .medal.m2 { background: #D5DAE2; }
+        .medal.m3 { background: #E8B58F; }
         .pod-name { font-weight: 800; font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .pod-lv { font-size: 12px; color: var(--ink-60); }
+        .pod-lv { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-60); }
         .pod-pts { font-family: var(--display); font-weight: 800; font-size: 16px; }
         .pod-base { width: 100%; border-radius: 14px 14px 6px 6px; background: var(--paper-2); border: 1px solid var(--ink-12); text-align: center; font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--ink-60); padding-top: 8px; }
         .pod.p1 .pod-base { height: 76px; background: linear-gradient(180deg, rgba(255, 106, 61, 0.18), rgba(255, 106, 61, 0.05)); color: var(--persimmon); }
@@ -473,7 +478,7 @@ export default function LeaderboardPage() {
         .lb-foot, .small-note { color: var(--ink-60); font-size: 12.5px; margin: 14px 0 0; line-height: 1.5; }
 
         .lvl-card { display: flex; gap: 16px; align-items: center; background: linear-gradient(135deg, rgba(199, 184, 224, 0.35), rgba(245, 194, 199, 0.3)); border: 1px solid var(--ink-12); border-radius: 22px; padding: 18px; }
-        .lvl-emoji { font-size: 58px; line-height: 1; }
+        .lvl-emoji { display: flex; flex-shrink: 0; }
         .lvl-body { flex: 1; min-width: 0; }
         .lvl-name { font-weight: 800; font-size: 15px; }
         .lvl-total { font-family: var(--display); font-weight: 800; font-size: 30px; }
@@ -488,13 +493,13 @@ export default function LeaderboardPage() {
         .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
         .bdg { display: flex; flex-direction: column; gap: 2px; background: var(--paper-2); border: 1px dashed var(--ink-12); border-radius: 14px; padding: 10px 12px; opacity: 0.75; }
         .bdg.on { background: #fff; border: 1px solid rgba(255, 106, 61, 0.35); opacity: 1; }
-        .be { font-size: 24px; }
+        .be { display: flex; }
         .bn { font-weight: 800; font-size: 14px; }
         .bh { font-size: 12px; color: var(--ink-60); line-height: 1.35; }
         .rules, .hist { list-style: none; padding: 0; margin: 0; background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; overflow: hidden; }
         .rules li, .hist li { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--ink-12); font-size: 14px; }
         .rules li:first-child, .hist li:first-child { border-top: 0; }
-        .rules li span, .hist li span:first-child { flex: 1; }
+        .rules li span, .hist li span:first-child { flex: 1; display: flex; align-items: center; gap: 8px; }
         .rules strong, .hist strong { font-family: var(--display); color: var(--jade); }
         .neg { color: #b42318 !important; }
         .hd { color: var(--ink-60); font-size: 12.5px; }
@@ -505,6 +510,8 @@ export default function LeaderboardPage() {
         .unlocks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
         .unlocks li { display: flex; gap: 12px; align-items: flex-start; background: var(--paper-2); border: 1px solid var(--ink-12); border-radius: 14px; padding: 10px 14px; font-size: 14px; color: var(--ink-60); }
         .unlocks li.on { background: #fff; color: var(--ink); }
+        .ul-name { display: flex; align-items: center; gap: 5px; }
+        .ul-items span { display: inline-flex; align-items: center; gap: 5px; }
         .ul-lv { width: 130px; flex-shrink: 0; font-weight: 800; color: var(--ink); display: flex; flex-direction: column; }
         .ul-lv em { font-style: normal; font-weight: 600; font-size: 12px; color: var(--ink-60); }
         .ul-items { display: flex; flex-direction: column; gap: 2px; }
@@ -513,13 +520,13 @@ export default function LeaderboardPage() {
         .perk.locked { background: var(--paper-2); }
         .pk-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
         .pk-venue { font-size: 13px; font-weight: 700; color: var(--ink-60); text-decoration: none; }
-        .pk-lv { font-size: 12px; font-weight: 800; background: rgba(199, 184, 224, 0.4); border-radius: 999px; padding: 2px 9px; }
+        .pk-lv { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; background: rgba(199, 184, 224, 0.4); border-radius: 999px; padding: 2px 9px; }
         .pk-title { font-family: var(--display); font-weight: 800; font-size: 17px; margin-top: 4px; }
         .pk-details { font-size: 13.5px; color: var(--ink-60); margin-top: 2px; }
         .pk-act { margin-top: 10px; }
         .pk-use { background: var(--persimmon); color: #fff; border: 0; border-radius: 999px; padding: 9px 18px; font-family: var(--body); font-weight: 800; font-size: 14px; cursor: pointer; }
         .pk-use:disabled { opacity: 0.6; }
-        .pk-lock { font-size: 13px; color: var(--ink-60); font-weight: 600; }
+        .pk-lock { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-60); font-weight: 600; }
         @media (max-width: 560px) {
           h1 { font-size: 26px; }
           .stats { grid-template-columns: repeat(2, 1fr); }

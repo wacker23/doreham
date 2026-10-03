@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { Icon } from '@/components/icons/Icon';
 
 const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
@@ -43,18 +44,18 @@ type MenuItem = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  cafe: '☕ Café',
-  restaurant: '🍜 Restaurant',
-  board_game_cafe: '🎲 Board game café',
-  escape_room: '🧩 Escape room',
-  bookshop: '📚 Bookshop',
-  workshop_creative: '🏺 Workshop',
-  active_sports: '🥾 Sports',
-  cultural_venue: '🎨 Cultural venue',
-  nature_outdoor: '🌿 Nature/Outdoor',
-  music_movie: '🎬 Music/Movie',
-  bar_club: '🍸 Bar/Club',
-  other: '🏪 Other',
+  cafe: 'Café',
+  restaurant: 'Restaurant',
+  board_game_cafe: 'Board game café',
+  escape_room: 'Escape room',
+  bookshop: 'Bookshop',
+  workshop_creative: 'Workshop',
+  active_sports: 'Sports',
+  cultural_venue: 'Cultural venue',
+  nature_outdoor: 'Nature/Outdoor',
+  music_movie: 'Music/Movie',
+  bar_club: 'Bar/Club',
+  other: 'Other',
 };
 
 export default function AdminVenuesPage() {
@@ -258,7 +259,7 @@ export default function AdminVenuesPage() {
           <div className="loading-inline">Loading venues…</div>
         ) : venues.length === 0 ? (
           <div className="empty-state">
-            <p>🎉 All caught up! No pending venues.</p>
+            <p><Icon name="done" size={20} /> All caught up! No pending venues.</p>
           </div>
         ) : (
           <div className="venues-list">
@@ -355,7 +356,7 @@ export default function AdminVenuesPage() {
                                 <div className="menu-info">
                                   <div className="menu-name">
                                     {item.name}
-                                    {item.is_signature && ' ⭐'}
+                                    {item.is_signature && <> <Icon name="starFilled" size={13} /></>}
                                   </div>
                                   {item.name_en && <div className="menu-name-en">{item.name_en}</div>}
                                   {item.description && <p className="menu-desc">{item.description}</p>}

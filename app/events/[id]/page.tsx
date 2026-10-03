@@ -11,6 +11,9 @@ import { EVENT_REPORT_REASONS, eventCategory } from '@/lib/eventCategories';
 import { dayLabel, eventError, eventText, relativeTime, timeRange } from '@/lib/eventDisplay';
 import { initials, type EventDetail, type EventPerson } from '@/lib/eventTypes';
 import { levelByNumber } from '@/lib/points';
+import { Icon } from '@/components/icons/Icon';
+import { SeaArt, levelArt } from '@/components/icons/SeaArt';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
 type ReportTarget = { commentId: string | null } | null;
 
@@ -138,7 +141,7 @@ export default function EventDetailPage() {
       <>
         <AppHeader lang={lang} setLang={setLang} />
         <main className="app-page narrow" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48 }}>🫥</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}><Icon name="sad" size={56} /></div>
           <h1 style={{ fontFamily: 'var(--display)', fontSize: 22 }}>{eventError(loadError, lang)}</h1>
           <a href="/events" style={{ color: 'var(--persimmon)', fontWeight: 700 }}>
             ← {ko ? '이벤트 목록' : 'All events'}
@@ -168,21 +171,21 @@ export default function EventDetailPage() {
 
         {isNew && e.status === 'published' && (
           <div className="evd-banner good">
-            🎉 {ko ? '이벤트가 올라갔어요! 친구에게 공유해 보세요.' : 'Your event is live! Share it with friends.'}
+            <Icon name="events" size={22} /> {ko ? '이벤트가 올라갔어요! 친구에게 공유해 보세요.' : 'Your event is live! Share it with friends.'}
             <button onClick={share}>{ko ? '공유' : 'Share'}</button>
           </div>
         )}
-        {posterFailed && <div className="evd-banner bad">🖼️ {eventError('poster_failed', lang)}</div>}
-        {e.status === 'cancelled' && <div className="evd-banner bad">❌ {ko ? '취소된 이벤트예요.' : 'This event was cancelled.'}</div>}
+        {posterFailed && <div className="evd-banner bad"><Icon name="image" size={22} /> {eventError('poster_failed', lang)}</div>}
+        {e.status === 'cancelled' && <div className="evd-banner bad"><Icon name="cancelled" size={22} /> {ko ? '취소된 이벤트예요.' : 'This event was cancelled.'}</div>}
         {e.status === 'hidden' && (
           <div className="evd-banner bad">
-            🙈{' '}
+            <Icon name="lock" size={22} />{' '}
             {e.hidden_reason === 'reports'
               ? ko ? '여러 명이 신고해서 검토할 때까지 숨겨졌어요. 주최자와 관리자만 볼 수 있어요.' : 'Hidden after several reports, until we review it. Only you and admins can see it.'
               : ko ? '관리자가 숨긴 이벤트예요.' : 'An admin hid this event.'}
           </div>
         )}
-        {started && e.status === 'published' && <div className="evd-banner">⏱️ {ko ? '이미 시작했거나 끝난 이벤트예요.' : 'This event has started or already happened.'}</div>}
+        {started && e.status === 'published' && <div className="evd-banner"><Icon name="time" size={22} /> {ko ? '이미 시작했거나 끝난 이벤트예요.' : 'This event has started or already happened.'}</div>}
 
         <div className={`evd-layout ${e.poster_url ? 'has-poster' : ''}`}>
         {e.poster_url && (
@@ -197,32 +200,33 @@ export default function EventDetailPage() {
         <article className="evd-card">
           <div className="evd-tags">
             <span className="tag">
-              {cat.emoji} {ko ? cat.label_ko : cat.label_en}
+              <CategoryIcon art={cat.art} size={18} /> {ko ? cat.label_ko : cat.label_en}
             </span>
-            <span className="tag">📍 {cityName(e.city, lang)}</span>
-            {e.is_featured && <span className="tag feat">⭐ {ko ? '추천' : 'Featured'}</span>}
+            <span className="tag"><Icon name="location" size={15} /> {cityName(e.city, lang)}</span>
+            {e.is_featured && <span className="tag feat"><Icon name="starFilled" size={15} /> {ko ? '추천' : 'Featured'}</span>}
           </div>
 
           <h1>{t.title}</h1>
 
           {t.canToggle && (
             <button className="evd-tr" onClick={() => setShowOriginal((v) => !v)}>
+              <Icon name="online" size={15} />{' '}
               {showOriginal
-                ? ko ? '🌐 번역 보기' : '🌐 Show translation'
-                : ko ? `🌐 ${t.sourceLangName}에서 자동 번역됨 · 원문 보기` : `🌐 Translated from ${t.sourceLangName} · Show original`}
+                ? ko ? '번역 보기' : 'Show translation'
+                : ko ? `${t.sourceLangName}에서 자동 번역됨 · 원문 보기` : `Translated from ${t.sourceLangName} · Show original`}
             </button>
           )}
 
           <ul className="evd-info">
             <li>
-              <span className="ic">📅</span>
+              <span className="ic"><Icon name="date" size={22} /></span>
               <div>
                 <strong>{dayLabel(e.starts_at, lang)}</strong> · {timeRange(e.starts_at, e.ends_at, lang)}
                 <div className="sub">{ko ? '한국 시간' : 'Korea time'}</div>
               </div>
             </li>
             <li>
-              <span className="ic">📍</span>
+              <span className="ic"><Icon name="location" size={22} /></span>
               <div>
                 <strong>{t.place}</strong>
                 {e.address && <div className="sub">{e.address}</div>}
@@ -232,7 +236,7 @@ export default function EventDetailPage() {
               </div>
             </li>
             <li>
-              <span className="ic">👥</span>
+              <span className="ic"><Icon name="people" size={22} /></span>
               <div>
                 <strong>
                   {e.going_count}
@@ -243,7 +247,7 @@ export default function EventDetailPage() {
             </li>
             {e.fee_text && (
               <li>
-                <span className="ic">💸</span>
+                <span className="ic"><Icon name="price" size={22} /></span>
                 <div>
                   <strong>{e.fee_text}</strong>
                 </div>
@@ -267,7 +271,7 @@ export default function EventDetailPage() {
               </>
             ) : open ? (
               <button className="btn primary" disabled={busy === 'going' || e.is_full} onClick={() => setGoing(true)}>
-                {e.is_full ? (ko ? '마감됐어요' : 'Full') : busy === 'going' ? '…' : ko ? '🙋 참여할게요' : "🙋 I'm going"}
+                {e.is_full ? (ko ? '마감됐어요' : 'Full') : busy === 'going' ? '…' : ko ? <><Icon name="join" size={18} tone="light" /> 참여할게요</> : <><Icon name="join" size={18} tone="light" /> I&apos;m going</>}
               </button>
             ) : null}
             <button className="btn ghost" onClick={share}>
@@ -405,7 +409,7 @@ export default function EventDetailPage() {
               {e.is_featured ? (
                 <button className="btn ghost" disabled={!!busy} onClick={() => moderate('unfeature')}>Unfeature</button>
               ) : (
-                <button className="btn ghost" disabled={!!busy} onClick={() => moderate('feature')}>⭐ Feature</button>
+                <button className="btn ghost" disabled={!!busy} onClick={() => moderate('feature')}><Icon name="star" size={16} /> Feature</button>
               )}
               {e.status === 'hidden' ? (
                 <button className="btn ghost" disabled={!!busy} onClick={() => moderate('restore')}>Restore (publish)</button>
@@ -481,13 +485,13 @@ export default function EventDetailPage() {
 
         .evd-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 22px; padding: 20px; }
         .evd-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-        .tag { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--paper-2); color: var(--ink-60); }
+        .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--paper-2); color: var(--ink-60); }
         .tag.feat { background: rgba(255, 106, 61, 0.12); color: var(--persimmon); }
         h1 { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.25; letter-spacing: -0.015em; margin: 0 0 6px; word-break: keep-all; overflow-wrap: anywhere; }
         .evd-tr { background: none; border: 0; padding: 0; color: var(--ink-60); font-size: 12.5px; font-family: var(--body); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; margin-bottom: 6px; }
         .evd-info { list-style: none; padding: 0; margin: 14px 0; display: flex; flex-direction: column; gap: 12px; }
         .evd-info li { display: flex; gap: 12px; font-size: 15px; }
-        .evd-info .ic { width: 22px; text-align: center; flex-shrink: 0; }
+        .evd-info .ic { width: 24px; display: flex; justify-content: center; flex-shrink: 0; }
         .evd-info .sub { color: var(--ink-60); font-size: 13px; margin-top: 1px; }
         .evd-map { display: inline-block; margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--persimmon); text-decoration: none; }
         .full { margin-left: 8px; font-size: 12px; font-weight: 800; color: #b42318; background: #fef3f2; padding: 2px 8px; border-radius: 999px; }
@@ -495,7 +499,7 @@ export default function EventDetailPage() {
         .evd-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
         .evd-you { font-weight: 800; font-size: 14.5px; color: var(--persimmon); margin-right: 4px; }
         .evd-you.going { color: var(--jade); }
-        .btn { font-family: var(--body); font-weight: 700; font-size: 14px; line-height: 1.2; border-radius: 999px; padding: 10px 18px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; border: 1px solid transparent; }
+        .btn { gap: 6px; font-family: var(--body); font-weight: 700; font-size: 14px; line-height: 1.2; border-radius: 999px; padding: 10px 18px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; border: 1px solid transparent; }
         .btn.primary { background: var(--persimmon); color: #fff; font-size: 15px; padding: 11px 22px; }
         .btn:hover { transform: none; }
         .btn.ghost { background: #fff; border-color: var(--ink-12); color: var(--ink); }
@@ -568,7 +572,7 @@ function HostRow({ host, lang }: { host: EventDetail['event']['host']; lang: 'en
           {!!host.level && host.level >= 2 && (
             <span className="h-lv">
               {' '}
-              {levelByNumber(host.level).emoji} {ko ? levelByNumber(host.level).ko : levelByNumber(host.level).en}
+              <SeaArt name={levelArt(host.level)} size={16} /> {ko ? levelByNumber(host.level).ko : levelByNumber(host.level).en}
             </span>
           )}
         </span>

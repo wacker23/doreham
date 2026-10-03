@@ -20,6 +20,9 @@ import { AppTabBar } from '@/components/AppTabBar';
 import { AppHeader } from '@/components/AppHeader';
 import { ProfileLevel } from '@/components/ProfileLevel';
 import { cityName } from '@/lib/cities';
+import { Icon, isIconName, type IconName } from '@/components/icons/Icon';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
+import { ACTIVITY_ART, lifestyleIcon, reviewTagIcon } from '@/lib/icons';
 
 type Profile = {
   id: string;
@@ -73,34 +76,34 @@ const MBTI_LABELS: Record<string, { en: string; ko: string }> = {
   ESFP: { en: 'The Entertainer', ko: '연예인' },
 };
 
-const ZODIAC: Record<string, { en: string; ko: string; symbol: string }> = {
-  aries:       { en: 'Aries',       ko: '양자리',      symbol: '♈' },
-  taurus:      { en: 'Taurus',      ko: '황소자리',    symbol: '♉' },
-  gemini:      { en: 'Gemini',      ko: '쌍둥이자리',  symbol: '♊' },
-  cancer:      { en: 'Cancer',      ko: '게자리',      symbol: '♋' },
-  leo:         { en: 'Leo',         ko: '사자자리',    symbol: '♌' },
-  virgo:       { en: 'Virgo',       ko: '처녀자리',    symbol: '♍' },
-  libra:       { en: 'Libra',       ko: '천칭자리',    symbol: '♎' },
-  scorpio:     { en: 'Scorpio',     ko: '전갈자리',    symbol: '♏' },
-  sagittarius: { en: 'Sagittarius', ko: '궁수자리',    symbol: '♐' },
-  capricorn:   { en: 'Capricorn',   ko: '염소자리',    symbol: '♑' },
-  aquarius:    { en: 'Aquarius',    ko: '물병자리',    symbol: '♒' },
-  pisces:      { en: 'Pisces',      ko: '물고기자리',  symbol: '♓' },
+const ZODIAC: Record<string, { en: string; ko: string }> = {
+  aries:       { en: 'Aries',       ko: '양자리' },
+  taurus:      { en: 'Taurus',      ko: '황소자리' },
+  gemini:      { en: 'Gemini',      ko: '쌍둥이자리' },
+  cancer:      { en: 'Cancer',      ko: '게자리' },
+  leo:         { en: 'Leo',         ko: '사자자리' },
+  virgo:       { en: 'Virgo',       ko: '처녀자리' },
+  libra:       { en: 'Libra',       ko: '천칭자리' },
+  scorpio:     { en: 'Scorpio',     ko: '전갈자리' },
+  sagittarius: { en: 'Sagittarius', ko: '궁수자리' },
+  capricorn:   { en: 'Capricorn',   ko: '염소자리' },
+  aquarius:    { en: 'Aquarius',    ko: '물병자리' },
+  pisces:      { en: 'Pisces',      ko: '물고기자리' },
 };
 
-const ACTIVITY_LABELS: Record<string, { en: string; ko: string; emoji: string }> = {
-  conversation_coffee:      { en: 'Coffee chats', ko: '커피 대화', emoji: '☕' },
-  board_games_casual:       { en: 'Board games', ko: '보드게임', emoji: '🎲' },
-  workshops_creative:       { en: 'Creative workshops', ko: '창작 클래스', emoji: '🏺' },
-  active_outdoor:           { en: 'Active outdoors', ko: '야외 활동', emoji: '🥾' },
-  food_dining:              { en: 'Food & dining', ko: '음식·식사', emoji: '🍜' },
-  learning_culture:         { en: 'Learning culture', ko: '문화 배우기', emoji: '📚' },
-  nature_calm:              { en: 'Nature calm', ko: '자연 힐링', emoji: '🌿' },
-  escape_puzzles:           { en: 'Escape & puzzles', ko: '방탈출·퍼즐', emoji: '🧩' },
-  movies_music_shows:       { en: 'Movies & music', ko: '영화·음악', emoji: '🎬' },
-  career_networking:        { en: 'Career networking', ko: '커리어 네트워킹', emoji: '💼' },
-  volunteering_community:   { en: 'Volunteering', ko: '봉사·커뮤니티', emoji: '🤝' },
-  nightlife_social:         { en: 'Nightlife', ko: '나이트라이프', emoji: '🌃' },
+const ACTIVITY_LABELS: Record<string, { en: string; ko: string }> = {
+  conversation_coffee:      { en: 'Coffee chats', ko: '커피 대화' },
+  board_games_casual:       { en: 'Board games', ko: '보드게임' },
+  workshops_creative:       { en: 'Creative workshops', ko: '창작 클래스' },
+  active_outdoor:           { en: 'Active outdoors', ko: '야외 활동' },
+  food_dining:              { en: 'Food & dining', ko: '음식·식사' },
+  learning_culture:         { en: 'Learning culture', ko: '문화 배우기' },
+  nature_calm:              { en: 'Nature calm', ko: '자연 힐링' },
+  escape_puzzles:           { en: 'Escape & puzzles', ko: '방탈출·퍼즐' },
+  movies_music_shows:       { en: 'Movies & music', ko: '영화·음악' },
+  career_networking:        { en: 'Career networking', ko: '커리어 네트워킹' },
+  volunteering_community:   { en: 'Volunteering', ko: '봉사·커뮤니티' },
+  nightlife_social:         { en: 'Nightlife', ko: '나이트라이프' },
 };
 
 const LANGUAGE_LABELS: Record<string, { en: string; ko: string; native: string }> = {
@@ -138,40 +141,40 @@ const LANGUAGE_LABELS: Record<string, { en: string; ko: string; native: string }
 
 const LIFESTYLE_LABELS = {
   exercise_frequency: {
-    never:        { en: 'Never', ko: '전혀 안 해요', emoji: '🛋️' },
-    occasionally: { en: 'Occasionally', ko: '가끔', emoji: '🚶' },
-    weekly_1_2:   { en: '1–2 times a week', ko: '주 1–2회', emoji: '🏃' },
-    weekly_3_4:   { en: '3–4 times a week', ko: '주 3–4회', emoji: '💪' },
-    daily:        { en: 'Almost every day', ko: '거의 매일', emoji: '🔥' },
+    never:        { en: 'Never', ko: '전혀 안 해요' },
+    occasionally: { en: 'Occasionally', ko: '가끔' },
+    weekly_1_2:   { en: '1–2 times a week', ko: '주 1–2회' },
+    weekly_3_4:   { en: '3–4 times a week', ko: '주 3–4회' },
+    daily:        { en: 'Almost every day', ko: '거의 매일' },
   },
   education_level: {
-    high_school:     { en: 'High school', ko: '고등학교', emoji: '🏫' },
-    college_student: { en: 'College student', ko: '대학생', emoji: '📖' },
-    bachelors:       { en: "Bachelor's", ko: '학사', emoji: '🎓' },
-    masters:         { en: "Master's", ko: '석사', emoji: '🎓' },
-    doctoral:        { en: 'Doctoral', ko: '박사', emoji: '👩‍🔬' },
-    other:           { en: 'Other', ko: '기타', emoji: '✨' },
+    high_school:     { en: 'High school', ko: '고등학교' },
+    college_student: { en: 'College student', ko: '대학생' },
+    bachelors:       { en: "Bachelor's", ko: '학사' },
+    masters:         { en: "Master's", ko: '석사' },
+    doctoral:        { en: 'Doctoral', ko: '박사' },
+    other:           { en: 'Other', ko: '기타' },
   },
   drinking_habits: {
-    no:                { en: "Doesn't drink", ko: '술 안 마심', emoji: '🚫' },
-    occasionally:      { en: 'Occasionally', ko: '가끔', emoji: '🍷' },
-    socially:          { en: 'Socially', ko: '사교적으로', emoji: '🥂' },
-    regularly:         { en: 'Regularly', ko: '자주', emoji: '🍺' },
-    prefer_not_to_say: { en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    no:                { en: "Doesn't drink", ko: '술 안 마심' },
+    occasionally:      { en: 'Occasionally', ko: '가끔' },
+    socially:          { en: 'Socially', ko: '사교적으로' },
+    regularly:         { en: 'Regularly', ko: '자주' },
+    prefer_not_to_say: { en: 'Prefer not to say', ko: '답변 안 함' },
   },
   smoking_habits: {
-    non_smoker:        { en: 'Non-smoker', ko: '비흡연자', emoji: '🚭' },
-    occasionally:      { en: 'Occasionally', ko: '가끔', emoji: '🚬' },
-    regular:           { en: 'Regular', ko: '일상 흡연', emoji: '🚬' },
-    former:            { en: 'Former smoker', ko: '금연 중', emoji: '💨' },
-    vape:              { en: 'Vape', ko: '전자담배', emoji: '💨' },
-    prefer_not_to_say: { en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    non_smoker:        { en: 'Non-smoker', ko: '비흡연자' },
+    occasionally:      { en: 'Occasionally', ko: '가끔' },
+    regular:           { en: 'Regular', ko: '일상 흡연' },
+    former:            { en: 'Former smoker', ko: '금연 중' },
+    vape:              { en: 'Vape', ko: '전자담배' },
+    prefer_not_to_say: { en: 'Prefer not to say', ko: '답변 안 함' },
   },
   children_status: {
-    no_children:       { en: 'No children', ko: '자녀 없음', emoji: '👤' },
-    have_children:     { en: 'Has children', ko: '자녀 있음', emoji: '👨‍👩‍👧' },
-    expecting:         { en: 'Expecting', ko: '임신 중', emoji: '🤰' },
-    prefer_not_to_say: { en: 'Prefer not to say', ko: '답변 안 함', emoji: '—' },
+    no_children:       { en: 'No children', ko: '자녀 없음' },
+    have_children:     { en: 'Has children', ko: '자녀 있음' },
+    expecting:         { en: 'Expecting', ko: '임신 중' },
+    prefer_not_to_say: { en: 'Prefer not to say', ko: '답변 안 함' },
   },
 };
 
@@ -184,28 +187,28 @@ function computeAge(dob: string): number {
   return age;
 }
 
-function bigFiveLabels(profile: Profile, lang: 'en' | 'ko'): { emoji: string; label: string }[] {
-  const labels: { emoji: string; label: string }[] = [];
+function bigFiveLabels(profile: Profile, lang: 'en' | 'ko'): { icon: IconName; label: string }[] {
+  const labels: { icon: IconName; label: string }[] = [];
   const e = profile.big_five_extraversion ?? 0.5;
   const o = profile.big_five_openness ?? 0.5;
   const a = profile.big_five_agreeableness ?? 0.5;
   const c = profile.big_five_conscientiousness ?? 0.5;
   const n = profile.big_five_neuroticism ?? 0.5;
 
-  if (e >= 0.65) labels.push({ emoji: '⚡', label: lang === 'ko' ? '사교적 에너지' : 'Social energizer' });
-  else if (e <= 0.35) labels.push({ emoji: '🌙', label: lang === 'ko' ? '조용한 관찰자' : 'Quiet observer' });
+  if (e >= 0.65) labels.push({ icon: 'energizer', label: lang === 'ko' ? '사교적 에너지' : 'Social energizer' });
+  else if (e <= 0.35) labels.push({ icon: 'observer', label: lang === 'ko' ? '조용한 관찰자' : 'Quiet observer' });
 
-  if (o >= 0.65) labels.push({ emoji: '💡', label: lang === 'ko' ? '아이디어 탐험가' : 'Ideas explorer' });
-  else if (o <= 0.35) labels.push({ emoji: '⚓', label: lang === 'ko' ? '든든한 뿌리' : 'Steady anchor' });
+  if (o >= 0.65) labels.push({ icon: 'explorer', label: lang === 'ko' ? '아이디어 탐험가' : 'Ideas explorer' });
+  else if (o <= 0.35) labels.push({ icon: 'anchor', label: lang === 'ko' ? '든든한 뿌리' : 'Steady anchor' });
 
-  if (a >= 0.65) labels.push({ emoji: '🌻', label: lang === 'ko' ? '따뜻함 전달자' : 'Warmth bringer' });
-  else if (a <= 0.35) labels.push({ emoji: '🎯', label: lang === 'ko' ? '솔직한 목소리' : 'Direct voice' });
+  if (a >= 0.65) labels.push({ icon: 'warmth', label: lang === 'ko' ? '따뜻함 전달자' : 'Warmth bringer' });
+  else if (a <= 0.35) labels.push({ icon: 'direct', label: lang === 'ko' ? '솔직한 목소리' : 'Direct voice' });
 
-  if (c >= 0.65) labels.push({ emoji: '📋', label: lang === 'ko' ? '계획가' : 'Planner' });
-  else if (c <= 0.35) labels.push({ emoji: '🎈', label: lang === 'ko' ? '자유로운 영혼' : 'Free spirit' });
+  if (c >= 0.65) labels.push({ icon: 'planner', label: lang === 'ko' ? '계획가' : 'Planner' });
+  else if (c <= 0.35) labels.push({ icon: 'freeSpirit', label: lang === 'ko' ? '자유로운 영혼' : 'Free spirit' });
 
-  if (n >= 0.65) labels.push({ emoji: '🌊', label: lang === 'ko' ? '깊은 감정' : 'Deep feeler' });
-  else if (n <= 0.35) labels.push({ emoji: '🗿', label: lang === 'ko' ? '흔들리지 않는 중심' : 'Steady center' });
+  if (n >= 0.65) labels.push({ icon: 'deepFeeler', label: lang === 'ko' ? '깊은 감정' : 'Deep feeler' });
+  else if (n <= 0.35) labels.push({ icon: 'steady', label: lang === 'ko' ? '흔들리지 않는 중심' : 'Steady center' });
 
   return labels;
 }
@@ -343,7 +346,7 @@ export default function ProfilePage() {
         </header>
         <main className="wrap main-wrap">
           <div className="error-state">
-            <div className="error-icon">🔒</div>
+            <div className="error-icon"><Icon name="lock" size={56} /></div>
             <h2>{error ?? (lang === 'ko' ? '프로필을 볼 수 없습니다' : 'Cannot view profile')}</h2>
             <p>
               {lang === 'ko'
@@ -362,7 +365,7 @@ export default function ProfilePage() {
           .ko-mark { color: var(--ink-60); font-weight: 700; font-size: 17px; }
           .main-wrap { padding: 60px 24px; max-width: 500px; }
           .error-state { text-align: center; padding: 60px 20px; background: var(--paper-2); border-radius: 24px; }
-          .error-icon { font-size: 56px; margin-bottom: 20px; }
+          .error-icon { display: flex; justify-content: center; margin-bottom: 20px; }
           .error-state h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0 0 8px; }
           .error-state p { color: var(--ink-60); font-size: 15px; margin: 0 0 24px; }
           .btn-primary { background: var(--persimmon); color: #fff; border: 0; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; }
@@ -394,7 +397,7 @@ export default function ProfilePage() {
     onClick={onClick}
     aria-label={label ?? (lang === 'ko' ? '편집' : 'Edit')}
   >
-    <span aria-hidden="true">✏️</span>
+    <Icon name="edit" size={17} />
 
     <style jsx>{`
       .edit-pencil {
@@ -471,7 +474,7 @@ export default function ProfilePage() {
             <h1>
               {profile.display_name}
               {isPlusActive(profile.subscription_tier, profile.subscription_expires_at) && (
-                <a className="plus-badge" href="/plus" title="Doreham+">✨ Doreham+</a>
+                <a className="plus-badge" href="/plus" title="Doreham+"><Icon name="plus" size={14} /> Doreham+</a>
               )}
               {isOwn && (
                 <span className="you-tag">
@@ -480,7 +483,7 @@ export default function ProfilePage() {
               )}
             </h1>
             {venueOnly && (
-              <p className="hero-age">🏪 {lang === 'ko' ? '가게 계정' : 'Venue account'}</p>
+              <p className="hero-age"><Icon name="venue" size={17} /> {lang === 'ko' ? '가게 계정' : 'Venue account'}</p>
             )}
             {age !== null && (
               <p className="hero-age">
@@ -489,11 +492,11 @@ export default function ProfilePage() {
             )}
             {profile.home_district && (
               <p className="hero-district">
-                📍 {cityName(profile.home_district.toLowerCase(), lang)}
+                <Icon name="location" size={17} /> {cityName(profile.home_district.toLowerCase(), lang)}
               </p>
             )}
             {profile.job_title && (
-              <p className="hero-job">💼 {profile.job_title}</p>
+              <p className="hero-job"><Icon name="work" size={17} /> {profile.job_title}</p>
             )}
           </div>
           {isOwn && (
@@ -510,7 +513,7 @@ export default function ProfilePage() {
           <>
             <MeetPeopleCard lang={lang} />
             <a className="venue-link" href="/venues/my">
-              <span aria-hidden="true">🏪</span>
+              <Icon name="venue" size={28} />
               <span className="venue-link-text">
                 <strong>{lang === 'ko' ? '내 가게' : 'My venues'}</strong>
                 <span>{lang === 'ko' ? '등록 상태, 손님 리뷰, 이벤트 열기' : 'Status, guest reviews, hosting events'}</span>
@@ -557,7 +560,7 @@ export default function ProfilePage() {
               )}
               {zodiac && (
                 <div className="personality-card">
-                  <div className="card-symbol">{zodiac.symbol}</div>
+                  <div className="card-symbol">{isIconName(profile.zodiac_sign ?? '') && <Icon name={profile.zodiac_sign as IconName} size={34} />}</div>
                   <div className="card-label">
                     {lang === 'ko' ? zodiac.ko : zodiac.en}
                   </div>
@@ -581,7 +584,7 @@ export default function ProfilePage() {
             <div className="lifestyle-grid">
               {profile.exercise_frequency && LIFESTYLE_LABELS.exercise_frequency[profile.exercise_frequency as keyof typeof LIFESTYLE_LABELS.exercise_frequency] && (
                 <div className="lifestyle-item">
-                  <span className="lifestyle-emoji">{LIFESTYLE_LABELS.exercise_frequency[profile.exercise_frequency as keyof typeof LIFESTYLE_LABELS.exercise_frequency].emoji}</span>
+                  <span className="lifestyle-emoji"><Icon name={lifestyleIcon('exercise_frequency', profile.exercise_frequency) ?? 'sparkle'} size={26} /></span>
                   <div>
                     <div className="lifestyle-label">{lang === 'ko' ? '운동' : 'Exercise'}</div>
                     <div className="lifestyle-value">{lang === 'ko' ? LIFESTYLE_LABELS.exercise_frequency[profile.exercise_frequency as keyof typeof LIFESTYLE_LABELS.exercise_frequency].ko : LIFESTYLE_LABELS.exercise_frequency[profile.exercise_frequency as keyof typeof LIFESTYLE_LABELS.exercise_frequency].en}</div>
@@ -590,7 +593,7 @@ export default function ProfilePage() {
               )}
               {profile.education_level && LIFESTYLE_LABELS.education_level[profile.education_level as keyof typeof LIFESTYLE_LABELS.education_level] && (
                 <div className="lifestyle-item">
-                  <span className="lifestyle-emoji">{LIFESTYLE_LABELS.education_level[profile.education_level as keyof typeof LIFESTYLE_LABELS.education_level].emoji}</span>
+                  <span className="lifestyle-emoji"><Icon name={lifestyleIcon('education_level', profile.education_level) ?? 'sparkle'} size={26} /></span>
                   <div>
                     <div className="lifestyle-label">{lang === 'ko' ? '학력' : 'Education'}</div>
                     <div className="lifestyle-value">{lang === 'ko' ? LIFESTYLE_LABELS.education_level[profile.education_level as keyof typeof LIFESTYLE_LABELS.education_level].ko : LIFESTYLE_LABELS.education_level[profile.education_level as keyof typeof LIFESTYLE_LABELS.education_level].en}</div>
@@ -599,7 +602,7 @@ export default function ProfilePage() {
               )}
               {profile.drinking_habits && LIFESTYLE_LABELS.drinking_habits[profile.drinking_habits as keyof typeof LIFESTYLE_LABELS.drinking_habits] && (
                 <div className="lifestyle-item">
-                  <span className="lifestyle-emoji">{LIFESTYLE_LABELS.drinking_habits[profile.drinking_habits as keyof typeof LIFESTYLE_LABELS.drinking_habits].emoji}</span>
+                  <span className="lifestyle-emoji"><Icon name={lifestyleIcon('drinking_habits', profile.drinking_habits) ?? 'sparkle'} size={26} /></span>
                   <div>
                     <div className="lifestyle-label">{lang === 'ko' ? '음주' : 'Drinking'}</div>
                     <div className="lifestyle-value">{lang === 'ko' ? LIFESTYLE_LABELS.drinking_habits[profile.drinking_habits as keyof typeof LIFESTYLE_LABELS.drinking_habits].ko : LIFESTYLE_LABELS.drinking_habits[profile.drinking_habits as keyof typeof LIFESTYLE_LABELS.drinking_habits].en}</div>
@@ -608,7 +611,7 @@ export default function ProfilePage() {
               )}
               {profile.smoking_habits && LIFESTYLE_LABELS.smoking_habits[profile.smoking_habits as keyof typeof LIFESTYLE_LABELS.smoking_habits] && (
                 <div className="lifestyle-item">
-                  <span className="lifestyle-emoji">{LIFESTYLE_LABELS.smoking_habits[profile.smoking_habits as keyof typeof LIFESTYLE_LABELS.smoking_habits].emoji}</span>
+                  <span className="lifestyle-emoji"><Icon name={lifestyleIcon('smoking_habits', profile.smoking_habits) ?? 'sparkle'} size={26} /></span>
                   <div>
                     <div className="lifestyle-label">{lang === 'ko' ? '흡연' : 'Smoking'}</div>
                     <div className="lifestyle-value">{lang === 'ko' ? LIFESTYLE_LABELS.smoking_habits[profile.smoking_habits as keyof typeof LIFESTYLE_LABELS.smoking_habits].ko : LIFESTYLE_LABELS.smoking_habits[profile.smoking_habits as keyof typeof LIFESTYLE_LABELS.smoking_habits].en}</div>
@@ -617,7 +620,7 @@ export default function ProfilePage() {
               )}
               {profile.children_status && LIFESTYLE_LABELS.children_status[profile.children_status as keyof typeof LIFESTYLE_LABELS.children_status] && (
                 <div className="lifestyle-item">
-                  <span className="lifestyle-emoji">{LIFESTYLE_LABELS.children_status[profile.children_status as keyof typeof LIFESTYLE_LABELS.children_status].emoji}</span>
+                  <span className="lifestyle-emoji"><Icon name={lifestyleIcon('children_status', profile.children_status) ?? 'sparkle'} size={26} /></span>
                   <div>
                     <div className="lifestyle-label">{lang === 'ko' ? '자녀' : 'Children'}</div>
                     <div className="lifestyle-value">{lang === 'ko' ? LIFESTYLE_LABELS.children_status[profile.children_status as keyof typeof LIFESTYLE_LABELS.children_status].ko : LIFESTYLE_LABELS.children_status[profile.children_status as keyof typeof LIFESTYLE_LABELS.children_status].en}</div>
@@ -636,7 +639,7 @@ export default function ProfilePage() {
             <div className="traits-grid">
               {bigFive.map((t, i) => (
                 <div key={i} className="trait-pill">
-                  <span className="trait-emoji">{t.emoji}</span>
+                  <span className="trait-emoji"><Icon name={t.icon} size={18} /></span>
                   <span>{t.label}</span>
                 </div>
               ))}
@@ -661,7 +664,7 @@ export default function ProfilePage() {
                   );
                   return (
                     <div key={code} className="interest-pill">
-                      <span>{info.emoji}</span>
+                      <CategoryIcon art={ACTIVITY_ART[code] ?? 'other'} size={24} />
                       <span>{lang === 'ko' ? info.ko : info.en}</span>
                     </div>
                   );
@@ -720,7 +723,7 @@ export default function ProfilePage() {
             {Object.keys(trustStats.compliment_counts ?? {}).length > 0 && (
               <div className="review-block">
                 <div className="review-block-title">
-                  {lang === 'ko' ? '🌟 칭찬' : '🌟 Compliments'}
+                  <Icon name="star" size={16} /> {lang === 'ko' ? '칭찬' : 'Compliments'}
                 </div>
                 <div className="review-tags">
                   {Object.entries(trustStats.compliment_counts)
@@ -730,7 +733,7 @@ export default function ProfilePage() {
                       if (!tag) return null;
                       return (
                         <span key={tagId} className="review-tag compliment">
-                          {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                          <Icon name={reviewTagIcon(tagId)} size={16} /> {lang === 'ko' ? tag.label_ko : tag.label_en}
                           <span className="tag-count">×{count}</span>
                         </span>
                       );
@@ -743,7 +746,7 @@ export default function ProfilePage() {
             {Object.keys(trustStats.vibe_counts ?? {}).length > 0 && (
               <div className="review-block">
                 <div className="review-block-title">
-                  {lang === 'ko' ? '✨ 분위기 스티커' : '✨ Vibe stickers'}
+                  <Icon name="sparkle" size={16} /> {lang === 'ko' ? '분위기 스티커' : 'Vibe stickers'}
                 </div>
                 <div className="review-tags">
                   {Object.entries(trustStats.vibe_counts)
@@ -753,7 +756,7 @@ export default function ProfilePage() {
                       if (!tag) return null;
                       return (
                         <span key={tagId} className="review-tag vibe">
-                          {tag.emoji} {lang === 'ko' ? tag.label_ko : tag.label_en}
+                          <Icon name={reviewTagIcon(tagId)} size={16} /> {lang === 'ko' ? tag.label_ko : tag.label_en}
                           <span className="tag-count">×{count}</span>
                         </span>
                       );
@@ -865,9 +868,9 @@ export default function ProfilePage() {
         .hero-info { flex: 1; min-width: 0; }
         .hero-edit { position: absolute; top: 16px; right: 16px; }
         .hero-info h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .plus-badge { font-size: 12px; font-weight: 800; color: var(--persimmon); background: linear-gradient(135deg, rgba(255, 106, 61, 0.14), rgba(199, 184, 224, 0.3)); padding: 4px 10px; border-radius: 999px; text-decoration: none; letter-spacing: 0.01em; vertical-align: middle; }
+        .plus-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; color: var(--persimmon); background: linear-gradient(135deg, rgba(255, 106, 61, 0.14), rgba(199, 184, 224, 0.3)); padding: 4px 10px; border-radius: 999px; text-decoration: none; letter-spacing: 0.01em; vertical-align: middle; }
         .you-tag { font-size: 12px; font-weight: 700; color: var(--persimmon); background: rgba(255, 106, 61, 0.15); padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .hero-age, .hero-district, .hero-job { color: var(--ink-60); font-size: 15px; margin: 4px 0; }
+        .hero-age, .hero-district, .hero-job { color: var(--ink-60); font-size: 15px; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
         .edit-pencil { position: absolute; top: 16px; right: 16px; background: #fff; border: 1px solid var(--ink-12); border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; font-size: 15px; transition: transform 0.12s, box-shadow 0.12s; }
         .edit-pencil:hover { transform: scale(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
         .section { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; position: relative; }
@@ -882,16 +885,16 @@ export default function ProfilePage() {
         .personality-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
         .personality-card { background: var(--paper-2); padding: 14px 16px; border-radius: 12px; text-align: center; }
         .card-code { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--persimmon); margin-bottom: 4px; }
-        .card-symbol { font-size: 28px; margin-bottom: 4px; }
+        .card-symbol { display: flex; justify-content: center; margin-bottom: 4px; }
         .card-label { font-size: 12px; color: var(--ink-60); font-weight: 600; }
         .lifestyle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
         .lifestyle-item { display: flex; align-items: center; gap: 10px; background: var(--paper-2); padding: 10px 14px; border-radius: 10px; }
-        .lifestyle-emoji { font-size: 22px; flex-shrink: 0; }
+        .lifestyle-emoji { display: flex; flex-shrink: 0; }
         .lifestyle-label { font-size: 11px; color: var(--ink-60); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
         .lifestyle-value { font-size: 14px; color: var(--ink); font-weight: 600; }
         .traits-grid { display: flex; gap: 8px; flex-wrap: wrap; }
         .trait-pill { display: flex; align-items: center; gap: 6px; background: var(--paper-2); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); }
-        .trait-emoji { font-size: 16px; }
+        .trait-emoji { display: flex; }
         .interests-grid { display: flex; gap: 8px; flex-wrap: wrap; }
         .interest-pill { display: flex; align-items: center; gap: 6px; background: rgba(15, 157, 119, 0.08); color: var(--jade); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
         .languages-list { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -900,7 +903,7 @@ export default function ProfilePage() {
         .review-count-badge { background: var(--persimmon); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
         .review-block { margin-bottom: 16px; }
         .review-block:last-child { margin-bottom: 0; }
-        .review-block-title { font-size: 12px; font-weight: 700; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .review-block-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
         .review-tags { display: flex; flex-wrap: wrap; gap: 6px; }
         .review-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--paper-2); border: 1px solid var(--ink-12); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink); }
         .review-tag.compliment { background: rgba(255, 106, 61, 0.08); border-color: rgba(255, 106, 61, 0.2); color: var(--persimmon); }
@@ -909,6 +912,7 @@ export default function ProfilePage() {
         @media (max-width: 640px) {
           .profile-hero { flex-direction: column; text-align: center; padding: 36px 20px 24px; gap: 16px; }
           .hero-info h1 { justify-content: center; font-size: 28px; }
+          .hero-age, .hero-district, .hero-job { justify-content: center; }
           .hero-avatar { width: 100px; height: 100px; }
         }
         @media (max-width: 480px) {

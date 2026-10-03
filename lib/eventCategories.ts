@@ -1,22 +1,25 @@
 /** Event categories for the community Events page. Client-safe. */
+import type { CategoryArt } from '@/lib/icons';
+
 export type EventCategory = {
   slug: string;
-  emoji: string;
+  /** Category artwork (public/categories). */
+  art: CategoryArt;
   label_en: string;
   label_ko: string;
 };
 
 export const EVENT_CATEGORIES: EventCategory[] = [
-  { slug: 'social', emoji: '☕', label_en: 'Hang out', label_ko: '친목' },
-  { slug: 'language', emoji: '🗣️', label_en: 'Language exchange', label_ko: '언어 교환' },
-  { slug: 'food', emoji: '🍜', label_en: 'Food & drinks', label_ko: '맛집 · 음식' },
-  { slug: 'outdoor', emoji: '🥾', label_en: 'Outdoors & sports', label_ko: '야외 · 운동' },
-  { slug: 'culture', emoji: '🎨', label_en: 'Culture & arts', label_ko: '문화 · 예술' },
-  { slug: 'games', emoji: '🎲', label_en: 'Games', label_ko: '게임' },
-  { slug: 'study', emoji: '💼', label_en: 'Study & career', label_ko: '스터디 · 커리어' },
-  { slug: 'volunteer', emoji: '🤝', label_en: 'Volunteering', label_ko: '봉사' },
-  { slug: 'nightlife', emoji: '🍸', label_en: 'Night out', label_ko: '나이트아웃' },
-  { slug: 'other', emoji: '✨', label_en: 'Other', label_ko: '기타' },
+  { slug: 'social', art: 'coffee', label_en: 'Hang out', label_ko: '친목' },
+  { slug: 'language', art: 'chat', label_en: 'Language exchange', label_ko: '언어 교환' },
+  { slug: 'food', art: 'food', label_en: 'Food & drinks', label_ko: '맛집 · 음식' },
+  { slug: 'outdoor', art: 'adventure', label_en: 'Outdoors & sports', label_ko: '야외 · 운동' },
+  { slug: 'culture', art: 'makethings', label_en: 'Culture & arts', label_ko: '문화 · 예술' },
+  { slug: 'games', art: 'game', label_en: 'Games', label_ko: '게임' },
+  { slug: 'study', art: 'network', label_en: 'Study & career', label_ko: '스터디 · 커리어' },
+  { slug: 'volunteer', art: 'help', label_en: 'Volunteering', label_ko: '봉사' },
+  { slug: 'nightlife', art: 'nightout', label_en: 'Night out', label_ko: '나이트아웃' },
+  { slug: 'other', art: 'other', label_en: 'Other', label_ko: '기타' },
 ];
 
 export const EVENT_CATEGORY_SLUGS = new Set(EVENT_CATEGORIES.map((c) => c.slug));

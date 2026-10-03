@@ -9,6 +9,7 @@ import {
   formatBusinessNumber,
   verifyBusinessNumberWithGov,
 } from '../lib/save';
+import { CategoryIcon } from '@/components/icons/CategoryIcon';
 
 type Props = {
   lang: UiLanguage;
@@ -209,7 +210,7 @@ export function BasicInfoStep({ lang, initialData, onNext }: Props) {
                 checked={category === code}
                 onChange={() => setCategory(code)}
               />
-              <span className="cat-emoji">{cat.emoji}</span>
+              <span className="cat-emoji"><CategoryIcon art={cat.art} size={34} /></span>
               <span className="cat-name">{lang === 'ko' ? cat.ko : cat.en}</span>
             </label>
           ))}
@@ -321,7 +322,7 @@ export function BasicInfoStep({ lang, initialData, onNext }: Props) {
         .cat-card:hover { border-color: var(--ink-60); }
         .cat-card.selected { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.05); }
         .cat-card input { position: absolute; opacity: 0; pointer-events: none; }
-        .cat-emoji { font-size: 24px; line-height: 1; }
+        .cat-emoji { display: flex; line-height: 1; }
         .cat-name { font-size: 12px; font-weight: 500; color: var(--ink); line-height: 1.2; }
         .section-divider { margin: 32px 0 20px; padding-top: 24px; border-top: 1px solid var(--ink-12); }
         .section-divider h3 { font-family: var(--display); font-weight: 700; font-size: 18px; margin: 0 0 4px; color: var(--ink); }

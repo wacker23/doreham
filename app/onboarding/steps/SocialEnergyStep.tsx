@@ -2,16 +2,17 @@
 
 import { useState } from 'react';
 import type { OnboardingFormData, SocialEnergyPref, UiLanguage } from '../lib/types';
+import { Icon, type IconName } from '@/components/icons/Icon';
 
 const OPTIONS: {
   code: SocialEnergyPref;
-  emoji: string;
+  icon: IconName;
   en: { title: string; desc: string };
   ko: { title: string; desc: string };
 }[] = [
   {
     code: 'wants_conversation_starter',
-    emoji: '🙋',
+    icon: 'join',
     en: {
       title: 'I like when someone else leads the conversation',
       desc: "I'm happy to join in, but I appreciate when others open the door.",
@@ -23,7 +24,7 @@ const OPTIONS: {
   },
   {
     code: 'matches_my_energy',
-    emoji: '🤝',
+    icon: 'matches',
     en: {
       title: 'I want people at my same energy level',
       desc: 'A group where everyone brings similar vibes feels most comfortable.',
@@ -35,7 +36,7 @@ const OPTIONS: {
   },
   {
     code: 'no_preference',
-    emoji: '✨',
+    icon: 'sparkle',
     en: {
       title: "Either is fine — I go with the flow",
       desc: "Introverts, extroverts, whoever — I'm easy either way.",
@@ -102,7 +103,7 @@ export function SocialEnergyStep({ lang, initialData, onNext, onBack, saving }: 
                 }}
                 disabled={saving}
               />
-              <span className="emoji">{opt.emoji}</span>
+              <span className="emoji"><Icon name={opt.icon} size={32} /></span>
               <div className="option-text">
                 <span className="option-title">{copy.title}</span>
                 <span className="option-desc">{copy.desc}</span>
@@ -153,7 +154,7 @@ export function SocialEnergyStep({ lang, initialData, onNext, onBack, saving }: 
           background: rgba(255, 106, 61, 0.05);
         }
         .option-card input { position: absolute; opacity: 0; pointer-events: none; }
-        .option-card .emoji { font-size: 28px; flex-shrink: 0; }
+        .option-card .emoji { display: flex; flex-shrink: 0; }
         .option-text { display: flex; flex-direction: column; gap: 4px; }
         .option-title { font-weight: 700; font-size: 15px; color: var(--ink); line-height: 1.35; }
         .option-desc { font-size: 13.5px; color: var(--ink-60); line-height: 1.4; }

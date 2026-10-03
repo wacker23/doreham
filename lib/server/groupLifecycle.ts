@@ -160,8 +160,8 @@ export async function activateGroup(groupId: string): Promise<boolean> {
         ? {
             user_id: uid,
             type: 'match_activated',
-            title_en: '✨ Your volunteer group is confirmed!',
-            title_ko: '✨ 봉사 그룹이 확정되었어요!',
+            title_en: 'Your volunteer group is confirmed!',
+            title_ko: '봉사 그룹이 확정되었어요!',
             body_en: "Everyone's in. Next, vote on which volunteer activity to do together.",
             body_ko: '모두 참여했어요. 이제 함께할 봉사활동을 투표로 골라 주세요.',
             action_url: `/matches/${groupId}/volunteer`,
@@ -170,8 +170,8 @@ export async function activateGroup(groupId: string): Promise<boolean> {
         : {
             user_id: uid,
             type: 'match_activated',
-            title_en: '✨ Your group is confirmed!',
-            title_ko: '✨ 그룹이 확정되었어요!',
+            title_en: 'Your group is confirmed!',
+            title_ko: '그룹이 확정되었어요!',
             body_en: `Everyone's in${venueName ? ` for ${venueName}` : ''}. Pick the times you're free within 24 hours.`,
             body_ko: `모두 참여했어요${venueName ? ` (${venueName})` : ''}. 24시간 안에 가능한 시간을 선택해 주세요.`,
             action_url: `/matches/${groupId}/availability`,

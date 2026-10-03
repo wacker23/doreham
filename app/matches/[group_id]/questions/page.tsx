@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
+import { Icon, type IconName } from '@/components/icons/Icon';
 
 type Question = {
   id: string;
@@ -29,11 +30,11 @@ type Sets = {
 
 type Lang = 'en' | 'ko';
 
-const SET_META: Record<number, { key: keyof Sets; label_en: string; label_ko: string; icon: string; blurb_en: string; blurb_ko: string }> = {
-  1: { key: 'warmup', label_en: 'Warm-up', label_ko: '워밍업', icon: '☀️', blurb_en: 'Light and easy — get to know each other.', blurb_ko: '가볍고 편안하게 — 서로를 알아가요.' },
-  2: { key: 'getting_real', label_en: 'Getting Real', label_ko: '진심으로', icon: '🌱', blurb_en: 'Share stories, values, and what makes you, you.', blurb_ko: '이야기, 가치관, 그리고 당신을 당신답게 만드는 것들을 나눠요.' },
-  3: { key: 'deep', label_en: 'Deep', label_ko: '깊이', icon: '🌊', blurb_en: 'Real vulnerability. This is where friendship starts.', blurb_ko: '진정한 취약함. 우정이 시작되는 곳이에요.' },
-  4: { key: 'depths', label_en: 'Depths', label_ko: '심연', icon: '🌑', blurb_en: 'Optional. Very personal. Only if everyone is comfortable.', blurb_ko: '선택사항. 매우 개인적. 모두가 편안할 때만.' },
+const SET_META: Record<number, { key: keyof Sets; label_en: string; label_ko: string; icon: IconName; blurb_en: string; blurb_ko: string }> = {
+  1: { key: 'warmup', label_en: 'Warm-up', label_ko: '워밍업', icon: 'warmth', blurb_en: 'Light and easy — get to know each other.', blurb_ko: '가볍고 편안하게 — 서로를 알아가요.' },
+  2: { key: 'getting_real', label_en: 'Getting Real', label_ko: '진심으로', icon: 'exWeekly', blurb_en: 'Share stories, values, and what makes you, you.', blurb_ko: '이야기, 가치관, 그리고 당신을 당신답게 만드는 것들을 나눠요.' },
+  3: { key: 'deep', label_en: 'Deep', label_ko: '깊이', icon: 'deepFeeler', blurb_en: 'Real vulnerability. This is where friendship starts.', blurb_ko: '진정한 취약함. 우정이 시작되는 곳이에요.' },
+  4: { key: 'depths', label_en: 'Depths', label_ko: '심연', icon: 'observer', blurb_en: 'Optional. Very personal. Only if everyone is comfortable.', blurb_ko: '선택사항. 매우 개인적. 모두가 편안할 때만.' },
 };
 
 export default function QuestionsPage() {
@@ -191,7 +192,7 @@ export default function QuestionsPage() {
 
       <main className="q-page">
         <div className="q-header">
-          <div className="ice-icon">🧊</div>
+          <div className="ice-icon"><Icon name="icebreaker" size={52} /></div>
           <h1>{lang === 'ko' ? '얼음 깨기' : 'Break the Ice'}</h1>
           <p>{lang === 'ko'
             ? '깊이 있는 대화를 통해 서로 진짜로 알아가요. 4단계로 서서히 진행됩니다.'
@@ -218,12 +219,12 @@ export default function QuestionsPage() {
                 }}
                 disabled={!unlocked && n !== 4}
               >
-                <div className="set-tab-icon">{meta.icon}</div>
+                <div className="set-tab-icon"><Icon name={meta.icon} size={24} /></div>
                 <div className="set-tab-label">
                   {lang === 'ko' ? meta.label_ko : meta.label_en}
                 </div>
                 {complete && <div className="set-tab-check">✓</div>}
-                {!unlocked && n !== 4 && <div className="set-tab-lock">🔒</div>}
+                {!unlocked && n !== 4 && <div className="set-tab-lock"><Icon name="lock" size={14} /></div>}
               </button>
             );
           })}
@@ -232,13 +233,13 @@ export default function QuestionsPage() {
         {/* Active set content */}
         <div className="set-content">
           <div className="set-header">
-            <div className="set-badge">{currentMeta.icon} {lang === 'ko' ? currentMeta.label_ko : currentMeta.label_en}</div>
+            <div className="set-badge"><Icon name={currentMeta.icon} size={18} /> {lang === 'ko' ? currentMeta.label_ko : currentMeta.label_en}</div>
             <p className="set-blurb">{lang === 'ko' ? currentMeta.blurb_ko : currentMeta.blurb_en}</p>
           </div>
 
           {!currentUnlocked ? (
             <div className="locked-state">
-              <div className="locked-icon">🔒</div>
+              <div className="locked-icon"><Icon name="lock" size={44} /></div>
               <p>{lang === 'ko'
                 ? '이전 단계를 완료하면 열려요'
                 : 'Complete the previous set to unlock'}</p>
@@ -251,7 +252,7 @@ export default function QuestionsPage() {
                     <div className="question-num">{i + 1}</div>
                     <div className="question-text">
                       {lang === 'ko' ? q.text_ko : q.text_en}
-                      {q.is_aron_original && <span className="aron-badge" title="Based on Aron's 36 Questions research">✨</span>}
+                      {q.is_aron_original && <span className="aron-badge" title="Based on Aron's 36 Questions research"><Icon name="sparkle" size={14} /></span>}
                     </div>
                   </div>
                 ))}
@@ -282,8 +283,8 @@ export default function QuestionsPage() {
 
         <p className="footer-note">
           {lang === 'ko'
-            ? '✨ Aron의 36가지 질문 연구를 기반으로 함 (Aron et al., 1997)'
-            : '✨ Based on Arthur Aron\'s 36 Questions research (Aron et al., 1997)'}
+            ? 'Aron의 36가지 질문 연구를 기반으로 함 (Aron et al., 1997)'
+            : 'Based on Arthur Aron\'s 36 Questions research (Aron et al., 1997)'}
         </p>
       </main>
 
@@ -291,7 +292,7 @@ export default function QuestionsPage() {
       {showWarning && (
         <div className="modal-overlay" onClick={() => setShowWarning(false)}>
           <div className="modal warning-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="warning-icon">⚠️</div>
+            <div className="warning-icon"><Icon name="warning" size={48} /></div>
             <h2>{lang === 'ko' ? '심연 단계' : 'The Depths'}</h2>
             <p className="warning-body">
               {lang === 'ko'
@@ -326,7 +327,7 @@ export default function QuestionsPage() {
 
         .q-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 60px; }
         .q-header { text-align: center; margin-bottom: 32px; }
-        .ice-icon { font-size: 48px; margin-bottom: 12px; }
+        .ice-icon { display: flex; justify-content: center; margin-bottom: 12px; }
         h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 12px; color: var(--ink); }
         .q-header p { font-size: 15px; color: var(--ink-60); line-height: 1.6; margin: 0; max-width: 480px; margin-left: auto; margin-right: auto; }
 
@@ -336,10 +337,10 @@ export default function QuestionsPage() {
         .set-tab.active { border-color: var(--persimmon); background: rgba(255, 106, 61, 0.06); }
         .set-tab.complete { border-color: #4CAF50; background: rgba(76, 175, 80, 0.05); }
         .set-tab.locked { opacity: 0.5; cursor: not-allowed; }
-        .set-tab-icon { font-size: 20px; }
+        .set-tab-icon { display: flex; justify-content: center; }
         .set-tab-label { font-size: 12px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.2; }
         .set-tab-check { position: absolute; top: 6px; right: 6px; color: #4CAF50; font-weight: 800; font-size: 14px; }
-        .set-tab-lock { position: absolute; top: 6px; right: 6px; font-size: 12px; }
+        .set-tab-lock { position: absolute; top: 6px; right: 6px; display: flex; }
 
         .set-content { background: #fff; border-radius: 20px; padding: 28px 24px; border: 1px solid var(--ink-12); }
         .set-header { text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--ink-12); }
@@ -347,14 +348,14 @@ export default function QuestionsPage() {
         .set-blurb { font-size: 14px; color: var(--ink-60); line-height: 1.5; margin: 0; }
 
         .locked-state { text-align: center; padding: 40px 20px; color: var(--ink-60); }
-        .locked-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+        .locked-icon { display: flex; justify-content: center; margin-bottom: 12px; opacity: 0.6; }
         .locked-state p { font-size: 14px; margin: 0; }
 
         .questions-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
         .question-card { display: flex; gap: 14px; background: var(--paper-2); padding: 16px; border-radius: 12px; }
         .question-num { flex-shrink: 0; width: 28px; height: 28px; background: var(--persimmon); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
         .question-text { font-size: 15px; line-height: 1.6; color: var(--ink); flex: 1; }
-        .aron-badge { margin-left: 6px; opacity: 0.6; font-size: 12px; }
+        .aron-badge { margin-left: 6px; opacity: 0.8; display: inline-flex; vertical-align: middle; }
 
         .complete-btn { width: 100%; background: var(--persimmon); color: #fff; border: 0; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 15px; cursor: pointer; transition: opacity 0.15s; }
         .complete-btn:hover:not(:disabled) { opacity: 0.9; }
@@ -367,7 +368,7 @@ export default function QuestionsPage() {
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; backdrop-filter: blur(4px); }
         .modal { background: #fff; border-radius: 20px; padding: 32px 28px; max-width: 480px; width: 100%; }
         .warning-modal { text-align: center; }
-        .warning-icon { font-size: 44px; margin-bottom: 12px; }
+        .warning-icon { display: flex; justify-content: center; margin-bottom: 12px; }
         .warning-modal h2 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 12px; }
         .warning-body { font-size: 15px; color: var(--ink); line-height: 1.6; margin: 0 0 20px; }
         .warning-list { text-align: left; margin: 0 0 24px; padding-left: 20px; color: var(--ink-60); font-size: 14px; line-height: 1.8; }

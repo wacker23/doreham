@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { Icon, type IconName } from '@/components/icons/Icon';
 
 type Language = 'en' | 'ko';
 
@@ -9,30 +10,30 @@ type LifestyleOption = {
   code: string;
   en: string;
   ko: string;
-  emoji: string;
+  icon: IconName;
 };
 
 const OPTIONS: Record<string, LifestyleOption[]> = {
   exercise_frequency: [
-    { code: 'never', en: 'Never', ko: '전혀 안 해요', emoji: '🛋️' },
-    { code: 'occasionally', en: 'Occasionally', ko: '가끔', emoji: '🚶' },
+    { code: 'never', en: 'Never', ko: '전혀 안 해요', icon: 'exNever' },
+    { code: 'occasionally', en: 'Occasionally', ko: '가끔', icon: 'exSometimes' },
     {
       code: 'weekly_1_2',
       en: '1–2 times a week',
       ko: '주 1–2회',
-      emoji: '🏃',
+      icon: 'exWeekly',
     },
     {
       code: 'weekly_3_4',
       en: '3–4 times a week',
       ko: '주 3–4회',
-      emoji: '💪',
+      icon: 'exOften',
     },
     {
       code: 'daily',
       en: 'Almost every day',
       ko: '거의 매일',
-      emoji: '🔥',
+      icon: 'exDaily',
     },
   ],
 
@@ -41,37 +42,37 @@ const OPTIONS: Record<string, LifestyleOption[]> = {
       code: 'high_school',
       en: 'High school',
       ko: '고등학교',
-      emoji: '🏫',
+      icon: 'school',
     },
     {
       code: 'college_student',
       en: 'College student',
       ko: '대학생',
-      emoji: '📖',
+      icon: 'college',
     },
     {
       code: 'bachelors',
       en: "Bachelor's",
       ko: '학사',
-      emoji: '🎓',
+      icon: 'bachelor',
     },
     {
       code: 'masters',
       en: "Master's",
       ko: '석사',
-      emoji: '🎓',
+      icon: 'master',
     },
     {
       code: 'doctoral',
       en: 'Doctoral',
       ko: '박사',
-      emoji: '👩‍🔬',
+      icon: 'doctor',
     },
     {
       code: 'other',
       en: 'Other',
       ko: '기타',
-      emoji: '✨',
+      icon: 'sparkle',
     },
   ],
 
@@ -80,31 +81,31 @@ const OPTIONS: Record<string, LifestyleOption[]> = {
       code: 'no',
       en: "Don't drink",
       ko: '술 안 마심',
-      emoji: '🚫',
+      icon: 'noDrink',
     },
     {
       code: 'occasionally',
       en: 'Occasionally',
       ko: '가끔',
-      emoji: '🍷',
+      icon: 'wine',
     },
     {
       code: 'socially',
       en: 'Socially',
       ko: '사교적으로',
-      emoji: '🥂',
+      icon: 'cheers',
     },
     {
       code: 'regularly',
       en: 'Regularly',
       ko: '자주',
-      emoji: '🍺',
+      icon: 'beer',
     },
     {
       code: 'prefer_not_to_say',
       en: 'Prefer not to say',
       ko: '답변 안 함',
-      emoji: '—',
+      icon: 'noAnswer',
     },
   ],
 
@@ -113,37 +114,37 @@ const OPTIONS: Record<string, LifestyleOption[]> = {
       code: 'non_smoker',
       en: 'Non-smoker',
       ko: '비흡연자',
-      emoji: '🚭',
+      icon: 'noSmoke',
     },
     {
       code: 'occasionally',
       en: 'Occasionally',
       ko: '가끔',
-      emoji: '🚬',
+      icon: 'smoke',
     },
     {
       code: 'regular',
       en: 'Regular',
       ko: '일상 흡연',
-      emoji: '🚬',
+      icon: 'smoke',
     },
     {
       code: 'former',
       en: 'Former smoker',
       ko: '금연 중',
-      emoji: '💨',
+      icon: 'exSmoker',
     },
     {
       code: 'vape',
       en: 'Vape',
       ko: '전자담배',
-      emoji: '💨',
+      icon: 'vape',
     },
     {
       code: 'prefer_not_to_say',
       en: 'Prefer not to say',
       ko: '답변 안 함',
-      emoji: '—',
+      icon: 'noAnswer',
     },
   ],
 
@@ -152,25 +153,25 @@ const OPTIONS: Record<string, LifestyleOption[]> = {
       code: 'no_children',
       en: 'No children',
       ko: '자녀 없음',
-      emoji: '👤',
+      icon: 'noKids',
     },
     {
       code: 'have_children',
       en: 'Have children',
       ko: '자녀 있음',
-      emoji: '👨‍👩‍👧',
+      icon: 'kids',
     },
     {
       code: 'expecting',
       en: 'Expecting',
       ko: '임신 중',
-      emoji: '🤰',
+      icon: 'expecting',
     },
     {
       code: 'prefer_not_to_say',
       en: 'Prefer not to say',
       ko: '답변 안 함',
-      emoji: '—',
+      icon: 'noAnswer',
     },
   ],
 };
@@ -209,7 +210,7 @@ function LifestyleGroup({
               aria-pressed={isSelected}
             >
               <span className="chip-emoji" aria-hidden="true">
-                {option.emoji}
+                <Icon name={option.icon} size={20} />
               </span>
 
               <span>{lang === 'ko' ? option.ko : option.en}</span>
@@ -282,7 +283,7 @@ function LifestyleGroup({
 
         .chip-emoji {
           flex-shrink: 0;
-          font-size: 15px;
+          display: flex;
           line-height: 1;
         }
 
