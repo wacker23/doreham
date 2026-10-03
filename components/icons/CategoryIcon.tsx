@@ -1,33 +1,37 @@
-import { categoryArtSrc, type CategoryArt } from '@/lib/icons';
+import type { CSSProperties } from 'react';
+import type { CategoryArt } from '@/lib/icons';
+import { CATEGORY_ART } from './categoryArt';
 
 /**
- * Sophia's category artwork (public/categories). The files have wide margins, so at small
- * sizes the picture is zoomed to fill the box; pass `crop={false}` to show the whole file.
+ * Sophia's category artwork as crisp vectors on the sea-icon grid (see categoryArt.tsx).
+ * The line is a little lighter than the everyday icons (1.3 instead of 1.6) because these
+ * drawings carry more detail, and lighter again at big sizes so empty states don't look heavy.
  */
 export function CategoryIcon({
   art,
   size = 24,
-  crop = true,
   label,
   className,
 }: {
   art: CategoryArt;
   size?: number;
-  crop?: boolean;
   label?: string;
   className?: string;
 }) {
-  const inner = crop ? Math.round(size * 1.6) : size;
+  const style = { '--ic-sw': size > 56 ? 1.1 : 1.3 } as CSSProperties;
   return (
-    <span
-      className={`dh-cat${className ? ` ${className}` : ''}`}
-      style={{ width: size, height: size }}
+    <svg
+      className={`dh-ic dh-cat${className ? ` ${className}` : ''}`}
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      style={style}
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
+      focusable="false"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={categoryArtSrc(art)} alt="" width={inner} height={inner} loading="lazy" decoding="async" />
-    </span>
+      {CATEGORY_ART[art] ?? CATEGORY_ART.other}
+    </svg>
   );
 }
