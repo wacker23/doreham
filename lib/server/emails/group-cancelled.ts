@@ -1,7 +1,7 @@
 // Server-only. Moved from app/api/emails/group-cancelled/route.ts (Sep 28 2026) so it is
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
 
 export async function sendGroupCancelledEmail(params: { user_id: string; reason?: string; will_retry?: boolean }): Promise<EmailResult> {
   try {
@@ -38,9 +38,9 @@ export async function sendGroupCancelledEmail(params: { user_id: string; reason?
 <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1E2230;">
   <h1 style="font-size: 24px; font-weight: 800; margin: 0 0 16px;">😔 매칭이 성사되지 않았어요</h1>
   <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-    안녕하세요 ${profile.display_name}님,<br><br>
+    안녕하세요 ${escapeHtml(profile.display_name)}님,<br><br>
     아쉽게도 이번 매칭이 성사되지 않았어요.
-    ${reason ? `<br><br><em style="color: #666;">사유: ${reason}</em>` : ''}
+    ${reason ? `<br><br><em style="color: #666;">사유: ${escapeHtml(reason)}</em>` : ''}
   </p>
   <div style="background: rgba(255, 106, 61, 0.05); border-radius: 12px; padding: 20px; margin: 24px 0;">
     <p style="margin: 0; font-size: 15px; line-height: 1.6;">${retryText}</p>
@@ -56,9 +56,9 @@ export async function sendGroupCancelledEmail(params: { user_id: string; reason?
 <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1E2230;">
   <h1 style="font-size: 24px; font-weight: 800; margin: 0 0 16px;">😔 Your match didn't work out</h1>
   <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-    Hi ${profile.display_name},<br><br>
+    Hi ${escapeHtml(profile.display_name)},<br><br>
     Unfortunately your match fell through.
-    ${reason ? `<br><br><em style="color: #666;">Reason: ${reason}</em>` : ''}
+    ${reason ? `<br><br><em style="color: #666;">Reason: ${escapeHtml(reason)}</em>` : ''}
   </p>
   <div style="background: rgba(255, 106, 61, 0.05); border-radius: 12px; padding: 20px; margin: 24px 0;">
     <p style="margin: 0; font-size: 15px; line-height: 1.6;">${retryText}</p>
@@ -74,7 +74,7 @@ export async function sendGroupCancelledEmail(params: { user_id: string; reason?
     const sent = await getResend().emails.send({
       from: EMAIL_FROM_BRANDED,
       to: email,
-      subject,
+      subject: cleanSubject(subject),
       html,
     });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });

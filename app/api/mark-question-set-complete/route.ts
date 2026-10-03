@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { isUuid, jsonError, publicError, readJson, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 
 
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   try {
     const { group_id, set } = await readJson<Record<string, any>>(request);
     if (!isUuid(group_id) || !set) {
-      return NextResponse.json({ error: 'group_id, user_id, set required' }, { status: 400 });
+      return NextResponse.json({ error: 'group_id and set required' }, { status: 400 });
     }
     if (![1, 2, 3, 4].includes(set)) {
       return NextResponse.json({ error: 'set must be 1, 2, 3, or 4' }, { status: 400 });
@@ -69,10 +69,10 @@ export async function POST(request: Request) {
       .update({ [updateField]: new Date().toISOString() })
       .eq('group_id', group_id);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return jsonError(`save_failed: ${error.message}`, 500);
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'mark-question-set-complete'), 500);
   }
 }

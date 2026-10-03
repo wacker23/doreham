@@ -58,9 +58,19 @@ export function isPushEndpoint(endpoint: string): boolean {
   }
 }
 
-/** Only same-site relative paths are opened from a notification tap. */
+/**
+ * Only same-site paths are opened from a notification tap. Resolving against a dummy origin
+ * catches tricks like "/\\evil.com" or "/\t/evil.com", which browsers treat as another site.
+ */
 export function safeUrl(u: string | null | undefined): string {
-  return u && u.startsWith('/') && !u.startsWith('//') ? u : '/matches';
+  if (!u || !u.startsWith('/')) return '/matches';
+  try {
+    const base = 'https://doreham.invalid';
+    const t = new URL(u, base);
+    return t.origin === base ? t.pathname + t.search + t.hash : '/matches';
+  } catch {
+    return '/matches';
+  }
 }
 
 export function buildPayload(m: PushMessage, lang: string) {

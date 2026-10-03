@@ -1,104 +1,69 @@
 // app/api/emails/match-created/route.ts
+// Admin-only: email a member that /admin/matches put them in a group.
+// The address is looked up on the server from the user id; names/venue/quest text are escaped
+// in the template.
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { requireAdmin } from '@/lib/server/auth';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { isUuid, jsonError, readJson, requireAdmin } from '@/lib/server/auth';
+import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { EMAIL_FROM_PLAIN, getResend } from '@/lib/server/emails/common';
 import { matchCreatedEmail } from '@/lib/emails/templates';
 
-export async function POST(request: NextRequest) {
-  // Admin-only: this endpoint sends mail to an arbitrary address.
+const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
+
+export async function POST(request: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
+
+  const body = await readJson<{
+    userId: string;
+    recipientName: string;
+    otherMemberNames: unknown;
+    venueName: string;
+    questTitle: string;
+    questTitleEn: string;
+    questDescription: string;
+    questDescriptionEn: string;
+    daysToComplete: number;
+  }>(request);
+
+  const otherMemberNames = Array.isArray(body.otherMemberNames)
+    ? body.otherMemberNames.filter((n): n is string => typeof n === 'string').slice(0, 5).map((n) => n.slice(0, 60))
+    : [];
+  if (!isUuid(body.userId) || !str(body.recipientName, 60) || otherMemberNames.length === 0 || !str(body.venueName, 100)) {
+    return jsonError('missing_fields', 400);
+  }
+
   try {
-    const {
-      userId,
-      recipientName,
-      otherMemberNames,
-      venueName,
-      questTitle,
-      questTitleEn,
-      questDescription,
-      questDescriptionEn,
-      daysToComplete,
-    } = await request.json();
+    const { data: userData, error: userError } = await getAdmin().auth.admin.getUserById(body.userId);
+    const userEmail = userData?.user?.email;
+    if (userError || !userEmail) return jsonError('user_email_not_found', 404);
 
-    console.log('Match email request received:', { userId, recipientName, venueName });
-
-    if (!userId || !recipientName || !otherMemberNames || !venueName) {
-      console.error('Missing fields:', { userId, recipientName, otherMemberNames, venueName });
-      return NextResponse.json(
-        { error: 'missing_fields' },
-        { status: 400 }
-      );
-    }
-
-    const resendKey = process.env.RESEND_API_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!resendKey || !supabaseUrl || !serviceRoleKey) {
-      console.error('Missing env vars', {
-        hasResend: !!resendKey,
-        hasSupabaseUrl: !!supabaseUrl,
-        hasServiceRole: !!serviceRoleKey,
-      });
-      return NextResponse.json(
-        { error: 'not_configured' },
-        { status: 500 }
-      );
-    }
-
-    // Create a supabase client with service role — bypasses RLS to read auth.users
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // Look up the user's email from auth.users
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
-
-    if (userError || !userData?.user?.email) {
-      console.error('User email lookup failed:', userError);
-      return NextResponse.json(
-        { error: 'user_email_not_found' },
-        { status: 404 }
-      );
-    }
-
-    const userEmail = userData.user.email;
-
-    const resend = new Resend(resendKey);
     const { subject, html } = matchCreatedEmail({
-      recipientName,
+      recipientName: str(body.recipientName, 60),
       otherMemberNames,
-      venueName,
-      questTitle,
-      questTitleEn,
-      questDescription,
-      questDescriptionEn,
-      daysToComplete: daysToComplete ?? 14,
+      venueName: str(body.venueName, 100),
+      questTitle: str(body.questTitle, 200),
+      questTitleEn: str(body.questTitleEn, 200),
+      questDescription: str(body.questDescription, 2000),
+      questDescriptionEn: str(body.questDescriptionEn, 2000),
+      daysToComplete: Number(body.daysToComplete) || 14,
     });
 
-    const result = await resend.emails.send({
-      from: 'Doreham <noreply@doreham.co.kr>',
+    const result = await getResend().emails.send({
+      from: EMAIL_FROM_PLAIN,
       replyTo: 'sophia@doreham.co.kr',
       to: [userEmail],
       subject,
       html,
     });
-
     if (result.error) {
-      console.error('Resend error:', result.error);
-      return NextResponse.json(
-        { error: 'send_failed', details: result.error.message },
-        { status: 500 }
-      );
+      console.error('[match-created] send failed:', result.error.message);
+      return jsonError('send_failed', 500);
     }
-
-    return NextResponse.json({ ok: true, id: result.data?.id, sentTo: userEmail });
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Email send error:', error);
-    return NextResponse.json(
-      { error: 'server_error' },
-      { status: 500 }
-    );
+    console.error('[match-created] error:', error);
+    return jsonError('server_error', 500);
   }
 }

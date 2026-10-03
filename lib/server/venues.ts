@@ -88,8 +88,19 @@ function cleanHours(v: unknown): Record<string, { closed: boolean; open?: string
   return out;
 }
 
-async function removeFiles(bucket: string, urls: (string | null | undefined)[]) {
-  const paths = urls.map((u) => storagePath(u, bucket)).filter((p): p is string => !!p);
+/**
+ * A file belongs to this venue's owner (or the person editing, e.g. an admin) only when it sits
+ * in their own folder (`<user id>/…`, where uploads go). Anything else — another venue's photo,
+ * someone else's upload — is never accepted and never deleted.
+ */
+function inFolders(path: string | null, folders: string[]): boolean {
+  return !!path && folders.some((f) => !!f && path.startsWith(`${f}/`));
+}
+
+async function removeFiles(bucket: string, urls: (string | null | undefined)[], folders: string[]) {
+  const paths = urls
+    .map((u) => storagePath(u, bucket))
+    .filter((p): p is string => inFolders(p, folders));
   if (paths.length === 0) return;
   try {
     await getAdmin().storage.from(bucket).remove(paths);
@@ -106,6 +117,18 @@ async function loadOwnVenue(userId: string, venueId: string): Promise<{ ok: true
   if (!venue || venue.deactivated_at) return fail('not_found', 404);
   if (venue.owner_id !== userId && !(await isAdminUser(userId))) return fail('not_allowed', 403);
   return { ok: true, venue };
+}
+
+/** Full venue row + menu for the owner's edit form (the browser can't read the private columns). */
+export async function getVenueForEdit(userId: string, venueId: string) {
+  const own = await loadOwnVenue(userId, venueId);
+  if (!own.ok) return own;
+  const { data: menu } = await getAdmin()
+    .from('venue_menu_items')
+    .select('id, name, name_en, description, price_won, is_signature, photo_url, display_order')
+    .eq('venue_id', venueId)
+    .order('display_order', { ascending: true });
+  return { ok: true as const, venue: own.venue, menu_items: menu ?? [] };
 }
 
 export async function updateVenue(userId: string, venueId: string, input: VenueUpdateInput) {
@@ -161,18 +184,29 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
     v.hours_json = hours;
   }
 
-  // Photos: only files in our venue-photos bucket.
+  // Photos: only files already on this venue, or new uploads in the owner's/editor's own folder.
+  const folders = [venue.owner_id as string, userId];
   const oldPhotos: string[] = Array.isArray(venue.photo_urls) ? [...venue.photo_urls] : [];
   let photos = oldPhotos;
   if (input.photo_urls !== undefined) {
     if (!Array.isArray(input.photo_urls)) return fail('bad_photos');
-    photos = [...new Set(input.photo_urls.filter((u): u is string => !!storagePath(u, 'venue-photos')))];
+    photos = [
+      ...new Set(
+        input.photo_urls.filter(
+          (u): u is string => typeof u === 'string' && (oldPhotos.includes(u) || inFolders(storagePath(u, 'venue-photos'), folders)),
+        ),
+      ),
+    ];
     if (photos.length > MAX_VENUE_PHOTOS) return fail('too_many_photos');
     v.photo_urls = photos;
   }
 
   // Menu (validated before anything is written)
   let menu: { id?: string; row: Record<string, unknown> }[] | null = null;
+  const { data: currentMenu } = await getAdmin().from('venue_menu_items').select('photo_url').eq('venue_id', venueId);
+  const oldMenuPhotos = new Set((currentMenu ?? []).map((m) => m.photo_url as string | null).filter((u): u is string => !!u));
+  const menuPhotoOk = (u: unknown): u is string =>
+    typeof u === 'string' && (oldMenuPhotos.has(u) || inFolders(storagePath(u, 'venue-menu-photos'), folders));
   if (input.menu_items !== undefined) {
     if (!Array.isArray(input.menu_items) || input.menu_items.length > MAX_MENU_ITEMS) return fail('bad_menu');
     menu = [];
@@ -189,7 +223,7 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
           description: orNull(text(raw?.description, 300)),
           price_won: price,
           is_signature: raw?.is_signature === true,
-          photo_url: storagePath(raw?.photo_url, 'venue-menu-photos') ? raw!.photo_url : null,
+          photo_url: menuPhotoOk(raw?.photo_url) ? raw!.photo_url : null,
           display_order: i,
         },
       });
@@ -211,7 +245,10 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
 
   const admin = getAdmin();
   const { error: upErr } = await admin.from('venues').update(v).eq('id', venueId);
-  if (upErr) return fail(`save_failed: ${upErr.message}`, 500);
+  if (upErr) {
+    console.error('[venues] update failed:', upErr);
+    return fail('save_failed', 500);
+  }
 
   const removedFiles: { bucket: string; urls: string[] }[] = [{ bucket: 'venue-photos', urls: oldPhotos.filter((u) => !photos.includes(u)) }];
 
@@ -232,7 +269,7 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
     });
   }
 
-  for (const f of removedFiles) await removeFiles(f.bucket, f.urls);
+  for (const f of removedFiles) await removeFiles(f.bucket, f.urls, folders);
   return { ok: true as const, needs_review: needsReview };
 }
 
@@ -269,9 +306,20 @@ export async function deleteVenue(userId: string, venueId: string) {
       business_registration_number: null,
     })
     .eq('id', venueId);
-  if (upErr) return fail(`delete_failed: ${upErr.message}`, 500);
+  if (upErr) {
+    console.error('[venues] delete failed:', upErr);
+    return fail('delete_failed', 500);
+  }
 
-  await removeFiles('venue-photos', photos);
-  await removeFiles('venue-menu-photos', (menu ?? []).map((m) => m.photo_url as string | null));
+  const folders = [venue.owner_id as string, userId];
+  await removeFiles('venue-photos', photos, folders);
+  await removeFiles('venue-menu-photos', (menu ?? []).map((m) => m.photo_url as string | null), folders);
   return { ok: true as const };
+}
+
+/** Remove a venue's photo files (only files inside the owner's own folder). Used when an admin rejects a venue. */
+export async function purgeVenueFiles(ownerId: string, photoUrls: unknown, menuPhotoUrls: (string | null | undefined)[]) {
+  const photos = Array.isArray(photoUrls) ? (photoUrls as string[]) : [];
+  await removeFiles('venue-photos', photos, [ownerId]);
+  await removeFiles('venue-menu-photos', menuPhotoUrls, [ownerId]);
 }

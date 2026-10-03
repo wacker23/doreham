@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSessionClient } from '@/lib/supabase/server';
-import { isAdminUser, isUuid } from '@/lib/server/auth';
+import { isAdminUser, isUuid, jsonError, publicError } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 
 
@@ -20,9 +20,27 @@ import { getAdmin } from '@/lib/server/supabaseAdmin';
 export async function GET(request: Request, { params }: { params: Promise<{ venue_id: string }> }) {
   try {
     const { venue_id } = await params;
-    if (!isUuid(venue_id)) return NextResponse.json({ error: 'venue_id required' }, { status: 400 });
+    if (!isUuid(venue_id)) return jsonError('venue_id required', 400);
 
     const admin = getAdmin();
+
+    // Who is asking: anyone may see an approved venue's stats; a pending or removed venue only
+    // its owner (and admins). Private concern tags are owner/admin only.
+    const { data: venue } = await admin
+      .from('venues')
+      .select('owner_id, is_active, deactivated_at')
+      .eq('id', venue_id)
+      .maybeSingle();
+    if (!venue) return jsonError('not_found', 404);
+    let canSeePrivate = false;
+    try {
+      const session = await createSessionClient();
+      const { data: { user } } = await session.auth.getUser();
+      if (user) canSeePrivate = venue.owner_id === user.id || (await isAdminUser(user.id));
+    } catch {
+      canSeePrivate = false;
+    }
+    if (!canSeePrivate && (!venue.is_active || venue.deactivated_at)) return jsonError('not_found', 404);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
@@ -53,14 +71,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ venu
       admin
         .from('quest_check_ins')
         .select('user_id')
-        .eq('venue_id', venue_id),
+        .eq('venue_id', venue_id)
+        .limit(5000),
 
       // All venue reviews
       admin
         .from('venue_reviews')
         .select('id, compliment_tags, concern_tags, short_text, submitted_at')
         .eq('venue_id', venue_id)
-        .order('submitted_at', { ascending: false }),
+        .order('submitted_at', { ascending: false })
+        .limit(1000),
     ]);
 
     // Compute total unique visitors from user_id list
@@ -83,19 +103,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ venu
       }
     }
 
-    // Private concern tags are only for the venue owner (and admins).
-    let canSeePrivate = false;
-    try {
-      const session = await createSessionClient();
-      const { data: { user } } = await session.auth.getUser();
-      if (user) {
-        const { data: v } = await admin.from('venues').select('owner_id').eq('id', venue_id).maybeSingle();
-        canSeePrivate = v?.owner_id === user.id || (await isAdminUser(user.id));
-      }
-    } catch {
-      canSeePrivate = false;
-    }
-
     return NextResponse.json({
       visits_this_week: visitsRes.count ?? 0,
       upcoming_groups: upcomingRes.count ?? 0,
@@ -106,6 +113,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ venu
       recent_text_reviews: recentTextReviews,
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown error' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'venue-stats'), 500);
   }
 }

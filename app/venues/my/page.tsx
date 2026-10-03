@@ -15,7 +15,6 @@ import { reviewTagIcon, venueCategoryArt } from '@/lib/icons';
 type Venue = {
   id: string;
   business_name_display: string;
-  business_name_legal: string;
   category: string;
   address: string;
   city: string;
@@ -70,7 +69,7 @@ export default function MyVenuesPage() {
     setError(null);
     const { data, error: err } = await supabase
       .from('venues')
-      .select('*')
+      .select('id, business_name_display, category, address, city, district, photo_urls, is_active, claim_verified_at, created_at, updated_at, per_person_cost_won, discount_offer')
       .eq('owner_id', user!.id)
       .is('deactivated_at', null)
       .order('created_at', { ascending: false });

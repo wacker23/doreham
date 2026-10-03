@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isUuid, readJson, requireUser } from '@/lib/server/auth';
+import { isUuid, jsonError, publicError, readJson, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 
 
@@ -119,9 +119,12 @@ export async function POST(request: Request) {
     // Insert person reviews
     const insertedPersonReviews: any[] = [];
     if (Array.isArray(person_reviews)) {
-      for (const pr of person_reviews) {
-        if (!pr.reviewed_user_id || pr.reviewed_user_id === reviewer_id) continue;
+      // One review per other member at most; malformed entries are skipped.
+      for (const pr of person_reviews.slice(0, validMemberIds.size)) {
+        if (!pr || typeof pr !== 'object' || !isUuid(pr.reviewed_user_id) || pr.reviewed_user_id === reviewer_id) continue;
         if (!validMemberIds.has(pr.reviewed_user_id)) continue;
+        // Only people who were actually there can be reviewed (same rule as pending-reviews).
+        if (attendedIds && !attendedIds.has(pr.reviewed_user_id)) continue;
 
         // Skip if no tags at all
         pr.compliment_tags = clean(pr.compliment_tags, validComp);
@@ -160,7 +163,8 @@ export async function POST(request: Request) {
 
     // Insert venue review
     let insertedVenueReview: any = null;
-    if (venue_review && quest.venue_id) {
+    if (venue_review && typeof venue_review === 'object' && quest.venue_id) {
+      if (typeof venue_review.short_text !== 'string') venue_review.short_text = undefined;
       venue_review.compliment_tags = clean(venue_review.compliment_tags, validVenueComp);
       venue_review.concern_tags = clean(venue_review.concern_tags, validVenueConcern);
       const hasVenueContent = 
@@ -208,7 +212,7 @@ export async function POST(request: Request) {
       venue_review_submitted: !!insertedVenueReview,
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? 'Unknown error' }, { status: 500 });
+    return jsonError(publicError(e, 'server_error', 'submit-quest-reviews'), 500);
   }
 }
 

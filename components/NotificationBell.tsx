@@ -25,6 +25,16 @@ type Props = {
 };
 
 
+/** Notification links are our own paths; anything that would leave the site goes to Matches. */
+function sameSitePath(u: string): string {
+  try {
+    const t = new URL(u, window.location.origin);
+    return t.origin === window.location.origin ? t.pathname + t.search + t.hash : '/matches';
+  } catch {
+    return '/matches';
+  }
+}
+
 export function NotificationBell({ lang }: Props) {
   const { user } = useUser();
   const userId = user?.id;
@@ -139,7 +149,7 @@ export function NotificationBell({ lang }: Props) {
     // Navigate
     if (n.action_url) {
       setOpen(false);
-      router.push(n.action_url);
+      router.push(sameSitePath(n.action_url));
     }
   }
 

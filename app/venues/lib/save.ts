@@ -41,7 +41,7 @@ export async function submitVenue(
   if (!user) return { ok: false, error: 'not_signed_in' };
 
   // Check venue limit: max 2 venues per user (approved or pending)
-  const { data: existingVenues, count } = await supabase
+  const { count } = await supabase
     .from('venues')
     .select('id', { count: 'exact', head: true })
     .eq('owner_id', user.id)
@@ -51,9 +51,13 @@ export async function submitVenue(
     return { ok: false, error: 'venue_limit_reached' };
   }
 
-  const { data: venue, error: venueError } = await supabase
+  // The id is made here so nothing has to be read back after the insert (the owner's contact
+  // columns aren't readable from the browser).
+  const venue = { id: crypto.randomUUID() };
+  const { error: venueError } = await supabase
     .from('venues')
     .insert({
+      id: venue.id,
       owner_id: user.id,
       business_name_display: formData.business_name_display,
       business_name_legal: formData.business_name_legal,
@@ -81,14 +85,13 @@ export async function submitVenue(
       contact_email: formData.contact_email || null,
       contact_phone: formData.contact_phone || null,
       contact_name: formData.contact_name || null,
-    })
-    .select('id')
-    .single();
+    });
 
-  if (venueError || !venue) {
+  if (venueError) {
     console.error('Venue insert error:', venueError);
-    if (venueError?.message?.includes('venue_limit_reached')) return { ok: false, error: 'venue_limit_reached' };
-    return { ok: false, error: venueError?.message ?? 'unknown_error' };
+    if (venueError.message?.includes('venue_limit_reached')) return { ok: false, error: 'venue_limit_reached' };
+    if (venueError.message?.includes('plus_required')) return { ok: false, error: 'plus_required' };
+    return { ok: false, error: 'save_failed' };
   }
 
   if (uploadedMenuItems.length > 0) {

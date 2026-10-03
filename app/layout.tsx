@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import './globals.css';
 import { Footer } from '@/components/Footer';
 
@@ -23,10 +22,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body data-lang="en">
-        <Script
-          src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
-          strategy="afterInteractive"
-        />
         {children}
         <Footer />
       </body>

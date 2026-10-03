@@ -3,8 +3,16 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
+// Only same-site paths are opened ("/\\evil.com" and similar resolve to another site, so they
+// are checked by resolving against our own origin).
 function safePath(u) {
-  return typeof u === 'string' && u.startsWith('/') && !u.startsWith('//') ? u : '/matches';
+  if (typeof u !== 'string' || !u.startsWith('/')) return '/matches';
+  try {
+    const t = new URL(u, self.location.origin);
+    return t.origin === self.location.origin ? t.pathname + t.search + t.hash : '/matches';
+  } catch (e) {
+    return '/matches';
+  }
 }
 
 self.addEventListener('push', (event) => {

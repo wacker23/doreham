@@ -15,8 +15,8 @@ import type { VOLUNTEER_CITY_SLUGS } from '@/lib/cities';
  *   VOLUNTEER_1365_API_BASE   — https://apis.data.go.kr/1741000/volunteerPartcptnService (set on Vercel)
  *
  * Field names follow the 1365 spec; normalizeProgram() accepts a few aliases so a
- * gateway rename doesn't silently drop data. Verify against a real response with
- * /api/admin/volunteer-probe before trusting a new endpoint.
+ * gateway rename doesn't silently drop data. (The admin probe route used to check field names
+ * was removed before launch; call callOperation() from a local script if a field changes.)
  */
 
 export type RawItem = Record<string, string>;

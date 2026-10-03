@@ -1,7 +1,7 @@
 // Server-only. Moved from app/api/emails/strike-issued/route.ts (Sep 28 2026) so it is
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
-import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, type EmailResult } from '@/lib/server/emails/common';
+import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
 
 /**
  * Server helper (formerly POST /api/emails/strike-issued)
@@ -49,8 +49,8 @@ export async function sendStrikeIssuedEmail(params: { user_id: string; reason: s
     if (!profile || !email) return emailResult({ error: 'User not found' }, { status: 404 });
 
     const lang = profile.primary_language === 'ko' ? 'ko' : 'en';
-    const name = profile.display_name || (lang === 'ko' ? '친구' : 'friend');
-    const reasonLabel = REASON_LABELS[reason]?.[lang] || reason;
+    const name = escapeHtml(profile.display_name || (lang === 'ko' ? '친구' : 'friend'));
+    const reasonLabel = escapeHtml(REASON_LABELS[reason]?.[lang] || reason);
 
     let freezeText = '';
     if (freeze_until) {
@@ -120,7 +120,7 @@ export async function sendStrikeIssuedEmail(params: { user_id: string; reason: s
     const sent = await getResend().emails.send({
       from: EMAIL_FROM_BRANDED,
       to: email,
-      subject,
+      subject: cleanSubject(subject),
       html,
     });
     if (sent.error) return emailResult({ error: sent.error.message }, { status: 502 });

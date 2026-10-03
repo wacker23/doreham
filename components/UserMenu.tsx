@@ -11,7 +11,6 @@ type Props = {
   lang: 'en' | 'ko';
 };
 
-const ADMIN_USER_ID = 'dc511479-3d65-4dc4-a2da-55cbca7f9456';
 
 /**
  * Renders in the nav.
@@ -83,7 +82,7 @@ export function UserMenu({ lang }: Props) {
     .join('')
     .toUpperCase();
 
-  const isAdmin = user.id === ADMIN_USER_ID;
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <div className="user-menu-wrap">

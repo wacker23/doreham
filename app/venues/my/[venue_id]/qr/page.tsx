@@ -17,6 +17,8 @@ type QrInfo = {
   id: string;
   code: string;
   valid_date: string;
+  /** SVG data URL drawn by the server. */
+  image: string;
 };
 
 export default function VenueQrPage() {
@@ -74,7 +76,7 @@ export default function VenueQrPage() {
       if (qrData.error) {
         setError(qrData.error);
       } else {
-        setQr({ id: qrData.id, code: qrData.code, valid_date: qrData.valid_date });
+        setQr({ id: qrData.id, code: qrData.code, valid_date: qrData.valid_date, image: qrData.image });
       }
     } catch (e: any) {
       setError(e.message ?? 'Failed to load QR');
@@ -120,9 +122,8 @@ export default function VenueQrPage() {
 
   if (!venue || !qr) return null;
 
-  // QR image URL — use a public QR generation service (quickchart.io is reliable + free)
-  const qrPayload = encodeURIComponent(qr.code);
-  const qrImageUrl = `https://quickchart.io/qr?text=${qrPayload}&size=400&margin=2`;
+  // QR image drawn by our server (the day's code is never sent to an outside service).
+  const qrImageUrl = qr.image;
 
   return (
     <main className="qr-wrap">

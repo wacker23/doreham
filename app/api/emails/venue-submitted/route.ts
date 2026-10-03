@@ -2,8 +2,8 @@
 // Confirmation email after a venue owner submits a listing.
 //
 // POST { venue_id } — signed-in owner only. The recipient is the venue's own
-// contact_email from the database, never an address supplied by the browser
-// (this used to be an open relay: { to, venueName }).
+// contact_email from the database, never an address supplied by the browser.
+// Sent at most once per venue, right after it is created (see the claim below).
 
 import { NextResponse } from 'next/server';
 import { venueSubmittedEmail } from '@/lib/emails/templates';
@@ -18,18 +18,27 @@ export async function POST(request: Request) {
   const { venue_id } = await readJson<{ venue_id: string }>(request);
   if (!isUuid(venue_id)) return jsonError('venue_id required', 400);
 
-  const { data: venue } = await getAdmin()
+  // Claim the one-and-only "submitted" email for this venue atomically: only the owner, only a
+  // venue still waiting for review, only within 15 minutes of creating it (created_at is set by
+  // the database, not the browser), and only once (submitted_email_sent_at).
+  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data: venue, error: claimErr } = await getAdmin()
     .from('venues')
-    .select('owner_id, contact_email, business_name_display, created_at')
+    .update({ submitted_email_sent_at: new Date().toISOString() })
     .eq('id', venue_id)
+    .eq('owner_id', auth.user.id)
+    .eq('is_active', false)
+    .is('deactivated_at', null)
+    .is('submitted_email_sent_at', null)
+    .gte('created_at', since)
+    .select('contact_email, business_name_display')
     .maybeSingle();
-
-  if (!venue || venue.owner_id !== auth.user.id) return jsonError('not_found', 404);
-  if (!venue.contact_email) return NextResponse.json({ ok: true, skipped: 'no_contact_email' });
-  // Only right after submission — stops this from being replayed to spam the address.
-  if (Date.now() - new Date(venue.created_at).getTime() > 15 * 60 * 1000) {
-    return NextResponse.json({ ok: true, skipped: 'too_late' });
+  if (claimErr) {
+    console.error('[venue-submitted] claim failed:', claimErr);
+    return jsonError('server_error', 500);
   }
+  if (!venue) return NextResponse.json({ ok: true, skipped: 'not_applicable' });
+  if (!venue.contact_email) return NextResponse.json({ ok: true, skipped: 'no_contact_email' });
 
   try {
     const { subject, html } = venueSubmittedEmail(venue.business_name_display);
@@ -44,7 +53,7 @@ export async function POST(request: Request) {
       console.error('Resend error:', result.error);
       return jsonError('send_failed', 500);
     }
-    return NextResponse.json({ ok: true, id: result.data?.id });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Email send error:', error);
     return jsonError('server_error', 500);

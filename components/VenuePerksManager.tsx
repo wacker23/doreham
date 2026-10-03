@@ -18,7 +18,7 @@ type OwnerPerk = {
 /** "My venues": offer perks to Doreham members by level, and see today's code. */
 export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'en' | 'ko' }) {
   const ko = lang === 'ko';
-  const [data, setData] = useState<{ code_today: string; max: number; perks: OwnerPerk[] } | null>(null);
+  const [data, setData] = useState<{ code_today: string | null; max: number; perks: OwnerPerk[] } | null>(null);
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
@@ -72,7 +72,7 @@ export function VenuePerksManager({ venueId, lang }: { venueId: string; lang: 'e
       <div className="vp-head">
         <div className="vp-title"><Icon name="perk" size={20} /> {ko ? '도레함 회원 혜택' : 'Perks for Doreham members'}</div>
         <div className="vp-code" title={ko ? '회원 화면에 같은 코드가 보여요' : "Members' screens show the same code"}>
-          {ko ? '오늘의 코드' : "Today's code"} <strong>{data.code_today}</strong>
+          {ko ? '오늘의 코드' : "Today's code"} <strong>{data.code_today ?? '—'}</strong>
         </div>
       </div>
       <p className="vp-help">

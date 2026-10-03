@@ -14,7 +14,6 @@ import { reviewTagIcon, venueCategoryArt } from '@/lib/icons';
 type Venue = {
   id: string;
   business_name_display: string;
-  business_name_legal: string;
   category: string;
   address: string;
   city: string;
@@ -111,7 +110,8 @@ export default function VenueDetailPage() {
 
     const { data, error: err } = await supabase
       .from('venues')
-      .select('*')
+      // Public columns only: the owner's contact details and registration number are private.
+      .select('id, owner_id, business_name_display, category, address, road_address, address_detail, building_name, zipcode, city, district, business_opened_at, description, description_en, discount_offer, discount_offer_en, hidden_gem_eligible, hours_json, per_person_cost_won, photo_urls, latitude, longitude, jibun_address, is_active')
       .eq('id', venueId)
       .eq('is_active', true)
       .is('deactivated_at', null)
