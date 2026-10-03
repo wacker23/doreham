@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# files Claude sent for preview (not part of the app)
+/Claude outputs/

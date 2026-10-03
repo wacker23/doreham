@@ -5,11 +5,12 @@ import { supabase } from '@/lib/supabase/client';
 import { askNow, disablePushForSignOut, getPushState, type PushState } from '@/lib/push';
 import { DeleteAccountSection } from '@/components/DeleteAccountSection';
 import { MembershipSection } from '@/components/MembershipSection';
-import { PrivacyConsentsSection } from '@/components/PrivacyConsentsSection';
+import { useVolunteerPhotoConsent } from '@/components/PrivacyConsentsSection';
 import { SITE_URL, SOCIAL_LINKS, SUPPORT_EMAIL } from '@/lib/social';
 
 /**
- * Own profile → Settings: membership, then grouped rows like a phone app's settings screen.
+ * Own profile → Settings: membership, then grouped rows like a phone app's settings screen
+ * (the volunteer-photo consent sits under Legal documents).
  * Payment method and the social accounts are placeholders until Doreham's business
  * registration is done (fill the links in lib/social.ts when the accounts exist).
  */
@@ -24,6 +25,7 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState<'push' | 'logout' | null>(null);
   const [shared, setShared] = useState<'copied' | 'failed' | null>(null);
+  const consent = useVolunteerPhotoConsent(lang);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,12 +184,8 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
         </div>
       </div>
 
-      <div className="ps-group" role="group" aria-label={t('Privacy', '개인정보')}>
-        <PrivacyConsentsSection lang={lang} />
-      </div>
-
-      <div className="ps-group" role="group" aria-label={t('Support', '고객 지원')}>
-        <h3 className="ps-head">{t('Support', '고객 지원')}</h3>
+      <div className="ps-group" role="group" aria-label={t('Support & privacy', '고객 지원 · 개인정보')}>
+        <h3 className="ps-head">{t('Support & privacy', '고객 지원 · 개인정보')}</h3>
         <div className="ps-card">
           <SettingsRow icon={<IconHelp />} label={t('Help & contact', '도움말 · 문의')} sub={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} />
           <SettingsRow
@@ -202,6 +200,20 @@ export function ProfileSettings({ lang, plusActive, canDelete }: { lang: Lang; p
               <a href="/legal/privacy">{t('Privacy Policy', '개인정보 처리방침')} →</a>
             </div>
           )}
+          <SettingsRow
+            icon={<IconShield />}
+            label={t('Volunteer quest photos', '봉사 퀘스트 사진')}
+            sub={consent.message ?? consent.status}
+            right={
+              consent.agreedAt === undefined ? undefined : consent.agreedAt ? (
+                <Pill tone="warn">{consent.busy ? '…' : t('Withdraw', '철회')}</Pill>
+              ) : (
+                <Pill tone="go">{t('Review', '보기')}</Pill>
+              )
+            }
+            onClick={consent.agreedAt === undefined || consent.busy ? undefined : consent.agreedAt ? consent.withdraw : consent.review}
+          />
+          {consent.modal}
         </div>
       </div>
 
@@ -382,7 +394,7 @@ function RowInner({
       <style jsx>{`
         .ri-ic { width: 38px; height: 38px; flex: none; border-radius: 50%; background: #f1efea; color: var(--ink); display: grid; place-items: center; }
         .ri-ic.danger { background: rgba(214, 69, 69, 0.1); color: #c43c3c; }
-        .ri-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .ri-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; word-break: keep-all; }
         .ri-label { font-size: 15.5px; font-weight: 600; color: var(--ink); line-height: 1.3; }
         .ri-label.danger { color: #c43c3c; }
         .ri-sub { font-size: 12.5px; color: var(--ink-60); line-height: 1.35; overflow-wrap: anywhere; }
@@ -437,6 +449,12 @@ const IconFile = () => (
   <Svg>
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
     <path d="M14 2v6h6M16 13H8M16 17H8" />
+  </Svg>
+);
+const IconShield = () => (
+  <Svg>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M9 12l2 2 4-4" />
   </Svg>
 );
 const IconCamera = () => (
