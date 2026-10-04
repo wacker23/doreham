@@ -13,6 +13,9 @@ type Venue = {
   business_registration_number: string;
   category: string;
   address: string;
+  road_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   city: string;
   district: string | null;
   business_opened_at: string | null;
@@ -27,6 +30,15 @@ type Venue = {
   contact_phone: string | null;
   contact_name: string | null;
   created_at: string;
+};
+
+/** An approved venue with no map pin: QR check-in there is refused until one is set. */
+type MissingPin = {
+  id: string;
+  business_name_display: string;
+  city: string;
+  address: string;
+  road_address: string | null;
 };
 
 type MenuItem = {
@@ -68,6 +80,7 @@ export default function AdminVenuesPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [missingPin, setMissingPin] = useState<MissingPin[]>([]);
 
   // Auth + admin gate
   useEffect(() => {
@@ -98,6 +111,7 @@ export default function AdminVenuesPage() {
       return;
     }
     setVenues((body.venues ?? []) as Venue[]);
+    setMissingPin((body.missing_pin ?? []) as MissingPin[]);
     const grouped: Record<string, MenuItem[]> = {};
     for (const item of (body.menu_items ?? []) as MenuItem[]) {
       if (!grouped[item.venue_id]) grouped[item.venue_id] = [];
@@ -119,7 +133,10 @@ export default function AdminVenuesPage() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setError(`Approval failed: ${body?.error ?? res.status}`);
+      setError(body?.error === 'pin_required'
+        ? `Set the map pin for ${venue.business_name_display} first: QR check-in checks members' GPS against it.`
+        : `Approval failed: ${body?.error ?? res.status}`);
+      setExpandedId(venue.id);
       setProcessingId(null);
       return;
     }
@@ -205,6 +222,25 @@ export default function AdminVenuesPage() {
           <div className="error-banner">{error}</div>
         )}
 
+        {!loadingVenues && missingPin.length > 0 && (
+          <div className="pin-alert">
+            <h2>Approved venues without a map pin</h2>
+            <p>QR check-in is refused at these until the pin is set, because GPS can&apos;t be checked.</p>
+            {missingPin.map((m) => (
+              <div key={m.id} className="pin-alert-item">
+                <strong>{m.business_name_display}</strong>
+                <span className="pin-alert-sub">{m.city} · {m.road_address || m.address}</span>
+                <PinEditor
+                  venueId={m.id}
+                  address={m.road_address || m.address}
+                  initial={null}
+                  onSaved={() => setMissingPin((prev) => prev.filter((x) => x.id !== m.id))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         {loadingVenues ? (
           <div className="loading-inline">Loading venues…</div>
         ) : venues.length === 0 ? (
@@ -253,6 +289,13 @@ export default function AdminVenuesPage() {
                         <Row label="Contact phone" value={venue.contact_phone} />
                         {venue.contact_name && <Row label="Contact person" value={venue.contact_name} />}
                       </div>
+
+                      <PinEditor
+                        venueId={venue.id}
+                        address={venue.road_address || venue.address}
+                        initial={venue.latitude != null && venue.longitude != null ? { lat: Number(venue.latitude), lng: Number(venue.longitude) } : null}
+                        onSaved={(lat, lng) => { setError(null); setVenues((prev) => prev.map((x) => (x.id === venue.id ? { ...x, latitude: lat, longitude: lng } : x))); }}
+                      />
 
                       {venue.description && (
                         <div className="detail-block">
@@ -391,6 +434,12 @@ export default function AdminVenuesPage() {
         .success-banner { background: rgba(15, 157, 119, 0.1); color: var(--jade); border: 1px solid rgba(15, 157, 119, 0.25); padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 16px; }
         .error-banner { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; }
         .loading-inline { text-align: center; padding: 60px 20px; color: var(--ink-60); }
+        .pin-alert { background: rgba(255, 106, 61, 0.06); border: 1px solid rgba(255, 106, 61, 0.3); border-radius: 16px; padding: 18px 20px; margin-bottom: 20px; }
+        .pin-alert h2 { font-family: var(--display); font-size: 18px; margin: 0 0 4px; }
+        .pin-alert > p { color: var(--ink-60); font-size: 13px; margin: 0 0 8px; }
+        .pin-alert-item { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--ink-12); }
+        .pin-alert-item strong { display: block; font-size: 15px; }
+        .pin-alert-sub { display: block; color: var(--ink-60); font-size: 13px; }
         .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-60); font-size: 18px; background: var(--paper-2); border-radius: 16px; }
         .venues-list { display: flex; flex-direction: column; gap: 12px; }
         .venue-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; overflow: hidden; }
@@ -439,6 +488,87 @@ export default function AdminVenuesPage() {
         }
       `}</style>
     </>
+  );
+}
+
+/**
+ * Map pin for a venue: what QR check-in measures members' GPS against. Paste coordinates
+ * (or a map link), or look them up from the address (needs the Kakao key on the server).
+ */
+function PinEditor({ venueId, address, initial, onSaved }: {
+  venueId: string;
+  address: string;
+  initial: { lat: number; lng: number } | null;
+  onSaved: (lat: number, lng: number) => void;
+}) {
+  const [pin, setPin] = useState(initial);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function save(fromAddress: boolean) {
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch('/api/admin/venues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_pin', venue_id: venueId, pin: fromAddress ? '' : text }),
+    });
+    const body = await res.json().catch(() => null);
+    setBusy(false);
+    if (!res.ok || !body?.ok) {
+      setMsg(body?.error === 'bad_pin'
+        ? 'Couldn\'t read that. Paste two numbers like "37.5345, 126.9935" (somewhere in Korea).'
+        : body?.error === 'pin_not_found'
+          ? 'The address search found nothing (or KAKAO_REST_API_KEY isn\'t set). Paste the coordinates instead.'
+          : `Couldn't save: ${body?.error ?? res.status}`);
+      return;
+    }
+    setPin({ lat: body.latitude, lng: body.longitude });
+    setText('');
+    setMsg('Saved.');
+    onSaved(body.latitude, body.longitude);
+  }
+
+  const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  return (
+    <div className="pin">
+      <div className="pin-head">
+        <strong>Map pin</strong>
+        {pin
+          ? <a href={`https://www.google.com/maps/search/?api=1&query=${pin.lat},${pin.lng}`} target="_blank" rel="noopener noreferrer">{pin.lat.toFixed(5)}, {pin.lng.toFixed(5)} ↗</a>
+          : <span className="pin-missing">Not set: check-in can&apos;t be confirmed</span>}
+      </div>
+      <p className="pin-help">
+        Open the address on <a href={mapLink} target="_blank" rel="noopener noreferrer">Google Maps ↗</a>, right-click the
+        venue&apos;s building and click the numbers at the top to copy them, then paste here.
+      </p>
+      <div className="pin-row">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="37.5345, 126.9935 or a map link"
+          aria-label="Map pin coordinates"
+        />
+        <button type="button" onClick={() => save(false)} disabled={busy || !text.trim()}>Save pin</button>
+        <button type="button" className="ghost" onClick={() => save(true)} disabled={busy}>Find from address</button>
+      </div>
+      {msg && <p className="pin-msg">{msg}</p>}
+      <style jsx>{`
+        .pin { margin: 16px 0; padding: 14px 16px; background: var(--paper-2); border-radius: 12px; }
+        .pin-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+        .pin-head a { color: var(--jade); font-weight: 600; text-decoration: none; }
+        .pin-missing { color: var(--persimmon); font-weight: 600; }
+        .pin-help { font-size: 12px; color: var(--ink-60); margin: 6px 0 10px; line-height: 1.5; }
+        .pin-help a { color: var(--ink); }
+        .pin-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pin-row input { flex: 1 1 220px; min-width: 0; padding: 10px 12px; border: 1px solid var(--ink-12); border-radius: 10px; font-size: 14px; background: #fff; }
+        .pin-row button { background: var(--ink); color: var(--paper); border: 0; padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; cursor: pointer; }
+        .pin-row button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink-12); }
+        .pin-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pin-msg { font-size: 12px; margin: 8px 0 0; color: var(--ink); }
+      `}</style>
+    </div>
   );
 }
 

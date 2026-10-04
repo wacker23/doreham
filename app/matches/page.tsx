@@ -1593,9 +1593,9 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
             <div className="scheduled-info">
               <div className="scheduled-label"><Icon name="date" size={16} /> {lang === 'ko' ? '봉사 시간' : 'Volunteering time'}</div>
               <div className="scheduled-time">
-                {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', weekday: 'long', month: 'long', day: 'numeric' })}
                 {' · '}
-                {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
           )}
@@ -1644,11 +1644,11 @@ function FullMatchCard({ match, lang, user, isHistory, onAccept, onDecline, onLe
               <Icon name="date" size={16} /> {lang === 'ko' ? '만나는 시간' : 'Meeting time'}
             </div>
             <div className="scheduled-time">
-              {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {new Date(match.quest_scheduled_at).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', weekday: 'long', month: 'long', day: 'numeric' })}
               {' · '}
-              {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+              {new Date(match.quest_scheduled_at).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}
               {' — '}
-              {new Date(new Date(match.quest_scheduled_at).getTime() + 2 * 60 * 60 * 1000).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+              {new Date(new Date(match.quest_scheduled_at).getTime() + 2 * 60 * 60 * 1000).toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
         )}

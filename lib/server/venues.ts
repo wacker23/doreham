@@ -242,6 +242,12 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
     v.is_active = false;
     v.claim_verified_at = null;
   }
+  // A new address needs a new map pin (check-in GPS is measured against it). It's looked up
+  // again when the venue is approved or at the next check-in.
+  if (norm(venue.address) !== norm(v.address) || norm(venue.road_address) !== norm(v.road_address)) {
+    v.latitude = null;
+    v.longitude = null;
+  }
 
   const admin = getAdmin();
   const { error: upErr } = await admin.from('venues').update(v).eq('id', venueId);

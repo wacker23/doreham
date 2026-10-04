@@ -2,15 +2,16 @@
 // called directly instead of via an unauthenticated internal HTTP endpoint.
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { getResend, EMAIL_FROM_BRANDED, APP_URL, emailResult, escapeHtml, cleanSubject, type EmailResult } from '@/lib/server/emails/common';
+import { formatKstRange } from '@/lib/server/time';
 
 /**
  * Server helper (formerly POST /api/emails/quest-day-reminder)
- * body: { user_id, venue_name, scheduled_at }
+ * body: { user_id, venue_name, scheduled_at, ends_at? }  (ends_at = end of the meetup slot, if any)
  */
 
-export async function sendQuestDayReminderEmail(params: { user_id: string; venue_name: string; scheduled_at: string }): Promise<EmailResult> {
+export async function sendQuestDayReminderEmail(params: { user_id: string; venue_name: string; scheduled_at: string; ends_at?: string | null }): Promise<EmailResult> {
   try {
-    const { user_id, venue_name, scheduled_at } = params;
+    const { user_id, venue_name, scheduled_at, ends_at } = params;
     if (!user_id || !venue_name || !scheduled_at) {
       return emailResult({ error: 'user_id, venue_name, scheduled_at required' }, { status: 400 });
     }
@@ -32,13 +33,9 @@ export async function sendQuestDayReminderEmail(params: { user_id: string; venue
     const name = escapeHtml(profile.display_name || (lang === 'ko' ? '친구' : 'friend'));
     const venueName = escapeHtml(venue_name);
 
-    const scheduledDate = new Date(scheduled_at);
-    const timeEn = scheduledDate.toLocaleString('en-US', {
-      weekday: 'long', hour: 'numeric', minute: '2-digit',
-    });
-    const timeKo = scheduledDate.toLocaleString('ko-KR', {
-      weekday: 'long', hour: 'numeric', minute: '2-digit',
-    });
+    // Korea time, with the end of the slot when there is one (venue meetups: 2 hours).
+    const timeEn = formatKstRange(scheduled_at, ends_at ?? null, 'en');
+    const timeKo = formatKstRange(scheduled_at, ends_at ?? null, 'ko');
 
     const subject = lang === 'ko'
       ? `🗓️ 오늘 ${venue_name}에서 만나요!`
