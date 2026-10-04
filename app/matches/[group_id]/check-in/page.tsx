@@ -32,7 +32,7 @@ export default function CheckInPage() {
   const [quest, setQuest] = useState<QuestInfo | null>(null);
   const [scanMode, setScanMode] = useState<'camera' | 'manual'>('camera');
   const [manualCode, setManualCode] = useState('');
-  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable'>('idle');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<any | null>(null);
@@ -132,7 +132,7 @@ export default function CheckInPage() {
     setGpsStatus('requesting');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
         setGpsStatus('granted');
       },
       (err) => {
@@ -182,11 +182,11 @@ export default function CheckInPage() {
   }, [scanMode, quest?.already_checked_in]);
 
   // Location is required to check in (it's what proves you're at the venue).
-  function getFreshPosition(): Promise<{ lat: number; lng: number } | null> {
+  function getFreshPosition(): Promise<{ lat: number; lng: number; accuracy?: number } | null> {
     return new Promise((resolve) => {
       if (!navigator.geolocation) return resolve(null);
       navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
         () => resolve(null),
         { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
       );
@@ -218,6 +218,7 @@ export default function CheckInPage() {
           qr_code: code,
           latitude: coords.lat,
           longitude: coords.lng,
+          accuracy: coords.accuracy,
         }),
       });
       const result = await resp.json();
@@ -377,7 +378,7 @@ export default function CheckInPage() {
           {quest.quest_scheduled_at && (
             <div className="quest-time">
               <Icon name="date" size={16} /> {new Date(quest.quest_scheduled_at).toLocaleString(lang === 'ko' ? 'ko-KR' : 'en-US', {
-                weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                timeZone: 'Asia/Seoul', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
               })}
             </div>
           )}

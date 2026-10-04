@@ -56,7 +56,7 @@ export async function sendStrikeIssuedEmail(params: { user_id: string; reason: s
     if (freeze_until) {
       const until = new Date(freeze_until);
       const dateStr = until.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
       });
       freezeText = lang === 'ko'
         ? `계정이 <strong>${dateStr}</strong>까지 일시 정지됩니다. 그 이후 다시 매칭할 수 있어요.`

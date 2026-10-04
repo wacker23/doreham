@@ -24,6 +24,7 @@ npm run dev                         # http://localhost:3000 (uses the live datab
 | `RESEND_API_KEY` | server | email |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | push | without them push is off |
 | `DATA_GO_KR_API_KEY`, `VOLUNTEER_1365_API_BASE` | server | business-number check, 1365 volunteer API |
+| `KAKAO_REST_API_KEY` | server | Kakao Local address → map pin for venues (QR check-in GPS); without it an admin sets pins by hand |
 | `AI_GATEWAY_API_KEY` / Vercel OIDC, `TRANSLATION_MODELS` | server | KO↔EN translation |
 | `NEXT_PUBLIC_APP_URL` | both | links in emails |
 

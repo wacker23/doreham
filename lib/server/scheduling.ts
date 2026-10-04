@@ -4,7 +4,7 @@ import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { createNotifications } from '@/lib/notifications';
 import { cancelActiveGroup, isAccepted } from '@/lib/server/groupLifecycle';
 import { issueStrike } from '@/lib/server/strikes';
-import { formatKst, hoursFromNow, kstDayHour } from '@/lib/server/time';
+import { formatKst, formatKstRange, hoursFromNow, kstDayHour, MEETUP_SLOT_HOURS } from '@/lib/server/time';
 import { sendQuestDayReminderEmail } from '@/lib/server/emails/quest-day-reminder';
 import { translateActivePrograms } from '@/lib/server/translatePrograms';
 import {
@@ -508,6 +508,13 @@ export async function sendQuestDayReminders() {
         ? (q?.program?.place || q?.program?.title || '봉사 장소')
         : (q?.venue?.business_name_display ?? 'the venue');
     const members = await activeMemberIds(g.id as string);
+    // Venue meetups are a 2-hour slot ("4:00 – 6:00 PM"); volunteering shows its start time.
+    const startsAt = g.quest_scheduled_at as string;
+    const endsAt = q?.quest_type === 'volunteer'
+      ? null
+      : new Date(new Date(startsAt).getTime() + MEETUP_SLOT_HOURS * 3600_000).toISOString();
+    const whenEn = formatKstRange(startsAt, endsAt, 'en');
+    const whenKo = formatKstRange(startsAt, endsAt, 'ko');
 
     await createNotifications(
       members.map((uid) => ({
@@ -516,18 +523,18 @@ export async function sendQuestDayReminders() {
         title_en: `Your meetup at ${venueName} is coming up!`,
         title_ko: `곧 ${venueName}에서 만나요!`,
         body_en: q?.quest_type === 'volunteer'
-          ? `${formatKst(g.quest_scheduled_at as string, 'en')} — volunteering at ${venueName}. Take one group selfie in the app when you're together.`
-          : `${formatKst(g.quest_scheduled_at as string, 'en')} — scan the QR at ${venueName} to check in when you arrive.`,
+          ? `${whenEn} — volunteering at ${venueName}. Take one group selfie in the app when you're together.`
+          : `${whenEn} — scan the QR at ${venueName} to check in when you arrive.`,
         body_ko: q?.quest_type === 'volunteer'
-          ? `${formatKst(g.quest_scheduled_at as string, 'ko')} — ${venueName}에서 봉사해요. 모이면 앱에서 단체 사진을 한 장 찍어 주세요.`
-          : `${formatKst(g.quest_scheduled_at as string, 'ko')} — ${venueName}에 도착하면 QR 코드를 스캔해서 체크인하세요.`,
+          ? `${whenKo} — ${venueName}에서 봉사해요. 모이면 앱에서 단체 사진을 한 장 찍어 주세요.`
+          : `${whenKo} — ${venueName}에 도착하면 QR 코드를 스캔해서 체크인하세요.`,
         action_url: '/matches',
         is_important: true,
       })),
     );
     await Promise.all(
       members.map((uid) =>
-        sendQuestDayReminderEmail({ user_id: uid, venue_name: venueName, scheduled_at: g.quest_scheduled_at as string }).then(
+        sendQuestDayReminderEmail({ user_id: uid, venue_name: venueName, scheduled_at: startsAt, ends_at: endsAt }).then(
           (r) => r.error && console.error('Quest-day email failed:', uid, r.error),
         ),
       ),

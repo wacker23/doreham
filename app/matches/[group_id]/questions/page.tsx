@@ -57,16 +57,18 @@ export default function QuestionsPage() {
     if (stored === 'ko' || stored === 'en') setLang(stored);
   }, []);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
+  const loadData = useCallback(async (): Promise<Progress | null> => {
+    if (!user) return null;
     setLoading(true);
     setError(null);
+    let loaded: Progress | null = null;
     try {
       const resp = await fetch(`/api/quest-questions/${groupId}`);
       const data = await resp.json();
       if (!data.ok) {
         setError(data.error ?? 'Failed to load');
       } else {
+        loaded = data.progress as Progress;
         setProgress(data.progress);
         setSets(data.sets);
         // Auto-focus first incomplete set
@@ -79,6 +81,7 @@ export default function QuestionsPage() {
       setError(e.message ?? 'Unknown error');
     }
     setLoading(false);
+    return loaded;
   }, [user, groupId]);
 
   useEffect(() => {
@@ -97,9 +100,11 @@ export default function QuestionsPage() {
       });
       const data = await resp.json();
       if (data.ok) {
-        await loadData();
+        const reloaded = await loadData();
         // Auto-advance to next set
         if (setNum < 4) setActiveSet(setNum + 1);
+        // Set 3 done → the Depths are next, and they open only after the group reads the note.
+        if (setNum === 3 && !reloaded?.set_4_warning_acknowledged_at) setShowWarning(true);
       } else {
         alert(data.error ?? 'Failed to mark complete');
       }
@@ -136,6 +141,11 @@ export default function QuestionsPage() {
     if (setNum === 3) return !!progress.set_2_complete_at;
     if (setNum === 4) return !!progress.set_3_complete_at && !!progress.set_4_warning_acknowledged_at;
     return false;
+  }
+
+  /** Set 3 is done, but nobody in the group has read the Depths note yet. */
+  function depthsAwaitNote(): boolean {
+    return !!progress?.set_3_complete_at && !progress?.set_4_warning_acknowledged_at;
   }
 
   function isSetComplete(setNum: number): boolean {
@@ -209,9 +219,10 @@ export default function QuestionsPage() {
             return (
               <button
                 key={n}
-                className={`set-tab ${isActive ? 'active' : ''} ${!unlocked ? 'locked' : ''} ${complete ? 'complete' : ''}`}
+                className={`set-tab ${isActive ? 'active' : ''} ${!unlocked && !(n === 4 && depthsAwaitNote()) ? 'locked' : ''} ${complete ? 'complete' : ''}`}
                 onClick={() => {
-                  if (n === 4 && !progress.set_4_warning_acknowledged_at && progress.set_3_complete_at) {
+                  if (n === 4 && depthsAwaitNote()) {
+                    setActiveSet(4);
                     setShowWarning(true);
                   } else if (unlocked) {
                     setActiveSet(n);
@@ -237,7 +248,17 @@ export default function QuestionsPage() {
             <p className="set-blurb">{lang === 'ko' ? currentMeta.blurb_ko : currentMeta.blurb_en}</p>
           </div>
 
-          {!currentUnlocked ? (
+          {activeSet === 4 && depthsAwaitNote() ? (
+            <div className="locked-state">
+              <div className="locked-icon"><Icon name="warning" size={44} /></div>
+              <p>{lang === 'ko'
+                ? '앞의 세 단계를 모두 마쳤어요. 심연 단계는 선택이에요. 시작하기 전에 안내를 함께 읽어 주세요.'
+                : 'You finished the first three sets. The Depths are optional: read the note together before you start.'}</p>
+              <button className="open-depths-btn" onClick={() => setShowWarning(true)}>
+                {lang === 'ko' ? '심연 단계 열기' : 'Open the Depths'}
+              </button>
+            </div>
+          ) : !currentUnlocked ? (
             <div className="locked-state">
               <div className="locked-icon"><Icon name="lock" size={44} /></div>
               <p>{lang === 'ko'
@@ -349,7 +370,8 @@ export default function QuestionsPage() {
 
         .locked-state { text-align: center; padding: 40px 20px; color: var(--ink-60); }
         .locked-icon { display: flex; justify-content: center; margin-bottom: 12px; opacity: 0.6; }
-        .locked-state p { font-size: 14px; margin: 0; }
+        .locked-state p { font-size: 14px; margin: 0; line-height: 1.6; }
+        .open-depths-btn { margin-top: 18px; background: var(--persimmon); color: #fff; border: 0; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; }
 
         .questions-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
         .question-card { display: flex; gap: 14px; background: var(--paper-2); padding: 16px; border-radius: 12px; }

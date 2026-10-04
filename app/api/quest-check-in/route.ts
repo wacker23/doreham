@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { isUuid, jsonError, publicError, readJson, requireUser } from '@/lib/server/auth';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { kstDateString } from '@/lib/server/time';
+import { ensureVenuePin } from '@/lib/server/geocode';
 
 
 /**
@@ -11,6 +12,7 @@ import { kstDateString } from '@/lib/server/time';
  *   qr_code: string,        // Scanned or entered code (e.g. "ABCD-1234")
  *   latitude: number,        // From navigator.geolocation (required)
  *   longitude: number,
+ *   accuracy?: number,       // GPS accuracy in meters, as the phone reports it
  * }
  *
  * Validates:
@@ -18,7 +20,9 @@ import { kstDateString } from '@/lib/server/time';
  *   2. QR code is valid for the venue tied to this group's quest
  *   3. QR is for TODAY (Korean date)
  *   4. Current time is within check-in window (40 min before to 2h after quest_scheduled_at)
- *   5. GPS is required: user is within 200m of the venue (if the venue has coordinates)
+ *   5. GPS is required: user is within 200m of the venue's map pin (plus up to 100m for the
+ *      phone's reported GPS accuracy). A venue without a pin can't confirm check-ins: the pin
+ *      is looked up from its address, and if that fails the check-in is refused.
  *   6. User hasn't already checked in for this quest
  *
  * On success: creates quest_check_ins row + evaluates if quest should complete.
@@ -28,6 +32,7 @@ import { kstDateString } from '@/lib/server/time';
 const CHECK_IN_WINDOW_BEFORE_MIN = 40;
 const CHECK_IN_WINDOW_AFTER_MIN = 120;
 const MAX_DISTANCE_M = 200;
+const MAX_ACCURACY_ALLOWANCE_M = 100;
 
 // Haversine formula — distance in meters between two lat/lng points
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
   const user_id = auth.user.id;
   try {
-    const { group_id, qr_code, latitude, longitude } = await readJson<Record<string, any>>(request);
+    const { group_id, qr_code, latitude, longitude, accuracy } = await readJson<Record<string, any>>(request);
     if (!isUuid(group_id) || typeof qr_code !== 'string' || !qr_code.trim()) {
       return NextResponse.json({ error: 'group_id, qr_code required' }, { status: 400 });
     }
@@ -146,21 +151,30 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 5. GPS check (if provided)
-    let distance: number | null = null;
-    let locationVerified = false;
-    const venue = quest.venue as any;
-
-    if (venue.latitude != null && venue.longitude != null) {
-      distance = distanceMeters(lat, lng, Number(venue.latitude), Number(venue.longitude));
-      if (distance > MAX_DISTANCE_M) {
-        return NextResponse.json({
-          error: `You seem to be ${Math.round(distance)}m from ${venue.business_name_display}. Get closer to the venue to check in.`,
-        }, { status: 400 });
-      }
-      locationVerified = true;
+    // 5. GPS check: always against the venue's map pin. No pin → look it up from the address;
+    //    still none → refuse (before, a venue without a pin let anyone check in from anywhere).
+    const venue = quest.venue as unknown as { id: string; business_name_display: string };
+    const pin = await ensureVenuePin(venue.id);
+    if (!pin) {
+      console.error('[quest-check-in] venue has no map pin:', venue.id);
+      return NextResponse.json({
+        error: 'venue_location_missing',
+        message_en: `We can't confirm check-ins at ${venue.business_name_display} yet because its map location isn't set. Please contact Doreham support.`,
+        message_ko: `${venue.business_name_display}의 지도 위치가 아직 등록되지 않아 체크인을 확인할 수 없어요. 도레함 고객센터로 문의해 주세요.`,
+      }, { status: 409 });
     }
-    // Venue has no coordinates on file: allow, but flag as unverified for admin review.
+    const gpsSlack = Math.min(Math.max(Number(accuracy) || 0, 0), MAX_ACCURACY_ALLOWANCE_M);
+    const distance = distanceMeters(lat, lng, pin.lat, pin.lng);
+    if (distance > MAX_DISTANCE_M + gpsSlack) {
+      const shown = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${Math.round(distance)}m`;
+      return NextResponse.json({
+        error: 'too_far',
+        distance_m: Math.round(distance),
+        message_en: `You seem to be ${shown} from ${venue.business_name_display}. Check in when you're at the venue.`,
+        message_ko: `${venue.business_name_display}에서 약 ${shown} 떨어져 있어요. 매장에 도착한 뒤 체크인해 주세요.`,
+      }, { status: 400 });
+    }
+    const locationVerified = true;
 
     // 6. Check for existing check-in
     const { data: existing } = await admin
@@ -183,7 +197,7 @@ export async function POST(request: Request) {
         venue_id: quest.venue_id,
         qr_code_id: qrRecord.id,
         // Data minimisation: we only keep how far you were from the venue, not where you were.
-        distance_m: distance == null ? null : Math.round(distance),
+        distance_m: Math.round(distance),
         location_verified: locationVerified,
       })
       .select('id, checked_in_at')
@@ -208,7 +222,7 @@ export async function POST(request: Request) {
       check_in_count: checkInCount ?? 0,
       window_ends_at: windowEndTime,
       location_verified: locationVerified,
-      distance_m: distance,
+      distance_m: Math.round(distance),
     });
   } catch (e: any) {
     return jsonError(publicError(e, 'server_error', 'quest-check-in'), 500);
