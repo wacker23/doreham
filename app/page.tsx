@@ -6,6 +6,7 @@ import { DoroSvg, HamiSvg } from '@/components/jellyfish';
 import { UserMenu } from '@/components/UserMenu';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Icon } from '@/components/icons/Icon';
+import { LiveStats } from '@/components/LiveStats';
 
 type Lang = 'en' | 'ko';
 type Status = { kind: 'idle' } | { kind: 'ok' } | { kind: 'err'; msg: string };
@@ -361,6 +362,9 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Live counter under "Why it works": matches, meetups, success rate (refreshes every 30 s) */}
+        <LiveStats lang={lang} />
 
         {/* GEMS + SAFETY */}
         <section id="venues" className="dream" style={{ paddingBottom: 84 }}>
