@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
 import { Icon } from '@/components/icons/Icon';
+import { useLang } from '@/lib/hooks/useLang';
 
 type QuestInfo = {
   quest_id: string;
@@ -20,13 +21,34 @@ type QuestInfo = {
 const CHECK_IN_WINDOW_BEFORE_MIN = 40;
 const CHECK_IN_WINDOW_AFTER_MIN = 120;
 
+/**
+ * Stop the camera scanner safely. html5-qrcode's stop() throws right away (not a rejected
+ * promise) when the camera isn't running yet: on a phone that's while it still waits for
+ * camera permission, or when the camera failed. That error crashed the whole page when
+ * someone tapped "Enter code" ("This page couldn't load").
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function stopScanner(scanner: any) {
+  try {
+    const state = typeof scanner?.getState === 'function' ? scanner.getState() : null;
+    if (state === 2 || state === 3) await scanner.stop(); // 2 = scanning, 3 = paused
+  } catch {
+    /* already stopping */
+  }
+  try {
+    scanner?.clear?.();
+  } catch {
+    /* its box is already gone */
+  }
+}
+
 export default function CheckInPage() {
   const router = useRouter();
   const { user, loading } = useUser();
   const params = useParams();
   const groupId = params?.group_id as string;
 
-  const [lang, setLang] = useState<'en' | 'ko'>('en');
+  const [lang] = useLang();
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quest, setQuest] = useState<QuestInfo | null>(null);
@@ -37,10 +59,19 @@ export default function CheckInPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<any | null>(null);
 
-  const scannerRef = useRef<any>(null);
+  const [scanRound, setScanRound] = useState(0);
+  const [scanDone, setScanDone] = useState(false);
 
+  // Stopping the camera while it is still starting makes the browser reject the video's
+  // play() inside the scanner library ("AbortError … play() request was interrupted").
+  // Nothing is broken by it, so keep it out of the error logs.
   useEffect(() => {
-    setLang((document.body.dataset.lang as 'en' | 'ko') ?? 'en');
+    const quiet = (e: PromiseRejectionEvent) => {
+      const r = e.reason as { name?: string; message?: string } | undefined;
+      if (r?.name === 'AbortError' && /play\(\)/.test(r.message ?? '')) e.preventDefault();
+    };
+    window.addEventListener('unhandledrejection', quiet);
+    return () => window.removeEventListener('unhandledrejection', quiet);
   }, []);
 
   useEffect(() => {
@@ -144,42 +175,49 @@ export default function CheckInPage() {
   }
 
   useEffect(() => {
-    if (scanMode !== 'camera' || !quest || quest.already_checked_in) return;
+    if (scanMode !== 'camera' || !quest || quest.already_checked_in || scanDone) return;
 
     // Dynamically import html5-qrcode only in browser
-    let mounted = true;
+    let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let scanner: any = null;
     (async () => {
       try {
         const { Html5Qrcode } = await import('html5-qrcode');
-        if (!mounted) return;
-        const scanner = new Html5Qrcode('qr-scanner-container');
-        scannerRef.current = scanner;
+        if (cancelled) return;
+        scanner = new Html5Qrcode('qr-scanner-container');
 
         await scanner.start(
           { facingMode: 'environment' }, // rear camera on mobile
           { fps: 10, qrbox: 250 },
-          (decodedText) => {
-            // Successful scan
+          (decodedText: string) => {
+            if (cancelled) return;
+            cancelled = true; // one code per scan
+            setScanDone(true);
+            void stopScanner(scanner);
             submitCheckIn(decodedText);
-            scanner.stop().catch(() => {});
           },
           () => {}
         );
+        // Left camera mode (or the page) while the camera was still starting.
+        if (cancelled) void stopScanner(scanner);
       } catch (e) {
+        if (cancelled) return;
         console.error('Scanner start failed:', e);
-        setError(lang === 'ko' ? '카메라를 열 수 없어요.' : 'Camera unavailable.');
+        void stopScanner(scanner);
+        setError(lang === 'ko'
+          ? '카메라를 열 수 없어요. 매장 코드를 직접 입력해 주세요.'
+          : 'Camera unavailable. Type the venue code instead.');
+        setScanMode('manual');
       }
     })();
 
     return () => {
-      mounted = false;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
-      }
+      cancelled = true;
+      if (scanner) void stopScanner(scanner);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanMode, quest?.already_checked_in]);
+  }, [scanMode, quest?.already_checked_in, scanRound, scanDone]);
 
   // Location is required to check in (it's what proves you're at the venue).
   function getFreshPosition(): Promise<{ lat: number; lng: number; accuracy?: number } | null> {
@@ -414,7 +452,7 @@ export default function CheckInPage() {
             <div className="mode-toggle">
               <button
                 className={scanMode === 'camera' ? 'active' : ''}
-                onClick={() => setScanMode('camera')}
+                onClick={() => { setScanDone(false); setScanMode('camera'); }}
               >
                 <Icon name="qr" size={18} /> {lang === 'ko' ? 'QR 스캔' : 'Scan QR'}
               </button>
@@ -426,15 +464,32 @@ export default function CheckInPage() {
               </button>
             </div>
 
-            {/* Camera scanner */}
-            {scanMode === 'camera' && (
-              <div className="scanner-wrap">
-                <div id="qr-scanner-container" className="scanner-box" />
+            {/* Camera scanner. The box stays in the page (hidden) while you type a code: removing it
+                while the camera is still starting makes the browser throw. */}
+            <div className="scanner-wrap" style={scanMode === 'camera' ? undefined : { display: 'none' }}>
+              <div
+                key={scanRound}
+                id="qr-scanner-container"
+                className="scanner-box"
+                style={scanDone ? { display: 'none' } : undefined}
+              />
+              {scanDone ? (
+                <button
+                  type="button"
+                  className="submit-btn"
+                  disabled={submitting}
+                  onClick={() => { setError(null); setScanDone(false); setScanRound((n) => n + 1); }}
+                >
+                  {submitting
+                    ? (lang === 'ko' ? '체크인 중...' : 'Checking in...')
+                    : (lang === 'ko' ? '다시 스캔하기' : 'Scan again')}
+                </button>
+              ) : (
                 <p className="scanner-hint">
                   {lang === 'ko' ? '매장에 있는 QR 코드를 스캔하세요.' : 'Point your camera at the venue\'s QR code.'}
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Manual input */}
             {scanMode === 'manual' && (
