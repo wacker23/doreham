@@ -158,9 +158,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Live counter: matches, meetups, success rate (refreshes every 30 s) */}
-        <LiveStats lang={lang} />
-
         {/* Venue owner CTA section */}
         <section className="venue-cta">
           <div className="wrap venue-cta-in">
@@ -365,6 +362,9 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Live counter under "Why it works": matches, meetups, success rate (refreshes every 30 s) */}
+        <LiveStats lang={lang} />
 
         {/* GEMS + SAFETY */}
         <section id="venues" className="dream" style={{ paddingBottom: 84 }}>
