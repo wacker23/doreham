@@ -4,7 +4,7 @@ import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { EMAIL_FROM_PLAIN, getResend } from '@/lib/server/emails/common';
 import { venueApprovedEmail, venueRejectedEmail } from '@/lib/emails/templates';
 import { purgeVenueFiles } from '@/lib/server/venues';
-import { ensureVenuePin, geocodeAddress, parseLatLng } from '@/lib/server/geocode';
+import { ensureVenuePin, geocodeVenue, parseLatLng, type LatLng } from '@/lib/server/geocode';
 
 /**
  * Admin venue review (/admin/venues).
@@ -77,10 +77,18 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!v) return jsonError('not_found', 404);
     const typed = typeof body.pin === 'string' ? body.pin.trim() : '';
-    const pin = typed
-      ? parseLatLng(typed)
-      : (await geocodeAddress(v.road_address as string | null)) ?? (await geocodeAddress(v.address as string | null));
-    if (!pin) return jsonError(typed ? 'bad_pin' : 'pin_not_found', 400);
+    let pin: LatLng | null;
+    if (typed) {
+      pin = parseLatLng(typed);
+      if (!pin) return jsonError('bad_pin', 400);
+    } else {
+      const found = await geocodeVenue(v as { road_address: string | null; address: string | null });
+      if (!found.ok) {
+        const code = { no_key: 'geocoder_off', denied: 'geocoder_denied', no_match: 'pin_not_found', failed: 'geocoder_failed' }[found.reason];
+        return jsonError(code, 400);
+      }
+      pin = found.pin;
+    }
     const { error } = await admin.from('venues').update({ latitude: pin.lat, longitude: pin.lng }).eq('id', v.id);
     if (error) {
       console.error('[admin/venues] set pin failed:', error);
