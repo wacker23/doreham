@@ -1,5 +1,6 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
+import { ensureVenuePin } from '@/lib/server/geocode';
 import { isAdminUser } from '@/lib/server/auth';
 import { cancelEvent } from '@/lib/server/events';
 import { validateBusinessNumber } from '@/lib/businessNumber';
@@ -276,6 +277,7 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
   }
 
   for (const f of removedFiles) await removeFiles(f.bucket, f.urls, folders);
+  if (v.latitude === null) await ensureVenuePin(venueId).catch((e) => console.error('[venues] pin lookup failed:', e));
   return { ok: true as const, needs_review: needsReview };
 }
 

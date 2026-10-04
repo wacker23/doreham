@@ -28,11 +28,19 @@ export function parseLatLng(text: unknown): LatLng | null {
   return null;
 }
 
-/** Address → coordinates with Kakao Local. Null when the key isn't set or nothing matched. */
-export async function geocodeAddress(address: string | null | undefined): Promise<LatLng | null> {
-  const key = process.env.KAKAO_REST_API_KEY;
+export type GeocodeResult =
+  | { ok: true; pin: LatLng }
+  | { ok: false; reason: 'no_key' | 'denied' | 'no_match' | 'failed' };
+
+/**
+ * Address → coordinates with Kakao Local.
+ * reason 'denied' = Kakao refused the key (wrong key, or Kakao Map isn't switched on for its app).
+ */
+export async function geocode(address: string | null | undefined): Promise<GeocodeResult> {
+  const key = process.env.KAKAO_REST_API_KEY?.trim();
   const query = (address ?? '').trim().slice(0, 200);
-  if (!key || !query) return null;
+  if (!key) return { ok: false, reason: 'no_key' };
+  if (!query) return { ok: false, reason: 'no_match' };
   try {
     const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}&size=1`;
     const res = await fetch(url, {
@@ -42,24 +50,37 @@ export async function geocodeAddress(address: string | null | undefined): Promis
     });
     if (!res.ok) {
       console.error('[geocode] kakao', res.status, (await res.text().catch(() => '')).slice(0, 200));
-      return null;
+      return { ok: false, reason: res.status === 401 || res.status === 403 ? 'denied' : 'failed' };
     }
     const body = (await res.json()) as { documents?: { x?: string; y?: string; road_address?: { x?: string; y?: string } | null }[] };
     const doc = body.documents?.[0];
-    if (!doc) return null;
+    if (!doc) return { ok: false, reason: 'no_match' };
     const lat = Number(doc.road_address?.y ?? doc.y);
     const lng = Number(doc.road_address?.x ?? doc.x);
-    return inKorea(lat, lng) ? { lat, lng } : null;
+    return inKorea(lat, lng) ? { ok: true, pin: { lat, lng } } : { ok: false, reason: 'no_match' };
   } catch (e) {
     console.error('[geocode] failed:', e instanceof Error ? e.message : e);
-    return null;
+    return { ok: false, reason: 'failed' };
   }
 }
 
+/** Same, null when there's no result. */
+export async function geocodeAddress(address: string | null | undefined): Promise<LatLng | null> {
+  const r = await geocode(address);
+  return r.ok ? r.pin : null;
+}
+
 /**
- * The venue's pin, looking it up from the address (and saving it) when it's missing.
- * Road address first: the full address can carry a floor or unit ("2층") that confuses the search.
+ * Pin for a venue's address: the road address first (the full address can carry a floor or
+ * unit like "2층" that confuses the search), then the full address.
  */
+export async function geocodeVenue(v: { road_address?: string | null; address?: string | null }): Promise<GeocodeResult> {
+  const first = await geocode(v.road_address);
+  if (first.ok || first.reason === 'no_key' || first.reason === 'denied') return first;
+  return geocode(v.address);
+}
+
+/** The venue's pin, looked up from its address (and saved) when it's missing. */
 export async function ensureVenuePin(venueId: string): Promise<LatLng | null> {
   const admin = getAdmin();
   const { data: v } = await admin
@@ -72,8 +93,26 @@ export async function ensureVenuePin(venueId: string): Promise<LatLng | null> {
   const lng = v.longitude == null ? NaN : Number(v.longitude);
   if (inKorea(lat, lng)) return { lat, lng };
 
-  const pin = (await geocodeAddress(v.road_address as string | null)) ?? (await geocodeAddress(v.address as string | null));
-  if (!pin) return null;
-  await admin.from('venues').update({ latitude: pin.lat, longitude: pin.lng }).eq('id', venueId);
-  return pin;
+  const r = await geocodeVenue(v as { road_address: string | null; address: string | null });
+  if (!r.ok) return null;
+  await admin.from('venues').update({ latitude: r.pin.lat, longitude: r.pin.lng }).eq('id', venueId);
+  return r.pin;
+}
+
+/**
+ * Cron: give venues without a pin one from their address (new registrations, changed
+ * addresses, venues from before pins existed). A few per run; does nothing without the key.
+ */
+export async function fillMissingVenuePins(limit = 10) {
+  if (!process.env.KAKAO_REST_API_KEY?.trim()) return { skipped: 'no_key' as const };
+  const { data } = await getAdmin()
+    .from('venues')
+    .select('id')
+    .is('deactivated_at', null)
+    .or('latitude.is.null,longitude.is.null')
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  let found = 0;
+  for (const v of data ?? []) if (await ensureVenuePin(v.id as string)) found++;
+  return { checked: data?.length ?? 0, found };
 }

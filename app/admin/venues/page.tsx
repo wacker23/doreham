@@ -520,8 +520,14 @@ function PinEditor({ venueId, address, initial, onSaved }: {
       setMsg(body?.error === 'bad_pin'
         ? 'Couldn\'t read that. Paste two numbers like "37.5345, 126.9935" (somewhere in Korea).'
         : body?.error === 'pin_not_found'
-          ? 'The address search found nothing (or KAKAO_REST_API_KEY isn\'t set). Paste the coordinates instead.'
-          : `Couldn't save: ${body?.error ?? res.status}`);
+          ? 'Kakao found no location for this address. Paste the coordinates instead.'
+          : body?.error === 'geocoder_off'
+            ? 'Address search is off: KAKAO_REST_API_KEY isn\'t set on this deployment. Paste the coordinates instead.'
+            : body?.error === 'geocoder_denied'
+              ? 'Kakao refused the key: check KAKAO_REST_API_KEY and that Kakao Map is ON for that Kakao app. Paste the coordinates meanwhile.'
+              : body?.error === 'geocoder_failed'
+                ? 'Kakao didn\'t answer. Try again, or paste the coordinates.'
+                : `Couldn't save: ${body?.error ?? res.status}`);
       return;
     }
     setPin({ lat: body.latitude, lng: body.longitude });
