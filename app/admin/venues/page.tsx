@@ -48,6 +48,25 @@ type MissingPin = {
   road_address: string | null;
 };
 
+/** An approved (live) venue, for the list that links to each public venue page. */
+type ApprovedVenue = {
+  id: string;
+  business_name_display: string;
+  category: string;
+  city: string;
+  district: string | null;
+  address: string;
+  road_address: string | null;
+  photo_urls: string[] | null;
+  latitude: number | null;
+  longitude: number | null;
+  map_provider_id: string | null;
+  google_place_id: string | null;
+  naver_map_url: string | null;
+  claim_verified_at: string | null;
+  created_at: string;
+};
+
 type MenuItem = {
   id: string;
   venue_id: string;
@@ -89,6 +108,8 @@ export default function AdminVenuesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [missingPin, setMissingPin] = useState<MissingPin[]>([]);
   const [noListing, setNoListing] = useState<MissingPin[]>([]);
+  const [approved, setApproved] = useState<ApprovedVenue[]>([]);
+  const [approvedQuery, setApprovedQuery] = useState('');
 
   // Auth + admin gate
   useEffect(() => {
@@ -106,21 +127,25 @@ export default function AdminVenuesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile, loading, router]);
 
-  async function loadVenues() {
-    setLoadingVenues(true);
-    setError(null);
+  /** quiet: refresh in place (after an approval) without the loading screen. */
+  async function loadVenues(quiet = false) {
+    if (!quiet) {
+      setLoadingVenues(true);
+      setError(null);
+    }
 
     // Pending venues include the owner's contact details, so they come from the server (admin only).
     const res = await fetch('/api/admin/venues');
     const body = await res.json().catch(() => null);
     if (!res.ok || !body) {
-      setError(body?.error ?? 'Could not load venues.');
+      if (!quiet) setError(body?.error ?? 'Could not load venues.');
       setLoadingVenues(false);
       return;
     }
     setVenues((body.venues ?? []) as Venue[]);
     setMissingPin((body.missing_pin ?? []) as MissingPin[]);
     setNoListing((body.no_listing ?? []) as MissingPin[]);
+    setApproved((body.approved ?? []) as ApprovedVenue[]);
     const grouped: Record<string, MenuItem[]> = {};
     for (const item of (body.menu_items ?? []) as MenuItem[]) {
       if (!grouped[item.venue_id]) grouped[item.venue_id] = [];
@@ -155,8 +180,9 @@ export default function AdminVenuesPage() {
     setSuccessMessage(`✓ ${venue.business_name_display} approved`);
     setProcessingId(null);
 
-    // Remove from list
+    // Remove from the pending list; the refresh moves it into Approved venues.
     setVenues((prev) => prev.filter((v) => v.id !== venue.id));
+    loadVenues(true);
 
     setTimeout(() => setSuccessMessage(null), 4000);
   }
@@ -221,8 +247,14 @@ export default function AdminVenuesPage() {
 
       <main className="a-wrap">
         <div className="a-header">
-          <h1>Pending venue approvals</h1>
-          <p>{venues.length} venue{venues.length !== 1 ? 's' : ''} awaiting review</p>
+          <h1>Venues</h1>
+          <p>
+            {venues.length} awaiting review · {approved.length} approved
+          </p>
+          <nav className="a-jump" aria-label="Sections">
+            <a href="#pending">Pending ({venues.length})</a>
+            <a href="#approved">Approved ({approved.length})</a>
+          </nav>
         </div>
 
         {successMessage && (
@@ -249,7 +281,10 @@ export default function AdminVenuesPage() {
                   initialQuery={m.business_name_display}
                   check={null}
                   placeUrl={null}
-                  onLinked={() => setNoListing((prev) => prev.filter((x) => x.id !== m.id))}
+                  onLinked={() => {
+                    setNoListing((prev) => prev.filter((x) => x.id !== m.id));
+                    loadVenues(true);
+                  }}
                 />
                 <RemoveVenue
                   venueId={m.id}
@@ -257,6 +292,7 @@ export default function AdminVenuesPage() {
                   onRemoved={() => {
                     setNoListing((prev) => prev.filter((x) => x.id !== m.id));
                     setMissingPin((prev) => prev.filter((x) => x.id !== m.id));
+                    setApproved((prev) => prev.filter((x) => x.id !== m.id));
                     setSuccessMessage(`✓ ${m.business_name_display} removed`);
                     setTimeout(() => setSuccessMessage(null), 4000);
                   }}
@@ -278,12 +314,17 @@ export default function AdminVenuesPage() {
                   venueId={m.id}
                   address={m.road_address || m.address}
                   initial={null}
-                  onSaved={() => setMissingPin((prev) => prev.filter((x) => x.id !== m.id))}
+                  onSaved={(lat, lng) => {
+                    setMissingPin((prev) => prev.filter((x) => x.id !== m.id));
+                    setApproved((prev) => prev.map((x) => (x.id === m.id ? { ...x, latitude: lat, longitude: lng } : x)));
+                  }}
                 />
               </div>
             ))}
           </div>
         )}
+
+        <h2 id="pending" className="sec-title">Pending venue approvals</h2>
 
         {loadingVenues ? (
           <div className="loading-inline">Loading venues…</div>
@@ -490,6 +531,75 @@ export default function AdminVenuesPage() {
             })}
           </div>
         )}
+
+        {!loadingVenues && (
+          <div className="ap" id="approved">
+            <div className="ap-head">
+              <h2 className="sec-title">
+                Approved venues <span className="ap-count">{approved.length}</span>
+              </h2>
+              {approved.length > 5 && (
+                <input
+                  type="search"
+                  className="ap-search"
+                  value={approvedQuery}
+                  onChange={(e) => setApprovedQuery(e.target.value)}
+                  placeholder="Search name, city or address"
+                  aria-label="Search approved venues"
+                />
+              )}
+            </div>
+            <p className="ap-help">Click a venue to open its page as members see it (opens in a new tab).</p>
+            {(() => {
+              if (approved.length === 0) return <div className="ap-empty">No approved venues yet.</div>;
+              const q = approvedQuery.trim().toLowerCase();
+              const shown = q
+                ? approved.filter((v) =>
+                    [v.business_name_display, v.city, v.district, v.road_address, v.address]
+                      .some((s) => (s ?? '').toLowerCase().includes(q)),
+                  )
+                : approved;
+              if (shown.length === 0) return <div className="ap-empty">No approved venue matches “{approvedQuery.trim()}”.</div>;
+              return (
+                <ul className="ap-list">
+                  {shown.map((v) => {
+                    const hasPin = v.latitude != null && v.longitude != null;
+                    return (
+                      <li key={v.id}>
+                        <a className="ap-item" href={`/venues/${v.id}`} target="_blank" rel="noopener noreferrer">
+                          {v.photo_urls?.[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={v.photo_urls[0]} alt="" className="ap-thumb" />
+                          ) : (
+                            <span className="ap-thumb ap-thumb-empty"><Icon name="venue" size={22} /></span>
+                          )}
+                          <span className="ap-main">
+                            <strong>{v.business_name_display}</strong>
+                            <span className="ap-sub">
+                              {CATEGORY_LABELS[v.category] ?? v.category} · {cityLabel(v.city)}
+                              {v.district ? ` ${v.district}` : ''} · Approved{' '}
+                              {new Date(v.claim_verified_at ?? v.created_at).toLocaleDateString()}
+                            </span>
+                            <span className="ap-sub">{v.road_address || v.address}</span>
+                            <span className="ap-chips">
+                              <span className={v.map_provider_id ? 'ok' : 'bad'}>{v.map_provider_id ? '✓ Kakao Map' : '! No Kakao place'}</span>
+                              <span className={v.google_place_id ? 'ok' : 'off'}>{v.google_place_id ? '✓ Google Maps' : '– Not on Google'}</span>
+                              {v.naver_map_url && <span className="ok">✓ Naver Map</span>}
+                              <span className={hasPin ? 'ok' : 'bad'}>{hasPin ? '✓ Map pin' : '! No map pin'}</span>
+                            </span>
+                          </span>
+                          <span className="ap-open">
+                            View page <Icon name="external" size={14} />
+                          </span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              );
+            })()}
+          </div>
+        )}
       </main>
 
       <style jsx>{`
@@ -503,6 +613,32 @@ export default function AdminVenuesPage() {
         .a-header { margin-bottom: 24px; }
         .a-header h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 4px; letter-spacing: -0.02em; }
         .a-header p { color: var(--ink-60); margin: 0; }
+        .a-jump { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .a-jump a { font-size: 13px; font-weight: 700; color: var(--ink); text-decoration: none; border: 1px solid var(--ink-12); background: #fff; border-radius: 999px; padding: 6px 14px; }
+        .a-jump a:hover { border-color: var(--ink); }
+        .sec-title { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -0.01em; margin: 8px 0 12px; scroll-margin-top: 84px; }
+        .ap { margin-top: 40px; scroll-margin-top: 84px; }
+        .ap-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .ap-head .sec-title { margin: 0; }
+        .ap-count { display: inline-block; margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: rgba(15, 157, 119, 0.12); color: var(--jade); font-size: 14px; font-weight: 700; vertical-align: middle; }
+        .ap-search { flex: 0 1 280px; min-width: 0; padding: 9px 14px; border: 1px solid var(--ink-12); border-radius: 999px; background: #fff; font-family: var(--body); font-size: 14px; outline: none; }
+        .ap-search:focus { border-color: var(--persimmon); }
+        .ap-help { color: var(--ink-60); font-size: 13px; margin: 6px 0 12px; }
+        .ap-empty { padding: 28px 20px; text-align: center; color: var(--ink-60); background: var(--paper-2); border-radius: 16px; }
+        .ap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .ap-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; text-decoration: none; color: var(--ink); transition: border-color 0.15s, box-shadow 0.15s; }
+        .ap-item:hover { border-color: var(--jade); box-shadow: 0 4px 14px rgba(15, 157, 119, 0.12); }
+        .ap-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+        .ap-thumb-empty { display: flex; align-items: center; justify-content: center; background: var(--paper-2); }
+        .ap-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .ap-main strong { font-family: var(--display); font-size: 17px; font-weight: 700; }
+        .ap-sub { font-size: 13px; color: var(--ink-60); overflow-wrap: anywhere; }
+        .ap-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .ap-chips span { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+        .ap-chips .ok { background: rgba(15, 157, 119, 0.1); color: #0B7F60; }
+        .ap-chips .off { background: var(--paper-2); color: var(--ink-60); }
+        .ap-chips .bad { background: rgba(200, 68, 26, 0.1); color: #C8441A; }
+        .ap-open { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--jade); white-space: nowrap; }
         .success-banner { background: rgba(15, 157, 119, 0.1); color: var(--jade); border: 1px solid rgba(15, 157, 119, 0.25); padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 16px; }
         .error-banner { background: rgba(255, 106, 61, 0.1); color: var(--persimmon); border: 1px solid rgba(255, 106, 61, 0.25); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; }
         .loading-inline { text-align: center; padding: 60px 20px; color: var(--ink-60); }
@@ -516,7 +652,7 @@ export default function AdminVenuesPage() {
         .listing-badge.none { color: #C8441A; }
         .listing-badge.flags { color: #9A6700; }
         .listing-badge.ok { color: var(--jade); }
-        .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-60); font-size: 18px; background: var(--paper-2); border-radius: 16px; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--ink-60); font-size: 18px; background: var(--paper-2); border-radius: 16px; }
         .venues-list { display: flex; flex-direction: column; gap: 12px; }
         .venue-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; overflow: hidden; }
         .venue-card.expanded { border-color: var(--persimmon); }
@@ -561,10 +697,18 @@ export default function AdminVenuesPage() {
         @media (max-width: 640px) {
           .detail-grid { grid-template-columns: 1fr; }
           .photos-preview { grid-template-columns: repeat(3, 1fr); }
+          .ap-item { align-items: flex-start; flex-wrap: wrap; padding: 12px 14px; }
+          .ap-main { flex-basis: calc(100% - 70px); }
+          .ap-open { margin-left: 70px; }
+          .ap-search { flex-basis: 100%; }
         }
       `}</style>
     </>
   );
+}
+
+function cityLabel(city: string): string {
+  return city ? city.charAt(0).toUpperCase() + city.slice(1) : '';
 }
 
 function listingState(v: Venue): 'none' | 'flags' | 'ok' {
