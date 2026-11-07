@@ -1,4 +1,5 @@
 import type { CategoryArt } from '@/lib/icons';
+import type { MapPlace } from '@/lib/placesTypes';
 // Shared types for venue registration flow
 // Matches the actual venues table schema in Supabase
 
@@ -41,7 +42,12 @@ export type MenuItem = {
 };
 
 export type VenueFormData = {
-  // Step 1: Basic info
+  // Step 1: the business on Kakao Map (linked by the server after the venue is saved)
+  listing?: MapPlace;
+  /** Optional Naver Map link. */
+  naver_map_url?: string;
+
+  // Step 2: Basic info
   business_name_display?: string;
   business_name_legal?: string;
   business_registration_number?: string;
@@ -52,7 +58,7 @@ export type VenueFormData = {
   contact_phone?: string;
   contact_name?: string;
 
-   // Step 2: Location
+  // Step 3: Location
   address?: string;
   city?: string;
   district?: string;
@@ -62,26 +68,26 @@ export type VenueFormData = {
   building_name?: string;        // ← new
   address_detail?: string;       // ← new (for "3층 302호" type detail)
   
-  // Step 3: Hours
+  // Step 4: Hours
   hours?: WeekHours;
 
-  // Step 4: Description + contact
+  // Step 5: Description + contact
   description?: string;
   description_en?: string;
   per_person_cost_won?: number;
   discount_offer?: string;
   discount_offer_en?: string;
 
-  // Step 5: Photos
+  // Step 6: Photos
   photo_files?: File[];
   photo_urls?: string[];
 
-  // Step 6: Menu items (only for cafe/restaurant)
+  // Step 7: Menu items (only for cafe/restaurant)
   menu_items?: MenuItem[];
 };
 
-export type VenueStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export const TOTAL_VENUE_STEPS = 7;
+export type VenueStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export const TOTAL_VENUE_STEPS = 8;
 
 export const CATEGORY_LABELS: Record<VenueCategory, { en: string; ko: string; art: CategoryArt; needsMenu: boolean }> = {
   cafe:              { en: 'Café / Coffee shop',       ko: '카페 / 커피숍',       art: 'coffee', needsMenu: true },

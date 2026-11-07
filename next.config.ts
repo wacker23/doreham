@@ -15,7 +15,7 @@ const CSP_REPORT_ONLY = [
   "script-src 'self' 'unsafe-inline' https://t1.daumcdn.net https://ssl.daumcdn.net",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://*.kakaocdn.net https://*.daumcdn.net",
+  "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://*.kakaocdn.net https://*.daumcdn.net",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "frame-src https://*.daum.net https://*.kakao.com",
   "worker-src 'self'",

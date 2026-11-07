@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { supabase } from '@/lib/supabase/client';
+import { ListingStep } from './steps/ListingStep';
 import { BasicInfoStep } from './steps/BasicInfoStep';
 import { LocationStep } from './steps/LocationStep';
 import { HoursStep } from './steps/HoursStep';
@@ -13,6 +14,7 @@ import { MenuItemsStep } from './steps/MenuItemsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { uploadPhoto, submitVenue } from './lib/save';
 import type { VenueFormData, VenueStep, MenuItem } from './lib/types';
+import { listingError } from '@/lib/placesTypes';
 import { CATEGORY_LABELS, DEFAULT_HOURS, TOTAL_VENUE_STEPS } from './lib/types';
 import { planUnlocked } from '@/lib/plan';
 import { useLang } from '@/lib/hooks/useLang';
@@ -32,6 +34,7 @@ export default function VenueRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successVenueId, setSuccessVenueId] = useState<string | null>(null);
+  const [successListingError, setSuccessListingError] = useState<string | null>(null);
   const [atLimit, setAtLimit] = useState(false);
   const [needsPlus, setNeedsPlus] = useState(false); // registering a venue is a Doreham+ feature
 
@@ -140,6 +143,7 @@ export default function VenueRegisterPage() {
         return;
       }
 
+      setSuccessListingError(result.listingError);
       setSuccessVenueId(result.venueId);
     } catch (e) {
       setSubmitting(false);
@@ -272,14 +276,24 @@ export default function VenueRegisterPage() {
                 ? '가게 등록 요청이 접수되었습니다. 관리자 검토 후 48시간 이내로 이메일로 알려드리겠습니다.'
                 : "We got your submission. We'll review and email you within 48 hours."}
             </p>
+            {successListingError && (
+              <p className="listing-warn">
+                {listingError(successListingError, lang)}{' '}
+                {lang === 'ko'
+                  ? '‘내 가게 → 정보 수정’에서 카카오맵 장소를 다시 연결해 주세요. 연결해야 승인할 수 있어요.'
+                  : 'Link your Kakao Map place again from My venues → Edit info. We can only approve venues with a linked place.'}
+              </p>
+            )}
             <p className="thanks">
               {lang === 'ko'
                 ? '도레함에 함께해 주셔서 감사합니다!'
                 : 'Thank you for joining Doreham!'}
             </p>
             <div className="success-actions">
-              <a href="/venues/my" className="btn-home">
-                {lang === 'ko' ? '내 가게 보기' : 'See my venues'}
+              <a href={successListingError ? `/venues/my/${successVenueId}/edit` : '/venues/my'} className="btn-home">
+                {successListingError
+                  ? lang === 'ko' ? '카카오맵 장소 연결하기' : 'Link my Kakao Map place'
+                  : lang === 'ko' ? '내 가게 보기' : 'See my venues'}
               </a>
             </div>
           </div>
@@ -297,6 +311,7 @@ export default function VenueRegisterPage() {
           h1 { font-family: var(--display); font-weight: 800; font-size: 32px; margin: 0 0 16px; letter-spacing: -0.02em; }
           p { color: var(--ink-60); font-size: 15.5px; line-height: 1.55; margin: 0 0 12px; }
           .thanks { color: var(--persimmon); font-weight: 600; margin-top: 16px; }
+          .listing-warn { color: #C8441A; background: rgba(255, 106, 61, 0.08); border-radius: 12px; padding: 12px 14px; font-weight: 600; font-size: 14px; text-align: left; }
           .success-actions { margin-top: 32px; }
           .btn-home { display: inline-block; background: var(--ink); color: var(--paper); padding: 12px 28px; border-radius: 999px; font-weight: 700; font-size: 14px; text-decoration: none; transition: transform 0.12s; }
           .btn-home:hover { transform: translateY(-1px); }
@@ -349,14 +364,14 @@ export default function VenueRegisterPage() {
         )}
         <div className="v-card">
           {currentStep === 1 && (
-            <BasicInfoStep
+            <ListingStep
               lang={lang}
               initialData={formData}
               onNext={(data: Partial<VenueFormData>) => advanceTo(2, data)}
             />
           )}
           {currentStep === 2 && (
-            <LocationStep
+            <BasicInfoStep
               lang={lang}
               initialData={formData}
               onNext={(data: Partial<VenueFormData>) => advanceTo(3, data)}
@@ -364,7 +379,7 @@ export default function VenueRegisterPage() {
             />
           )}
           {currentStep === 3 && (
-            <HoursStep
+            <LocationStep
               lang={lang}
               initialData={formData}
               onNext={(data: Partial<VenueFormData>) => advanceTo(4, data)}
@@ -372,7 +387,7 @@ export default function VenueRegisterPage() {
             />
           )}
           {currentStep === 4 && (
-            <DescriptionStep
+            <HoursStep
               lang={lang}
               initialData={formData}
               onNext={(data: Partial<VenueFormData>) => advanceTo(5, data)}
@@ -380,7 +395,7 @@ export default function VenueRegisterPage() {
             />
           )}
           {currentStep === 5 && (
-            <PhotosStep
+            <DescriptionStep
               lang={lang}
               initialData={formData}
               onNext={(data: Partial<VenueFormData>) => advanceTo(6, data)}
@@ -388,22 +403,30 @@ export default function VenueRegisterPage() {
             />
           )}
           {currentStep === 6 && (
-            <MenuItemsStep
+            <PhotosStep
               lang={lang}
               initialData={formData}
               onNext={(data: Partial<VenueFormData>) => advanceTo(7, data)}
               onBack={() => goBack(5)}
-              skipStep={!needsMenu}
             />
           )}
           {currentStep === 7 && (
+            <MenuItemsStep
+              lang={lang}
+              initialData={formData}
+              onNext={(data: Partial<VenueFormData>) => advanceTo(8, data)}
+              onBack={() => goBack(6)}
+              skipStep={!needsMenu}
+            />
+          )}
+          {currentStep === 8 && (
             <ReviewStep
               lang={lang}
               formData={formData}
               submitting={submitting}
               error={submitError}
               onSubmit={handleSubmit}
-              onBack={() => goBack(6)}
+              onBack={() => goBack(7)}
               onEditStep={(step) => setCurrentStep(step as VenueStep)}
             />
           )}

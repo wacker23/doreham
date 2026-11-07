@@ -10,9 +10,14 @@ import { AppTabBar } from '@/components/AppTabBar';
 import { Icon } from '@/components/icons/Icon';
 import { CategoryIcon } from '@/components/icons/CategoryIcon';
 import { reviewTagIcon, venueCategoryArt } from '@/lib/icons';
+import { GooglePlaceBox } from '@/components/GooglePlaceBox';
 
 type Venue = {
   id: string;
+  map_provider_id: string | null;
+  map_place_url: string | null;
+  naver_map_url: string | null;
+  google_place_id: string | null;
   business_name_display: string;
   category: string;
   address: string;
@@ -111,7 +116,7 @@ export default function VenueDetailPage() {
     const { data, error: err } = await supabase
       .from('venues')
       // Public columns only: the owner's contact details and registration number are private.
-      .select('id, owner_id, business_name_display, category, address, road_address, address_detail, building_name, zipcode, city, district, business_opened_at, description, description_en, discount_offer, discount_offer_en, hidden_gem_eligible, hours_json, per_person_cost_won, photo_urls, latitude, longitude, jibun_address, is_active')
+      .select('id, owner_id, business_name_display, category, address, road_address, address_detail, building_name, zipcode, city, district, business_opened_at, description, description_en, discount_offer, discount_offer_en, hidden_gem_eligible, hours_json, per_person_cost_won, photo_urls, latitude, longitude, jibun_address, is_active, map_provider_id, map_place_url, naver_map_url, google_place_id')
       .eq('id', venueId)
       .eq('is_active', true)
       .is('deactivated_at', null)
@@ -240,6 +245,11 @@ export default function VenueDetailPage() {
                 <Icon name="sparkle" size={14} /> {lang === 'ko' ? '숨은 명소' : 'Hidden Gem'}
               </span>
             )}
+            {venue.map_provider_id && (
+              <span className="badge listed">
+                <Icon name="location" size={14} /> {lang === 'ko' ? '카카오맵 등록 가게' : 'Listed on Kakao Map'}
+              </span>
+            )}
             {yearsOpen !== null && yearsOpen >= 5 && (
               <span className="badge established">
                 <Icon name="starFilled" size={14} /> {lang === 'ko' ? `${yearsOpen}년째 운영` : `${yearsOpen}+ years`}
@@ -252,6 +262,30 @@ export default function VenueDetailPage() {
           <h3>{lang === 'ko' ? '위치' : 'Location'}</h3>
           <p className="location-text"><Icon name="location" size={18} /> {fullAddressLine}</p>
           {venue.zipcode && <p className="location-sub">{venue.zipcode}</p>}
+          {(venue.map_place_url || venue.naver_map_url || venue.google_place_id) && (
+            <div className="map-links">
+              {venue.map_place_url && (
+                <a href={venue.map_place_url} target="_blank" rel="noopener noreferrer">
+                  {lang === 'ko' ? '카카오맵' : 'Kakao Map'} <Icon name="external" size={13} />
+                </a>
+              )}
+              {venue.naver_map_url && (
+                <a href={venue.naver_map_url} target="_blank" rel="noopener noreferrer">
+                  {lang === 'ko' ? '네이버 지도' : 'Naver Map'} <Icon name="external" size={13} />
+                </a>
+              )}
+              {venue.google_place_id && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.business_name_display)}&query_place_id=${encodeURIComponent(venue.google_place_id)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {lang === 'ko' ? '구글 지도' : 'Google Maps'} <Icon name="external" size={13} />
+                </a>
+              )}
+            </div>
+          )}
+          {venue.google_place_id && <GooglePlaceBox venueId={venue.id} lang={lang} />}
         </div>
 
         {description && (
@@ -428,10 +462,13 @@ export default function VenueDetailPage() {
         .badge { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; }
         .badge.hidden-gem { background: rgba(255, 106, 61, 0.12); color: var(--persimmon); }
         .badge.established { background: rgba(15, 157, 119, 0.12); color: var(--jade); }
+        .badge.listed { background: rgba(30, 34, 48, 0.06); color: var(--ink); }
         .section { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; padding: 20px 24px; margin-bottom: 12px; }
         .section h3 { font-family: var(--display); font-weight: 700; font-size: 14px; margin: 0 0 12px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; }
         .location-text { display: flex; align-items: flex-start; gap: 6px; color: var(--ink); font-size: 15px; margin: 0; }
         .location-sub { color: var(--ink-60); font-size: 13px; margin: 4px 0 0; }
+        .map-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .map-links a { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--ink-12); background: var(--paper-2); color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
         .description { color: var(--ink); font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap; }
         .discount-section { background: linear-gradient(135deg, rgba(255, 106, 61, 0.05), rgba(15, 157, 119, 0.03)); border-color: rgba(255, 106, 61, 0.15); }
         .discount-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--persimmon); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 10px; }

@@ -169,7 +169,8 @@ export async function processMatchRequests(opts: { requestId?: string; userId?: 
     .from('venues')
     .select('city')
     .eq('is_active', true)
-    .is('deactivated_at', null);
+    .is('deactivated_at', null)
+    .not('map_provider_id', 'is', null); // only venues linked to their real map listing
   const citiesWithVenues = new Set((venues ?? []).map((v) => String(v.city ?? '').toLowerCase()));
 
   // Volunteer quests need cached 1365 programs in the city (synced daily).
@@ -416,7 +417,8 @@ async function processOneRequest(req: MatchRequestRow, citiesWithVenues: Set<str
       .from('venues')
       .select('id, business_name_display, category, city')
       .eq('is_active', true)
-      .is('deactivated_at', null);
+      .is('deactivated_at', null)
+      .not('map_provider_id', 'is', null); // only venues linked to their real map listing
     const cityVenues = (allVenues ?? []).filter(
       (v) => cityMatch(v.city as string, targetCity) || String(v.city).toLowerCase() === targetCity.toLowerCase(),
     );

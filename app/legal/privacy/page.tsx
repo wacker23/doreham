@@ -11,7 +11,7 @@ import { useLang } from '@/lib/hooks/useLang';
  * Not reviewed by a lawyer yet.
  */
 
-const UPDATED = { en: 'October 2, 2026', ko: '2026년 10월 2일' };
+const UPDATED = { en: 'November 7, 2026', ko: '2026년 11월 7일' };
 const PRIVACY_EMAIL = 'privacy@doreham.co.kr';
 
 export default function PrivacyPage() {
@@ -186,7 +186,8 @@ function English() {
           ['Resend Inc. (USA)', 'Sending email', 'Email address, name, email content'],
           ['Google LLC (USA)', 'Sign-in with Google', 'Google account ID, email, name'],
           ['Google LLC (USA); as backups when it is unavailable: Anthropic PBC, OpenAI (USA)', 'Automatic translation between Korean and English of public 1365 listings and of the events members post', 'Only the text being translated: listing text, and the title, description and place of an event. Never your name, account or contact details'],
-          ['Kakao Corp. (Korea)', 'Address search when registering a venue; map links', 'The address you search'],
+          ['Kakao Corp. (Korea)', 'Address and place search on Kakao Map when registering a venue; map pins; map links', 'The address or business name you search, and the venue’s address'],
+          ['Google LLC (USA), only for venues also found on Google Maps', 'Finding the venue on Google Maps once; showing its Google Maps hours and photos when you tap to see them', 'The venue’s name, address and position. When you open Google Maps photos, your browser loads them from Google, which receives your IP address'],
           ['The push service of your browser, only if you turn notifications on: Google (Chrome, Android), Apple (Safari, iPhone, Mac), Mozilla (Firefox), Microsoft (Edge) (USA)', 'Delivering notifications to your device', 'The notification text (for example an event title, a group member\'s name, or the start of a new group chat message) and the device\'s push address. The text is encrypted so only your device can read it'],
         ]}
       />
@@ -322,7 +323,8 @@ function Korean() {
           ['Resend Inc. (미국)', '이메일 발송', '이메일 주소, 이름, 이메일 내용'],
           ['Google LLC (미국)', 'Google 로그인', 'Google 계정 식별자, 이메일, 이름'],
           ['Google LLC (미국); 장애 시 예비: Anthropic PBC, OpenAI (미국)', '공개된 1365 봉사활동 안내문과 회원이 올린 이벤트의 한국어↔영어 자동 번역', '번역할 글만 보냄: 안내문, 이벤트의 제목·설명·장소. 이름, 계정, 연락처는 보내지 않음'],
-          ['(주)카카오 (한국)', '장소 등록 시 주소 검색, 지도 링크', '검색한 주소'],
+          ['(주)카카오 (한국)', '가게 등록 시 카카오맵 주소·장소 검색, 지도 위치, 지도 링크', '검색한 주소나 가게 이름, 가게 주소'],
+          ['Google LLC (미국), 구글 지도에도 있는 가게만', '가게를 구글 지도에서 한 번 찾기, 회원이 누르면 구글 지도의 영업시간·사진 보여주기', '가게 이름, 주소, 위치. 구글 지도 사진을 열면 브라우저가 Google에서 사진을 불러오므로 Google이 IP 주소를 받음'],
           ['사용하는 브라우저의 푸시 서비스 (알림을 켠 경우에만): Google(Chrome, Android), Apple(Safari, iPhone, Mac), Mozilla(Firefox), Microsoft(Edge) (미국)', '기기로 알림 전달', '알림 내용(예: 이벤트 제목, 그룹 멤버 이름, 새 그룹 채팅 메시지의 앞부분)과 기기의 푸시 주소. 알림 내용은 암호화되어 회원님의 기기만 읽을 수 있음'],
         ]}
       />

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { useLang } from '@/lib/hooks/useLang';
 import { AppHeader } from '@/components/AppHeader';
+import { ListingStep } from '../../../steps/ListingStep';
 import { BasicInfoStep } from '../../../steps/BasicInfoStep';
 import { LocationStep } from '../../../steps/LocationStep';
 import { HoursStep } from '../../../steps/HoursStep';
@@ -14,6 +15,7 @@ import { MenuItemsStep } from '../../../steps/MenuItemsStep';
 import { ReviewStep } from '../../../steps/ReviewStep';
 import { uploadPhoto } from '../../../lib/save';
 import type { MenuItem, VenueFormData, VenueStep } from '../../../lib/types';
+import { listingError, type ListingCheck, type MapPlace } from '@/lib/placesTypes';
 import { CATEGORY_LABELS, DEFAULT_HOURS, TOTAL_VENUE_STEPS } from '../../../lib/types';
 
 const ERRORS: Record<string, { en: string; ko: string }> = {
@@ -55,6 +57,8 @@ export default function EditVenuePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ needs_review: boolean } | null>(null);
+  // The listing as saved, to send it again only when the owner changed it.
+  const [savedListing, setSavedListing] = useState<{ id: string | null; naver: string }>({ id: null, naver: '' });
 
   useEffect(() => {
     if (loading) return;
@@ -83,7 +87,20 @@ export default function EditVenuePage() {
       }[];
       setVenueName(v.business_name_display ?? '');
       setApproved(!!v.is_active);
+      const check = v.listing_check as ListingCheck | null;
+      const listing: MapPlace | undefined =
+        v.map_provider_id && check?.listing
+          ? {
+              id: String(v.map_provider_id),
+              category_group: '',
+              url: v.map_place_url ?? `https://place.map.kakao.com/${v.map_provider_id}`,
+              ...check.listing,
+            }
+          : undefined;
+      setSavedListing({ id: listing?.id ?? null, naver: v.naver_map_url ?? '' });
       setFormData({
+        listing,
+        naver_map_url: v.naver_map_url ?? '',
         business_name_display: u(v.business_name_display),
         business_name_legal: u(v.business_name_legal),
         business_registration_number: u(v.business_registration_number),
@@ -164,7 +181,7 @@ export default function EditVenuePage() {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { photo_files, photo_urls, menu_items, ...fields } = formData;
+      const { photo_files, photo_urls, menu_items, listing, naver_map_url, ...fields } = formData;
       const r = await fetch(`/api/venues/${venueId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -177,7 +194,26 @@ export default function EditVenuePage() {
         setSaving(false);
         return;
       }
-      setDone({ needs_review: !!j.needs_review });
+      // A new Kakao Map place (or Naver link) is linked by the server, which checks it first.
+      let listingReview = false;
+      if (listing && (listing.id !== savedListing.id || (naver_map_url ?? '') !== savedListing.naver)) {
+        const lr = await fetch(`/api/venues/${venueId}/listing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ place_id: listing.id, place_name: listing.name, naver_map_url: naver_map_url ?? '' }),
+        });
+        const lj = await lr.json().catch(() => ({}));
+        if (!lr.ok) {
+          setError(
+            `${listingError(lj.error, lang)} ${t('Your other changes were saved.', '다른 변경 내용은 저장됐어요.')}`,
+          );
+          setSaving(false);
+          return;
+        }
+        setSavedListing({ id: listing.id, naver: naver_map_url ?? '' });
+        listingReview = !!lj.needs_review;
+      }
+      setDone({ needs_review: !!j.needs_review || listingReview });
     } catch {
       setError(t('Something went wrong. Please try again.', '문제가 생겼어요. 다시 시도해 주세요.'));
     }
@@ -208,8 +244,8 @@ export default function EditVenuePage() {
             <p>
               {done.needs_review
                 ? t(
-                    'You changed the legal name, registration number or address, so Doreham will check your venue again. It is hidden until it is approved; we will let you know.',
-                    '사업자등록증상 이름, 사업자등록번호 또는 주소가 바뀌어서 도레함이 다시 확인해요. 승인될 때까지 가게가 숨겨지고, 결과를 알려드릴게요.',
+                    'You changed the legal name, registration number, address or Kakao Map place, so Doreham will check your venue again. It is hidden until it is approved; we will let you know.',
+                    '사업자등록증상 이름, 사업자등록번호, 주소 또는 카카오맵 장소가 바뀌어서 도레함이 다시 확인해요. 승인될 때까지 가게가 숨겨지고, 결과를 알려드릴게요.',
                   )
                 : t('Your venue page shows the new details now.', '가게 정보가 바로 바뀌었어요.')}
             </p>
@@ -221,8 +257,8 @@ export default function EditVenuePage() {
             {approved && (
               <p className="ve-note">
                 {t(
-                  'Changing the legal name, registration number or address sends your venue back for a quick check. Everything else shows right away.',
-                  '사업자등록증상 이름, 사업자등록번호, 주소를 바꾸면 다시 확인을 거쳐요. 다른 내용은 바로 반영돼요.',
+                  'Changing the legal name, registration number, address or Kakao Map place sends your venue back for a quick check. Everything else shows right away.',
+                  '사업자등록증상 이름, 사업자등록번호, 주소, 카카오맵 장소를 바꾸면 다시 확인을 거쳐요. 다른 내용은 바로 반영돼요.',
                 )}
               </p>
             )}
@@ -231,28 +267,31 @@ export default function EditVenuePage() {
             </div>
             <div className="ve-step">{t(`Step ${step} of ${TOTAL_VENUE_STEPS}`, `${step}단계 / ${TOTAL_VENUE_STEPS}단계`)}</div>
             <div className="ve-card">
-              {step === 1 && <BasicInfoStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(2, d)} />}
-              {step === 2 && <LocationStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(3, d)} onBack={() => goBack(1)} />}
-              {step === 3 && <HoursStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(4, d)} onBack={() => goBack(2)} />}
-              {step === 4 && <DescriptionStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(5, d)} onBack={() => goBack(3)} />}
-              {step === 5 && <PhotosStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(6, d)} onBack={() => goBack(4)} />}
-              {step === 6 && (
+              {step === 1 && (
+                <ListingStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(2, d)} mode="edit" venueId={venueId} />
+              )}
+              {step === 2 && <BasicInfoStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(3, d)} onBack={() => goBack(1)} />}
+              {step === 3 && <LocationStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(4, d)} onBack={() => goBack(2)} />}
+              {step === 4 && <HoursStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(5, d)} onBack={() => goBack(3)} />}
+              {step === 5 && <DescriptionStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(6, d)} onBack={() => goBack(4)} />}
+              {step === 6 && <PhotosStep lang={lang} initialData={formData} onNext={(d: Partial<VenueFormData>) => advanceTo(7, d)} onBack={() => goBack(5)} />}
+              {step === 7 && (
                 <MenuItemsStep
                   lang={lang}
                   initialData={formData}
-                  onNext={(d: Partial<VenueFormData>) => advanceTo(7, d)}
-                  onBack={() => goBack(5)}
+                  onNext={(d: Partial<VenueFormData>) => advanceTo(8, d)}
+                  onBack={() => goBack(6)}
                   skipStep={!needsMenu}
                 />
               )}
-              {step === 7 && (
+              {step === 8 && (
                 <ReviewStep
                   lang={lang}
                   formData={formData as VenueFormData}
                   submitting={saving}
                   error={error}
                   onSubmit={save}
-                  onBack={() => goBack(6)}
+                  onBack={() => goBack(7)}
                   onEditStep={(s) => setStep(s as VenueStep)}
                   mode="edit"
                 />

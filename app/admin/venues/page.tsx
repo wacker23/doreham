@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { Icon } from '@/components/icons/Icon';
+import { ListingPicker } from '@/components/ListingPicker';
+import { listingError, type ListingCheck, type MapPlace } from '@/lib/placesTypes';
 
 type Venue = {
   id: string;
@@ -30,6 +32,11 @@ type Venue = {
   contact_phone: string | null;
   contact_name: string | null;
   created_at: string;
+  map_provider_id: string | null;
+  map_place_url: string | null;
+  listing_check: ListingCheck | null;
+  google_place_id: string | null;
+  naver_map_url: string | null;
 };
 
 /** An approved venue with no map pin: QR check-in there is refused until one is set. */
@@ -81,6 +88,7 @@ export default function AdminVenuesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [missingPin, setMissingPin] = useState<MissingPin[]>([]);
+  const [noListing, setNoListing] = useState<MissingPin[]>([]);
 
   // Auth + admin gate
   useEffect(() => {
@@ -112,6 +120,7 @@ export default function AdminVenuesPage() {
     }
     setVenues((body.venues ?? []) as Venue[]);
     setMissingPin((body.missing_pin ?? []) as MissingPin[]);
+    setNoListing((body.no_listing ?? []) as MissingPin[]);
     const grouped: Record<string, MenuItem[]> = {};
     for (const item of (body.menu_items ?? []) as MenuItem[]) {
       if (!grouped[item.venue_id]) grouped[item.venue_id] = [];
@@ -133,9 +142,11 @@ export default function AdminVenuesPage() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setError(body?.error === 'pin_required'
-        ? `Set the map pin for ${venue.business_name_display} first: QR check-in checks members' GPS against it.`
-        : `Approval failed: ${body?.error ?? res.status}`);
+      setError(body?.error === 'listing_required'
+        ? `Link ${venue.business_name_display} to its Kakao Map place first: only real places can be approved.`
+        : body?.error === 'pin_required'
+          ? `Set the map pin for ${venue.business_name_display} first: QR check-in checks members' GPS against it.`
+          : `Approval failed: ${body?.error ?? res.status}`);
       setExpandedId(venue.id);
       setProcessingId(null);
       return;
@@ -222,6 +233,26 @@ export default function AdminVenuesPage() {
           <div className="error-banner">{error}</div>
         )}
 
+        {!loadingVenues && noListing.length > 0 && (
+          <div className="pin-alert">
+            <h2>Approved venues without a Kakao Map place</h2>
+            <p>They aren&apos;t used for new matches until they&apos;re linked to their real listing.</p>
+            {noListing.map((m) => (
+              <div key={m.id} className="pin-alert-item">
+                <strong>{m.business_name_display}</strong>
+                <span className="pin-alert-sub">{m.city} · {m.road_address || m.address}</span>
+                <ListingLinker
+                  venueId={m.id}
+                  initialQuery={m.business_name_display}
+                  check={null}
+                  placeUrl={null}
+                  onLinked={() => setNoListing((prev) => prev.filter((x) => x.id !== m.id))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         {!loadingVenues && missingPin.length > 0 && (
           <div className="pin-alert">
             <h2>Approved venues without a map pin</h2>
@@ -271,6 +302,13 @@ export default function AdminVenuesPage() {
                         <p className="venue-sub">
                           {CATEGORY_LABELS[venue.category] ?? venue.category} · {venue.city} · Submitted {new Date(venue.created_at).toLocaleDateString()}
                         </p>
+                        <p className={`listing-badge ${listingState(venue)}`}>
+                          {listingState(venue) === 'none'
+                            ? 'No Kakao Map place yet'
+                            : listingState(venue) === 'flags'
+                              ? 'Kakao Map place linked · check the differences'
+                              : 'Kakao Map place linked · details match'}
+                        </p>
                       </div>
                     </div>
                     <div className="expand-icon">{isExpanded ? '−' : '+'}</div>
@@ -290,7 +328,28 @@ export default function AdminVenuesPage() {
                         {venue.contact_name && <Row label="Contact person" value={venue.contact_name} />}
                       </div>
 
+                      <ListingLinker
+                        venueId={venue.id}
+                        initialQuery={venue.business_name_display}
+                        check={venue.map_provider_id ? venue.listing_check : null}
+                        placeUrl={venue.map_place_url}
+                        googleLinked={!!venue.google_place_id}
+                        naverUrl={venue.naver_map_url}
+                        ownerPhone={venue.contact_phone}
+                        onLinked={(place, check, google) => {
+                          setError(null);
+                          setVenues((prev) =>
+                            prev.map((x) =>
+                              x.id === venue.id
+                                ? { ...x, map_provider_id: place.id, map_place_url: place.url, listing_check: check, google_place_id: google ? 'linked' : null, latitude: place.lat, longitude: place.lng }
+                                : x,
+                            ),
+                          );
+                        }}
+                      />
+
                       <PinEditor
+                        key={`${venue.latitude},${venue.longitude}`}
                         venueId={venue.id}
                         address={venue.road_address || venue.address}
                         initial={venue.latitude != null && venue.longitude != null ? { lat: Number(venue.latitude), lng: Number(venue.longitude) } : null}
@@ -440,6 +499,10 @@ export default function AdminVenuesPage() {
         .pin-alert-item { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--ink-12); }
         .pin-alert-item strong { display: block; font-size: 15px; }
         .pin-alert-sub { display: block; color: var(--ink-60); font-size: 13px; }
+        .listing-badge { margin: 4px 0 0; font-size: 12px; font-weight: 700; }
+        .listing-badge.none { color: #C8441A; }
+        .listing-badge.flags { color: #9A6700; }
+        .listing-badge.ok { color: var(--jade); }
         .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-60); font-size: 18px; background: var(--paper-2); border-radius: 16px; }
         .venues-list { display: flex; flex-direction: column; gap: 12px; }
         .venue-card { background: #fff; border: 1px solid var(--ink-12); border-radius: 16px; overflow: hidden; }
@@ -488,6 +551,136 @@ export default function AdminVenuesPage() {
         }
       `}</style>
     </>
+  );
+}
+
+function listingState(v: Venue): 'none' | 'flags' | 'ok' {
+  if (!v.map_provider_id) return 'none';
+  const f = v.listing_check?.flags;
+  return f && f.name === 'match' && f.address === 'match' && f.phone === 'match' ? 'ok' : 'flags';
+}
+
+const FLAG_TEXT: Record<'name' | 'phone' | 'address', Record<string, string>> = {
+  name: { match: 'Name matches', different: 'Name differs from the listing', missing: 'No name to compare' },
+  phone: {
+    match: 'Owner phone = listing phone',
+    different: 'Owner phone differs: call the listing number to confirm',
+    missing: 'Listing has no phone: confirm another way',
+  },
+  address: { match: 'Address matches the listing', different: 'Address differs from the listing', missing: 'No address to compare' },
+};
+
+/**
+ * The venue's Kakao Map place: what the server compared (name, phone, address), and a search
+ * to link or change it. Approval needs a linked place.
+ */
+function ListingLinker({ venueId, initialQuery, check, placeUrl, googleLinked, naverUrl, ownerPhone, onLinked }: {
+  venueId: string;
+  initialQuery: string;
+  check: ListingCheck | null;
+  placeUrl: string | null;
+  googleLinked?: boolean;
+  naverUrl?: string | null;
+  ownerPhone?: string | null;
+  onLinked: (place: MapPlace, check: ListingCheck, google: boolean) => void;
+}) {
+  const [editing, setEditing] = useState(!check);
+  const [picked, setPicked] = useState<MapPlace | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function link() {
+    if (!picked) return;
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch('/api/admin/venues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_listing', venue_id: venueId, place_id: picked.id, place_name: picked.name }),
+    });
+    const body = await res.json().catch(() => null);
+    setBusy(false);
+    if (!res.ok || !body?.ok) {
+      setMsg(listingError(body?.error, 'en'));
+      return;
+    }
+    setEditing(false);
+    setPicked(null);
+    setMsg(body.google ? 'Linked. Google Maps place found too.' : 'Linked.');
+    onLinked(body.listing as MapPlace, body.check as ListingCheck, !!body.google);
+  }
+
+  return (
+    <div className="lk">
+      <div className="lk-head">
+        <strong>Kakao Map place</strong>
+        {check && !editing && (
+          <button type="button" className="ghost" onClick={() => setEditing(true)}>Change</button>
+        )}
+      </div>
+      {check && !editing && (
+        <>
+          <p className="lk-place">
+            {check.listing.name} · {check.listing.category}
+            <br />
+            {check.listing.road_address || check.listing.address}
+            {check.listing.phone ? ` · ${check.listing.phone}` : ''}
+            {placeUrl && (
+              <>
+                <br />
+                <a href={placeUrl} target="_blank" rel="noopener noreferrer">Open in Kakao Map ↗</a>
+              </>
+            )}
+          </p>
+          <ul className="lk-flags">
+            {(['name', 'address', 'phone'] as const).map((k) => (
+              <li key={k} className={check.flags[k]}>
+                {check.flags[k] === 'match' ? '✓' : '!'} {FLAG_TEXT[k][check.flags[k]]}
+                {k === 'address' && check.distance_m != null ? ` (${check.distance_m} m)` : ''}
+                {k === 'phone' && check.flags.phone === 'different' && ownerPhone ? ` (owner: ${ownerPhone})` : ''}
+              </li>
+            ))}
+            <li className={googleLinked ? 'match' : 'missing'}>
+              {googleLinked ? '✓ Google Maps place found (live hours/photos on the venue page)' : '– No Google Maps place found'}
+            </li>
+            {naverUrl && (
+              <li className="match">
+                ✓ <a href={naverUrl} target="_blank" rel="noopener noreferrer">Naver Map link ↗</a>
+              </li>
+            )}
+          </ul>
+        </>
+      )}
+      {editing && (
+        <>
+          <ListingPicker lang="en" value={picked} onChange={setPicked} venueId={venueId} initialQuery={initialQuery} compact />
+          <div className="lk-row">
+            <button type="button" onClick={link} disabled={busy || !picked}>{busy ? 'Linking…' : 'Link this place'}</button>
+            {check && (
+              <button type="button" className="ghost" onClick={() => { setEditing(false); setPicked(null); }}>Cancel</button>
+            )}
+          </div>
+        </>
+      )}
+      {msg && <p className="lk-msg">{msg}</p>}
+      <style jsx>{`
+        .lk { margin: 16px 0; padding: 14px 16px; background: var(--paper-2); border-radius: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .lk-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .lk-place { font-size: 13px; color: var(--ink); line-height: 1.5; margin: 0; }
+        .lk-place a { color: var(--jade); font-weight: 600; }
+        .lk-flags { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+        .lk-flags li { color: var(--ink); }
+        .lk-flags li.match { color: var(--jade); }
+        .lk-flags li.different { color: #C8441A; font-weight: 600; }
+        .lk-flags li.missing { color: #9A6700; }
+        .lk-flags a { color: inherit; }
+        .lk-row { display: flex; gap: 8px; }
+        button { background: var(--ink); color: var(--paper); border: 0; padding: 9px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; cursor: pointer; }
+        button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink-12); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .lk-msg { font-size: 12px; margin: 0; color: var(--ink); }
+      `}</style>
+    </div>
   );
 }
 
