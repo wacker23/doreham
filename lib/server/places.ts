@@ -1,7 +1,7 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { geocodeAddress, inKorea, type LatLng } from '@/lib/server/geocode';
-import { isNaverMapUrl, type CheckResult, type ListingCheck, type MapPlace } from '@/lib/placesTypes';
+import { isNaverMapUrl, type CheckResult, type GoogleMatch, type ListingCheck, type MapPlace } from '@/lib/placesTypes';
 
 /**
  * Venue map listings.
@@ -245,12 +245,13 @@ async function allowGoogleCall(sku: string, limit: number): Promise<boolean> {
 
 /**
  * The Google place for a Kakao listing: Text Search near the listing, the closest result within
- * 150 m whose name matches (or within 40 m). Null when Google is off, over the cap, or unsure.
+ * 150 m whose name matches (or within 40 m). `status` says why there's no id: Google off (no key),
+ * over the monthly cap, an error (e.g. a wrong key), or no matching place.
  */
-export async function findGooglePlace(place: MapPlace): Promise<string | null> {
+export async function findGooglePlace(place: MapPlace): Promise<GoogleMatch> {
   const key = googleKey();
-  if (!key) return null;
-  if (!(await allowGoogleCall('google_text_search_pro', TEXT_SEARCH_CAP()))) return null;
+  if (!key) return { id: null, status: 'off' };
+  if (!(await allowGoogleCall('google_text_search_pro', TEXT_SEARCH_CAP()))) return { id: null, status: 'limit' };
   try {
     const res = await fetch(`${GOOGLE_PLACES}/places:searchText`, {
       method: 'POST',
@@ -271,7 +272,7 @@ export async function findGooglePlace(place: MapPlace): Promise<string | null> {
     });
     if (!res.ok) {
       console.error('[places] google search', res.status, (await res.text().catch(() => '')).slice(0, 200));
-      return null;
+      return { id: null, status: 'error' };
     }
     const body = (await res.json()) as {
       places?: { id?: string; displayName?: { text?: string }; location?: { latitude?: number; longitude?: number } }[];
@@ -285,11 +286,67 @@ export async function findGooglePlace(place: MapPlace): Promise<string | null> {
       const ok = d <= 40 || (d <= 150 && namesMatch(g.displayName?.text, place.name));
       if (ok && (!best || d < best.d)) best = { id: g.id, d };
     }
-    return best?.id ?? null;
+    return best ? { id: best.id, status: 'found' } : { id: null, status: 'none' };
   } catch (e) {
     console.error('[places] google search failed:', e instanceof Error ? e.message : e);
-    return null;
+    return { id: null, status: 'error' };
   }
+}
+
+/** When to look for a venue's Google place again (the search is a paid call). */
+function googleRetryDue(g: ListingCheck['google'] | undefined, now = Date.now()): boolean {
+  if (!g) return true;
+  const age = now - Date.parse(g.tried_at || '1970-01-01');
+  switch (g.status) {
+    case 'found':
+      return false;
+    case 'off':
+      return true; // the key wasn't set then
+    case 'error':
+    case 'limit':
+      return age > 6 * 3600_000; // a wrong key or a full month: try again a few times a day
+    case 'none':
+    default:
+      return age > 30 * 24 * 3600_000; // Google had no such place: check again monthly
+  }
+}
+
+/**
+ * Cron: find the Google place for linked venues that don't have one yet (the key was missing or
+ * wrong when they were linked, or Google added the place later). A few per run.
+ */
+export async function fillMissingGooglePlaces(limit = 3) {
+  if (!googleEnabled()) return { skipped: 'no_key' as const };
+  const admin = getAdmin();
+  const { data } = await admin
+    .from('venues')
+    .select('id, map_provider_id, map_place_url, listing_check')
+    .is('deactivated_at', null)
+    .not('map_provider_id', 'is', null)
+    .is('google_place_id', null)
+    .order('updated_at', { ascending: true })
+    .limit(50);
+  const due = (data ?? []).filter((v) => {
+    const c = v.listing_check as ListingCheck | null;
+    return !!c?.listing && googleRetryDue(c.google);
+  });
+  let found = 0;
+  for (const v of due.slice(0, limit)) {
+    const c = v.listing_check as ListingCheck;
+    const g = await findGooglePlace({
+      id: String(v.map_provider_id),
+      category_group: '',
+      url: (v.map_place_url as string | null) ?? `https://place.map.kakao.com/${v.map_provider_id}`,
+      ...c.listing,
+    });
+    await admin
+      .from('venues')
+      .update({ google_place_id: g.id, listing_check: { ...c, google: { status: g.status, tried_at: new Date().toISOString() } } })
+      .eq('id', v.id);
+    if (g.id) found++;
+    if (g.status === 'error' || g.status === 'limit') break; // same answer for the rest; try later
+  }
+  return { checked: Math.min(due.length, limit), found };
 }
 
 export type GooglePhoto = {
@@ -422,7 +479,10 @@ export async function claimListing(
   if (!actor.isAdmin && check.distance_m !== null && check.distance_m > TOO_FAR_M) return fail('listing_too_far');
 
   const sameListing = venue.map_provider_id === place.id;
-  const googleId = sameListing && venue.google_place_id ? (venue.google_place_id as string) : await findGooglePlace(place);
+  const google: GoogleMatch =
+    sameListing && venue.google_place_id ? { id: venue.google_place_id as string, status: 'found' } : await findGooglePlace(place);
+  const googleId = google.id;
+  check.google = { status: google.status, tried_at: new Date().toISOString() };
   // Switching an approved venue to another place → Doreham checks it again.
   const needsReview = !actor.isAdmin && !!venue.is_active && !!venue.map_provider_id && !sameListing;
 
@@ -469,6 +529,7 @@ export async function refreshListingCheck(venueId: string): Promise<void> {
     ...old.listing,
   };
   const check = await checkListing(v as VenueForCheck, place, old.by);
+  if (old.google) check.google = old.google;
   await admin
     .from('venues')
     .update({ listing_check: check, latitude: place.lat, longitude: place.lng })

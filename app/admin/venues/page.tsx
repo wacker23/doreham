@@ -236,7 +236,10 @@ export default function AdminVenuesPage() {
         {!loadingVenues && noListing.length > 0 && (
           <div className="pin-alert">
             <h2>Approved venues without a Kakao Map place</h2>
-            <p>They aren&apos;t used for new matches until they&apos;re linked to their real listing.</p>
+            <p>
+              They aren&apos;t used for new matches until they&apos;re linked to their real listing. A place marked
+              &quot;Already on Doreham&quot; belongs to another venue: if this one is a duplicate, remove it.
+            </p>
             {noListing.map((m) => (
               <div key={m.id} className="pin-alert-item">
                 <strong>{m.business_name_display}</strong>
@@ -247,6 +250,16 @@ export default function AdminVenuesPage() {
                   check={null}
                   placeUrl={null}
                   onLinked={() => setNoListing((prev) => prev.filter((x) => x.id !== m.id))}
+                />
+                <RemoveVenue
+                  venueId={m.id}
+                  name={m.business_name_display}
+                  onRemoved={() => {
+                    setNoListing((prev) => prev.filter((x) => x.id !== m.id));
+                    setMissingPin((prev) => prev.filter((x) => x.id !== m.id));
+                    setSuccessMessage(`✓ ${m.business_name_display} removed`);
+                    setTimeout(() => setSuccessMessage(null), 4000);
+                  }}
                 />
               </div>
             ))}
@@ -640,8 +653,16 @@ function ListingLinker({ venueId, initialQuery, check, placeUrl, googleLinked, n
                 {k === 'phone' && check.flags.phone === 'different' && ownerPhone ? ` (owner: ${ownerPhone})` : ''}
               </li>
             ))}
-            <li className={googleLinked ? 'match' : 'missing'}>
-              {googleLinked ? '✓ Google Maps place found (live hours/photos on the venue page)' : '– No Google Maps place found'}
+            <li className={googleLinked ? 'match' : check.google?.status === 'error' ? 'different' : 'missing'}>
+              {googleLinked
+                ? '✓ Google Maps place found (live hours/photos on the venue page)'
+                : check.google?.status === 'error'
+                  ? '! Google search failed: check GOOGLE_MAPS_API_KEY (retried automatically every few hours)'
+                  : check.google?.status === 'off'
+                    ? '– Google is off (no GOOGLE_MAPS_API_KEY); searched automatically once it is set'
+                    : check.google?.status === 'limit'
+                      ? '– Google monthly limit reached; searched again later'
+                      : '– No Google Maps place found'}
             </li>
             {naverUrl && (
               <li className="match">
@@ -654,6 +675,7 @@ function ListingLinker({ venueId, initialQuery, check, placeUrl, googleLinked, n
       {editing && (
         <>
           <ListingPicker lang="en" value={picked} onChange={setPicked} venueId={venueId} initialQuery={initialQuery} compact />
+          {!picked && <p className="lk-msg">Search, then click a place in the list to link it.</p>}
           <div className="lk-row">
             <button type="button" onClick={link} disabled={busy || !picked}>{busy ? 'Linking…' : 'Link this place'}</button>
             {check && (
@@ -679,6 +701,59 @@ function ListingLinker({ venueId, initialQuery, check, placeUrl, googleLinked, n
         button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink-12); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .lk-msg { font-size: 12px; margin: 0; color: var(--ink); }
+      `}</style>
+    </div>
+  );
+}
+
+/**
+ * Remove an approved venue (e.g. a duplicate of a venue that already holds its Kakao Map place).
+ * Same as the owner's Delete: hidden from Doreham, perks off, upcoming events cancelled,
+ * photos and menu removed, map listing freed. Past quests keep their history.
+ */
+function RemoveVenue({ venueId, name, onRemoved }: { venueId: string; name: string; onRemoved: () => void }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch(`/api/venues/${venueId}`, { method: 'DELETE' });
+    const body = await res.json().catch(() => null);
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(`Couldn't remove it: ${body?.error ?? res.status}`);
+      return;
+    }
+    onRemoved();
+  }
+
+  return (
+    <div className="rv">
+      {!asking ? (
+        <button type="button" className="rv-btn" onClick={() => setAsking(true)}>Remove venue</button>
+      ) : (
+        <div className="rv-ask">
+          <span>
+            Remove <strong>{name}</strong> from Doreham? Its photos and menu are deleted and upcoming events there are cancelled.
+            Past quests keep their history.
+          </span>
+          <div className="rv-row">
+            <button type="button" className="rv-btn danger" onClick={remove} disabled={busy}>{busy ? 'Removing…' : 'Yes, remove'}</button>
+            <button type="button" className="rv-btn" onClick={() => setAsking(false)} disabled={busy}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {msg && <p className="rv-msg">{msg}</p>}
+      <style jsx>{`
+        .rv { margin-top: 10px; }
+        .rv-ask { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--ink); background: rgba(200, 68, 26, 0.06); border-radius: 12px; padding: 12px 14px; }
+        .rv-row { display: flex; gap: 8px; }
+        .rv-btn { background: transparent; color: #C8441A; border: 1px solid rgba(200, 68, 26, 0.4); padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13px; cursor: pointer; }
+        .rv-btn.danger { background: #C8441A; color: #fff; border-color: #C8441A; }
+        .rv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .rv-msg { font-size: 12px; margin: 6px 0 0; color: #C8441A; }
       `}</style>
     </div>
   );

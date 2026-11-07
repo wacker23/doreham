@@ -25,6 +25,9 @@ export type MapPlace = {
 
 export type CheckResult = 'match' | 'different' | 'missing';
 
+/** Matching the venue on Google Maps: found, no such place, or not tried successfully yet. */
+export type GoogleMatch = { id: string | null; status: 'found' | 'none' | 'error' | 'off' | 'limit' };
+
 /** What the server compared when a listing was linked. */
 export type ListingCheck = {
   checked_at: string;
@@ -33,6 +36,8 @@ export type ListingCheck = {
   flags: { name: CheckResult; phone: CheckResult; address: CheckResult };
   /** Metres between the listing and the venue's address, when both are known. */
   distance_m: number | null;
+  /** Last Google Maps search for this listing (retried by the cron when it failed). */
+  google?: { status: GoogleMatch['status']; tried_at: string };
 };
 
 export const LISTING_ERRORS: Record<string, { en: string; ko: string }> = {
