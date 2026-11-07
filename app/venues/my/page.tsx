@@ -22,6 +22,7 @@ type Venue = {
   photo_urls: string[];
   is_active: boolean;
   claim_verified_at: string | null;
+  map_provider_id: string | null;
   created_at: string;
   updated_at: string;
   per_person_cost_won: number | null;
@@ -69,7 +70,7 @@ export default function MyVenuesPage() {
     setError(null);
     const { data, error: err } = await supabase
       .from('venues')
-      .select('id, business_name_display, category, address, city, district, photo_urls, is_active, claim_verified_at, created_at, updated_at, per_person_cost_won, discount_offer')
+      .select('id, business_name_display, category, address, city, district, photo_urls, is_active, claim_verified_at, created_at, updated_at, per_person_cost_won, discount_offer, map_provider_id')
       .eq('owner_id', user!.id)
       .is('deactivated_at', null)
       .order('created_at', { ascending: false });
@@ -235,6 +236,17 @@ export default function MyVenuesPage() {
                       </button>
                     </div>
 
+                    {!venue.map_provider_id && (
+                      <a href={`/venues/my/${venue.id}/edit`} className="v-listing-warn">
+                        <Icon name="location" size={18} />
+                        <span>
+                          {lang === 'ko'
+                            ? '카카오맵 장소를 연결해 주세요. 연결해야 승인되고 새 매칭에 쓰여요. → 정보 수정'
+                            : 'Link your Kakao Map place. Venues need it to be approved and used for new matches. → Edit info'}
+                        </span>
+                      </a>
+                    )}
+
                     {venue.is_active ? (
                       <div className="v-active-section">
                         <div className="v-active-header"><Icon name="stats" size={18} /> {lang === 'ko' ? '활동' : 'Activity'}</div>
@@ -399,6 +411,7 @@ export default function MyVenuesPage() {
         .v-preview-note { font-size: 13px; color: var(--jade); background: rgba(15, 157, 119, 0.08); padding: 8px 12px; border-radius: 8px; }
         .v-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
         .v-manage { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 16px; margin-top: -4px; }
+        .v-listing-warn { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: rgba(255, 106, 61, 0.08); color: #C8441A; font-weight: 600; font-size: 14px; line-height: 1.45; text-decoration: none; }
         .v-manage-btn { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: var(--ink); border: 1px solid var(--ink-12); padding: 8px 14px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 13px; text-decoration: none; cursor: pointer; }
         .v-manage-btn:hover { border-color: var(--ink-60); }
         .v-manage-btn.danger { color: var(--persimmon); border-color: rgba(255, 106, 61, 0.35); }

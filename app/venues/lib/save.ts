@@ -36,7 +36,7 @@ export async function submitVenue(
   formData: VenueFormData,
   uploadedPhotoUrls: string[],
   uploadedMenuItems: MenuItem[]
-): Promise<{ ok: true; venueId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; venueId: string; listingError: string | null } | { ok: false; error: string }> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'not_signed_in' };
 
@@ -115,6 +115,26 @@ export async function submitVenue(
     }
   }
 
+  // Link the Kakao Map listing: the server finds the place again, compares it with the
+  // details above and sets the map pin from it. The venue can't be approved without it.
+  let listingError: string | null = formData.listing ? null : 'listing_required';
+  if (formData.listing) {
+    try {
+      const r = await fetch(`/api/venues/${venue.id}/listing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          place_id: formData.listing.id,
+          place_name: formData.listing.name,
+          naver_map_url: formData.naver_map_url ?? '',
+        }),
+      });
+      if (!r.ok) listingError = ((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'listing_failed';
+    } catch {
+      listingError = 'listing_failed';
+    }
+  }
+
   // Trigger submission confirmation email (fire and forget — don't block on it)
   if (formData.contact_email && formData.business_name_display) {
     fetch('/api/emails/venue-submitted', {
@@ -127,7 +147,7 @@ export async function submitVenue(
     });
   }
 
-  return { ok: true, venueId: venue.id };
+  return { ok: true, venueId: venue.id, listingError };
 }
 
 export async function verifyBusinessNumberWithGov(

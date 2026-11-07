@@ -24,9 +24,11 @@ type Props = {
     contact_phone: string;
     contact_name: string;
   }) => void;
+  /** Back to the Kakao Map step. */
+  onBack?: () => void;
 };
 
-export function BasicInfoStep({ lang, initialData, onNext }: Props) {
+export function BasicInfoStep({ lang, initialData, onNext, onBack }: Props) {
   const [displayName, setDisplayName] = useState(initialData.business_name_display ?? '');
   const [legalName, setLegalName] = useState(initialData.business_name_legal ?? '');
   const [brn, setBrn] = useState(initialData.business_registration_number ?? '');
@@ -296,6 +298,11 @@ export function BasicInfoStep({ lang, initialData, onNext }: Props) {
       </div>
 
       <div className="actions">
+        {onBack && (
+          <button type="button" className="btn-back" onClick={onBack}>
+            {lang === 'ko' ? '← 이전' : '← Back'}
+          </button>
+        )}
         <button type="submit" className="btn-next">
           {lang === 'ko' ? '다음 →' : 'Next →'}
         </button>
@@ -327,7 +334,8 @@ export function BasicInfoStep({ lang, initialData, onNext }: Props) {
         .section-divider { margin: 32px 0 20px; padding-top: 24px; border-top: 1px solid var(--ink-12); }
         .section-divider h3 { font-family: var(--display); font-weight: 700; font-size: 18px; margin: 0 0 4px; color: var(--ink); }
         .section-divider p { font-size: 13px; color: var(--ink-60); margin: 0; }
-        .actions { margin-top: 40px; display: flex; justify-content: flex-end; }
+        .actions { margin-top: 40px; display: flex; justify-content: flex-end; gap: 12px; }
+        .actions .btn-back { margin-right: auto; background: transparent; border: 1px solid var(--ink-12); padding: 12px 24px; border-radius: 999px; font-family: var(--body); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; }
         .btn-next { background: var(--persimmon); color: #fff; border: 0; padding: 14px 28px; border-radius: 999px; font-family: var(--body); font-weight: 700; font-size: 15px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
         .btn-next:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(255, 106, 61, 0.32); }
         @media (max-width: 480px) {

@@ -5,15 +5,20 @@ import { EMAIL_FROM_PLAIN, getResend } from '@/lib/server/emails/common';
 import { venueApprovedEmail, venueRejectedEmail } from '@/lib/emails/templates';
 import { purgeVenueFiles } from '@/lib/server/venues';
 import { ensureVenuePin, geocodeVenue, parseLatLng, type LatLng } from '@/lib/server/geocode';
+import { claimListing } from '@/lib/server/places';
 
 /**
  * Admin venue review (/admin/venues).
  *   GET                                   → venues waiting for review, with their menu items,
- *                                           and approved venues that have no map pin
- *   POST { action: 'approve', venue_id }  → approve + email the owner (needs a map pin)
+ *                                           and approved venues that have no map pin or no
+ *                                           map listing
+ *   POST { action: 'approve', venue_id }  → approve + email the owner (needs a Kakao Map
+ *                                           listing and a map pin)
  *   POST { action: 'reject', venue_id, reason } → email the owner, then remove the venue
  *   POST { action: 'set_pin', venue_id, pin } → save the map pin: "37.5345, 126.9935" or a map
  *                                           link; an empty pin looks it up from the address
+ *   POST { action: 'set_listing', venue_id, place_id, place_name } → link the venue to its
+ *                                           Kakao Map place (also sets the pin from it)
  *
  * The map pin is what QR check-in measures the member's GPS against.
  *
@@ -47,7 +52,19 @@ export async function GET() {
     .is('deactivated_at', null)
     .or('latitude.is.null,longitude.is.null')
     .order('created_at', { ascending: true });
-  return NextResponse.json({ venues: venues ?? [], menu_items: menu ?? [], missing_pin: missingPin ?? [] });
+  const { data: noListing } = await admin
+    .from('venues')
+    .select('id, business_name_display, city, address, road_address')
+    .eq('is_active', true)
+    .is('deactivated_at', null)
+    .is('map_provider_id', null)
+    .order('created_at', { ascending: true });
+  return NextResponse.json({
+    venues: venues ?? [],
+    menu_items: menu ?? [],
+    missing_pin: missingPin ?? [],
+    no_listing: noListing ?? [],
+  });
 }
 
 async function sendEmail(to: string, mail: { subject: string; html: string }) {
@@ -64,9 +81,15 @@ async function sendEmail(to: string, mail: { subject: string; html: string }) {
 export async function POST(request: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
-  const body = await readJson<{ action: string; venue_id: string; reason: string; pin: string }>(request);
+  const body = await readJson<{ action: string; venue_id: string; reason: string; pin: string; place_id: string; place_name: string }>(request);
   if (!isUuid(body.venue_id)) return jsonError('venue_id required', 400);
   const admin = getAdmin();
+
+  if (body.action === 'set_listing') {
+    const r = await claimListing(body.venue_id, { userId: auth.user.id, isAdmin: true }, body);
+    if (!r.ok) return jsonError(r.error, r.status);
+    return NextResponse.json({ ok: true, listing: r.listing, check: r.check, google: r.google });
+  }
 
   if (body.action === 'set_pin') {
     const { data: v } = await admin
@@ -98,6 +121,10 @@ export async function POST(request: Request) {
   }
 
   if (body.action === 'approve') {
+    // Only real places: the venue must be linked to its Kakao Map listing.
+    const { data: listed } = await admin.from('venues').select('map_provider_id').eq('id', body.venue_id).maybeSingle();
+    if (!listed) return jsonError('not_found', 404);
+    if (!listed.map_provider_id) return jsonError('listing_required', 400);
     // No approval without a map pin: check-in can't confirm anyone is at the venue otherwise.
     if (!(await ensureVenuePin(body.venue_id))) return jsonError('pin_required', 400);
     const { data: venue, error } = await admin

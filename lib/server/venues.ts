@@ -1,6 +1,7 @@
 import 'server-only';
 import { getAdmin } from '@/lib/server/supabaseAdmin';
 import { ensureVenuePin } from '@/lib/server/geocode';
+import { refreshListingCheck } from '@/lib/server/places';
 import { isAdminUser } from '@/lib/server/auth';
 import { cancelEvent } from '@/lib/server/events';
 import { validateBusinessNumber } from '@/lib/businessNumber';
@@ -243,12 +244,20 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
     v.is_active = false;
     v.claim_verified_at = null;
   }
-  // A new address needs a new map pin (check-in GPS is measured against it). It's looked up
-  // again when the venue is approved or at the next check-in.
-  if (norm(venue.address) !== norm(v.address) || norm(venue.road_address) !== norm(v.road_address)) {
+  // A new address needs a new map pin (check-in GPS is measured against it). With a linked
+  // map listing the pin stays on the listing and the listing is compared again; without one
+  // it's looked up again from the address.
+  const addressChanged = norm(venue.address) !== norm(v.address) || norm(venue.road_address) !== norm(v.road_address);
+  const hasListing = !!venue.map_provider_id;
+  if (addressChanged && !hasListing) {
     v.latitude = null;
     v.longitude = null;
   }
+  const recheckListing =
+    hasListing &&
+    (addressChanged ||
+      norm(venue.contact_phone) !== norm(v.contact_phone) ||
+      norm(venue.business_name_display) !== norm(v.business_name_display));
 
   const admin = getAdmin();
   const { error: upErr } = await admin.from('venues').update(v).eq('id', venueId);
@@ -277,6 +286,7 @@ export async function updateVenue(userId: string, venueId: string, input: VenueU
   }
 
   for (const f of removedFiles) await removeFiles(f.bucket, f.urls, folders);
+  if (recheckListing) await refreshListingCheck(venueId).catch((e) => console.error('[venues] listing check failed:', e));
   if (v.latitude === null) await ensureVenuePin(venueId).catch((e) => console.error('[venues] pin lookup failed:', e));
   return { ok: true as const, needs_review: needsReview };
 }
@@ -312,6 +322,12 @@ export async function deleteVenue(userId: string, venueId: string) {
       contact_phone: null,
       contact_name: null,
       business_registration_number: null,
+      // Frees the map listing, so the place can be registered again later.
+      map_provider: null,
+      map_provider_id: null,
+      map_place_url: null,
+      listing_check: null,
+      google_place_id: null,
     })
     .eq('id', venueId);
   if (upErr) {

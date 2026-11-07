@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <h1>{lang === 'ko' ? '이용 약관' : 'Terms of Service'}</h1>
         <p className="last-updated">
-          {lang === 'ko' ? '최종 업데이트: 2026년 10월 2일' : 'Last updated: October 2, 2026'}
+          {lang === 'ko' ? '최종 업데이트: 2026년 11월 7일' : 'Last updated: November 7, 2026'}
         </p>
 
         {/* Summary card */}
@@ -130,6 +130,8 @@ export default function TermsPage() {
 
             <h2>6. 파트너 가게</h2>
             <p>도레함은 파트너 가게에서의 퀘스트를 제안하지만, 가게에서 제공하는 상품과 서비스에 대한 책임은 지지 않습니다. 문제 발생 시 가게에 직접 문의하시거나 도레함에 알려주세요.</p>
+            <p>파트너 가게는 카카오맵에 등록된 실제 장소와 연결해야 하며, 등록자는 그 가게를 운영하거나 운영할 권한이 있어야 합니다. 다른 사람의 가게를 등록하거나 사실과 다른 정보를 입력하면 등록이 거절되거나 삭제될 수 있습니다.</p>
+            <p>가게 페이지의 지도 정보 일부(구글 지도의 영업시간과 사진)는 Google Maps에서 제공됩니다. 이 정보를 이용하면 <a href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer">Google 지도 추가 서비스 약관</a>과 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보처리방침</a>에 동의하는 것으로 봅니다.</p>
 
             <h2>7. 요금</h2>
             <p>도레함은 무료 플랜과 유료 플랜 <strong>Doreham+</strong>(월 ₩4,900 또는 연 ₩39,000)를 운영합니다.</p>
@@ -246,6 +248,8 @@ export default function TermsPage() {
 
             <h2>6. Partner Venues</h2>
             <p>Doreham suggests quests at partner venues but takes no responsibility for products or services provided by venues. Contact the venue directly with issues, or let Doreham know.</p>
+            <p>Each partner venue must be linked to its real place on Kakao Map, and the person registering it must run the business or be allowed to act for it. Registering someone else&apos;s business or giving false details can get a venue rejected or removed.</p>
+            <p>Some map information on venue pages (opening hours and photos from Google Maps) is provided by Google Maps. By using it you agree to the <a href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer">Google Maps/Google Earth Additional Terms of Service</a> and the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>.</p>
 
             <h2>7. Fees</h2>
             <p>Doreham has a free plan and one paid plan, <strong>Doreham+</strong> (₩4,900 a month or ₩39,000 a year).</p>

@@ -41,11 +41,26 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
           : "Review everything below. We'll email you within 48 hours after approval."}
       </p>
 
+      {/* Kakao Map listing */}
+      <div className="section">
+        <div className="section-header">
+          <h3>{lang === 'ko' ? '카카오맵 장소' : 'Kakao Map place'}</h3>
+          <button type="button" onClick={() => onEditStep(1)} className="edit-btn">
+            {lang === 'ko' ? '수정' : 'Edit'}
+          </button>
+        </div>
+        <div className="rows">
+          <Row label={lang === 'ko' ? '장소' : 'Place'} value={formData.listing?.name} />
+          <Row label={lang === 'ko' ? '지도 주소' : 'Address on the map'} value={formData.listing?.road_address || formData.listing?.address} />
+          <Row label={lang === 'ko' ? '네이버 지도' : 'Naver Map'} value={formData.naver_map_url || undefined} />
+        </div>
+      </div>
+
       {/* Business Info */}
       <div className="section">
         <div className="section-header">
           <h3>{lang === 'ko' ? '가게 정보' : 'Business info'}</h3>
-          <button type="button" onClick={() => onEditStep(1)} className="edit-btn">
+          <button type="button" onClick={() => onEditStep(2)} className="edit-btn">
             {lang === 'ko' ? '수정' : 'Edit'}
           </button>
         </div>
@@ -87,7 +102,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
       <div className="section">
         <div className="section-header">
           <h3>{lang === 'ko' ? '위치' : 'Location'}</h3>
-          <button type="button" onClick={() => onEditStep(2)} className="edit-btn">
+          <button type="button" onClick={() => onEditStep(3)} className="edit-btn">
             {lang === 'ko' ? '수정' : 'Edit'}
           </button>
         </div>
@@ -107,7 +122,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
       <div className="section">
         <div className="section-header">
           <h3>{lang === 'ko' ? '영업 시간' : 'Hours'}</h3>
-          <button type="button" onClick={() => onEditStep(3)} className="edit-btn">
+          <button type="button" onClick={() => onEditStep(4)} className="edit-btn">
             {lang === 'ko' ? '수정' : 'Edit'}
           </button>
         </div>
@@ -130,7 +145,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
         <div className="section">
           <div className="section-header">
             <h3>{lang === 'ko' ? '소개 및 가격' : 'Description & pricing'}</h3>
-            <button type="button" onClick={() => onEditStep(4)} className="edit-btn">
+            <button type="button" onClick={() => onEditStep(5)} className="edit-btn">
               {lang === 'ko' ? '수정' : 'Edit'}
             </button>
           </div>
@@ -162,7 +177,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
         <div className="section">
           <div className="section-header">
             <h3>{lang === 'ko' ? `사진 (${photoCount}장)` : `Photos (${photoCount})`}</h3>
-            <button type="button" onClick={() => onEditStep(5)} className="edit-btn">
+            <button type="button" onClick={() => onEditStep(6)} className="edit-btn">
               {lang === 'ko' ? '수정' : 'Edit'}
             </button>
           </div>
@@ -184,7 +199,7 @@ export function ReviewStep({ lang, formData, submitting, error, onSubmit, onBack
         <div className="section">
           <div className="section-header">
             <h3>{lang === 'ko' ? `메뉴 (${formData.menu_items.length}개)` : `Menu (${formData.menu_items.length})`}</h3>
-            <button type="button" onClick={() => onEditStep(6)} className="edit-btn">
+            <button type="button" onClick={() => onEditStep(7)} className="edit-btn">
               {lang === 'ko' ? '수정' : 'Edit'}
             </button>
           </div>
