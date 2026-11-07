@@ -11,7 +11,8 @@ import { claimListing } from '@/lib/server/places';
  * Admin venue review (/admin/venues).
  *   GET                                   → venues waiting for review, with their menu items,
  *                                           and approved venues that have no map pin or no
- *                                           map listing
+ *                                           map listing, plus every approved venue (newest
+ *                                           approval first)
  *   POST { action: 'approve', venue_id }  → approve + email the owner (needs a Kakao Map
  *                                           listing and a map pin)
  *   POST { action: 'reject', venue_id, reason } → email the owner, then remove the venue
@@ -59,11 +60,22 @@ export async function GET() {
     .is('deactivated_at', null)
     .is('map_provider_id', null)
     .order('created_at', { ascending: true });
+  const { data: approved } = await admin
+    .from('venues')
+    .select(
+      'id, business_name_display, category, city, district, address, road_address, photo_urls, latitude, longitude, map_provider_id, google_place_id, naver_map_url, claim_verified_at, created_at',
+    )
+    .eq('is_active', true)
+    .is('deactivated_at', null)
+    .order('claim_verified_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(1000);
   return NextResponse.json({
     venues: venues ?? [],
     menu_items: menu ?? [],
     missing_pin: missingPin ?? [],
     no_listing: noListing ?? [],
+    approved: approved ?? [],
   });
 }
 
